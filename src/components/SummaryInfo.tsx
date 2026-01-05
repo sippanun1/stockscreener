@@ -4,15 +4,7 @@ type SummaryInfoProps = {
   stocks: Stock[];
 };
 
-export default function SummaryInfo({ stocks }: SummaryInfoProps) {
-  const totalStocks = stocks.length;
-  const avgPrice = stocks.length > 0 
-    ? (stocks.reduce((sum, s) => sum + s.current_price, 0) / stocks.length).toFixed(2)
-    : 0;
-  
-  const upCount = stocks.filter(s => s.Technical_Rating === "BUY" || s.Technical_Rating === "STRONG BUY").length;
-  const downCount = stocks.filter(s => s.Technical_Rating === "SELL" || s.Technical_Rating === "STRONG SELL").length;
-
+export default function SummaryInfo({ }: SummaryInfoProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 pl-[53px] pr-[53px]">
       {/* Total Stocks */}
