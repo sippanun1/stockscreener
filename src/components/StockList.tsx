@@ -50,7 +50,7 @@ export default function StockTable({ stocks }: StockTableProps) {
   return (
     <div className="ml-[53px] mr-[53px] mt-[17px]">
       <Table className="table-fixed w-full">
-        <TableHead className="bg-[#354052]">
+        <TableHead className="bg-[#0F151F]">
           <TableRow>
             <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
               Symbol
@@ -70,8 +70,8 @@ export default function StockTable({ stocks }: StockTableProps) {
             <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
               Previous Rating
             </TableHeadCell>
-            <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
-            
+            <TableHeadCell className="p-0 w-[40px]">
+              <img src="/src/assets/arrow.svg" alt="arrow" className="pl-1.5"/>
             </TableHeadCell>
             <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
                Current Rating
@@ -92,7 +92,7 @@ export default function StockTable({ stocks }: StockTableProps) {
             return (
               <TableRow
                 key={i}
-                className="bg-[#292D33] hover:bg-[#292D33]/80 border-b border-white/5"
+                className="bg-[#7588A31A] hover:bg-[#292D33]/80 border-b border-white/5 h-10"
               >
                 <TableCell className="text-[#F8FAFC] font-semibold">
                   <div className="flex justify-center">
@@ -129,7 +129,7 @@ export default function StockTable({ stocks }: StockTableProps) {
                 <TableCell>
                   <div className="flex justify-center">
                     <div
-                      className={`w-[91px] h-[32px] ${getRatingColor(
+                      className={`w-[91px] h-[20px] mt-1 mb-1 ${getRatingColor(
                         s.Yesterday_Rating
                       )} text-[#F8FAFC] rounded-[16px] flex items-center justify-center text-xs font-semibold`}
                     >
@@ -137,7 +137,7 @@ export default function StockTable({ stocks }: StockTableProps) {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="p-0 w-[40px]">
                   <div className="flex justify-center items-center text-[#F8FAFC] text-xl">
                    <img src="/src/assets/arrow.svg" alt="arrow" />
                   </div>
@@ -145,7 +145,7 @@ export default function StockTable({ stocks }: StockTableProps) {
                 <TableCell>
                   <div className="flex justify-center">
                     <div
-                      className={`w-[91px] h-[32px] ${getRatingColor(
+                      className={`w-[91px] h-[20px] mt-1 mb-1 ${getRatingColor(
                         s.Technical_Rating
                       )} text-[#F8FAFC] rounded-[16px] flex items-center justify-center text-xs font-semibold`}
                     >

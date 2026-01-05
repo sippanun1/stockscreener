@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Button } from "flowbite-react";
 import { HiOutlineSearch } from "react-icons/hi";
+import { DayPicker } from "react-day-picker";
+import { format } from "date-fns";
+
+
 
 type StockFiltersProps = {
   onChange?: (filters: any) => void;
@@ -11,12 +15,14 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
   const [previousRating, setPreviousRating] = useState<string>("");
   const [currentRating, setCurrentRating] = useState<string>("");
   const [technicalRating, setTechnicalRating] = useState<string>("");
+  const [date, setDate] = useState<string>("");
   const [search, setSearch] = useState<string>("");
 
   const [showMarketsDropdown, setShowMarketsDropdown] = useState(false);
   const [showPreviousRatingDropdown, setShowPreviousRatingDropdown] = useState(false);
   const [showCurrentRatingDropdown, setShowCurrentRatingDropdown] = useState(false);
   const [showTechnicalRatingDropdown, setShowTechnicalRatingDropdown] = useState(false);
+  const [showDatePickerDropdown, setShowDatePickerDropdown] = useState(false);
 
   const ratingOptions = ["Strong Buy", "Buy", "Neutral", "Sell", "Strong Sell"];
   const marketOptions = ["US", "HK", "TH", "JP"];
@@ -78,7 +84,22 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
       market,
       previousRating,
       currentRating,
+      technicalRating,
+      date,
       search: value,
+    });
+  };
+
+  const handleDateChange = (value: string) => {
+    setDate(value);
+    setShowDatePickerDropdown(false);
+    onChange?.({
+      market,
+      previousRating,
+      currentRating,
+      technicalRating,
+      date: value,
+      search,
     });
   };
 
@@ -87,30 +108,32 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
     setPreviousRating("");
     setCurrentRating("");
     setTechnicalRating("");
+    setDate("");
     setSearch("");
     onChange?.({
       market: "",
       previousRating: "",
       currentRating: "",
       technicalRating: "",
+      date: "",
       search: "",
     });
   };
 
   return (
     <div className="ml-[53px] mr-[53px]">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-2">
         {/* Markets All */}
         <div className="relative">
           <button 
             onClick={() => setShowMarketsDropdown(!showMarketsDropdown)}
-            className="w-[172px] h-[40px] bg-[#354052] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
+            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
           >
-            {market || "Markets"}
-            <span className="ml-2">▼</span>
+            {market || "Markets All"}
+            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
           </button>
           {showMarketsDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-[#171E2D] rounded shadow-lg z-10">
+            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-10">
               {marketOptions.map((option) => (
                 <div
                   key={option}
@@ -127,16 +150,16 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
         </div>
 
         {/* Previous Rating */}
-        <div className="relative">
+        <div className="relative right-3.5">
           <button 
             onClick={() => setShowPreviousRatingDropdown(!showPreviousRatingDropdown)}
-            className="w-[172px] h-[40px] bg-[#354052] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
+            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
           >
             {previousRating || "Previous Rating"}
-            <span className="ml-2">▼</span>
+            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
           </button>
           {showPreviousRatingDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-[#171E2D] rounded shadow-lg z-10">
+            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-10">
               {ratingOptions.map((rating) => (
                 <div
                   key={rating}
@@ -153,16 +176,16 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
         </div>
 
         {/* Current Rating */}
-        <div className="relative">
+        <div className="relative right-7">
           <button 
             onClick={() => setShowCurrentRatingDropdown(!showCurrentRatingDropdown)}
-            className="w-[172px] h-[40px] bg-[#354052] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
+            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
           >
             {currentRating || "Current Rating"}
-            <span className="ml-2">▼</span>
+            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
           </button>
           {showCurrentRatingDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-[#171E2D] rounded shadow-lg z-10">
+            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-10">
               {ratingOptions.map((rating) => (
                 <div
                   key={rating}
@@ -179,16 +202,16 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
         </div>
 
         {/* Technical Rating */}
-        <div className="relative">
+        <div className="relative right-10.5">
           <button 
             onClick={() => setShowTechnicalRatingDropdown(!showTechnicalRatingDropdown)}
-            className="w-[172px] h-[40px] bg-[#354052] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
+            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
           >
             {technicalRating || "Rating Change"}
-            <span className="ml-2">▼</span>
+            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
           </button>
           {showTechnicalRatingDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-[#171E2D] rounded shadow-lg z-10">
+            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-10 border-0.5">
               {technicalRatingOptions.map((rating) => (
                 <div
                   key={rating}
@@ -204,6 +227,51 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
           )}
         </div>
 
+        {/* Date Picker */}
+        <div className="relative right-14">
+          <button 
+            onClick={() => setShowDatePickerDropdown(!showDatePickerDropdown)}
+            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
+          >
+            <img src="/src/assets/date.svg" alt="calendar" className="mr-2" />
+            {date ? format(new Date(date), "MMM dd") : "DD/MM/YYYY"}
+
+          </button>
+          {showDatePickerDropdown && (
+            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-20 p-4 w-80">
+              <DayPicker
+                mode="single"
+                selected={date ? new Date(date) : undefined}
+                onSelect={(selectedDate) => {
+                  if (selectedDate) {
+                    const formattedDate = format(selectedDate, "yyyy-MM-dd");
+                    handleDateChange(formattedDate);
+                  }
+                }}
+                classNames={{
+                  caption:
+                    "flex justify-between items-center mb-4",
+
+                  caption_label:
+                    "text-center text-[#F8FAFC] text-sm font-semibold flex-1",
+
+                  nav:
+                    "flex gap-2",
+
+                  nav_button:
+                    "h-7 w-7 bg-[#1F2A3B] hover:bg-[#354052] text-[#F8FAFC] rounded flex items-center justify-center transition",
+
+                  nav_button_previous:
+                    "",
+
+                  nav_button_next:
+                    "",
+                }}
+              />
+            </div>
+          )}
+        </div>
+
         {/* Search */}
         <div className="relative left-35">
           <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7588A3] text-lg" />
@@ -215,7 +283,7 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
             placeholder="search"
             className="
               w-full
-              bg-[#354052]
+              bg-[#0F151F]
               border border-[#7588A3]/30
               text-[#F8FAFC]
               pl-10 pr-3 py-2
@@ -232,9 +300,9 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
         <div className="relative left-35">
           <button
             onClick={handleClearFilters}
-            className="w-[54px] h-[40px] bg-[#D32F2F] text-[#F8FAFC] rounded-xl text-sm font-semibold hover:bg-[#B71C1C] transition"
+            className="w-[54px] h-[40px] bg-[#0F151F] rounded-xl hover:bg-[#354052] transition flex items-center justify-center"
           >
-            Clear Filters
+            <img src="/src/assets/SVG.svg" alt="reset" />
           </button>
         </div>
       </div>

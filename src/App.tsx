@@ -5,6 +5,8 @@ import StockList from "./components/StockList";
 import SummaryInfo from './components/SummaryInfo'; 
 import StockListFilter from "./components/StockListFilter";
 import type { Stock } from "./types/stock";
+import "react-day-picker/dist/style.css";
+
 
 function App() {
   const [stocks, setStocks] = useState<Stock[]>([]);
@@ -24,7 +26,7 @@ function App() {
         const data = await response.json();
 
         // Transform data to Stock type - limit to 50 rows
-        const stocks: Stock[] = data.slice(0, 50).map((s: any) => ({
+        const stocks: Stock[] = data.slice(-50, -1).map((s: any) => ({
           market: s.market,
           symbol: s.symbol,
           name: s.name,
@@ -95,7 +97,7 @@ function App() {
   };
 
   return (
-    <div className="App bg-[#171E2D] min-h-screen text-[#F8FAFC]">
+    <div className="App bg-[#000000] min-h-screen text-[#F8FAFC]">
       <MenuHeader />
       <SummaryInfo stocks={stocks} />
       <StockListFilter onChange={handleFilterChange} />

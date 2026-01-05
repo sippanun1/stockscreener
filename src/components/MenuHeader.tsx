@@ -11,8 +11,8 @@ export default function MenuHeader() {
         />
       </NavbarBrand>
       <div className="flex justify-end px-6">
-        <Button className="text-[#F8FAFC] hover:bg-[#F8FAFC]/90 w-[83px] h-[36px]">Screener</Button>
-        <Button className="text-[#F8FAFC] hover:bg-blue-700 w-[83px] h-[36px]">Analytics</Button>
+        <Button className="text-[#F8FAFC] hover:text-[#00FF88] w-[83px] h-[36px]">Screener</Button>
+        <Button className="text-[#F8FAFC] hover:text-[#00FF88] w-[83px] h-[36px]">Analytics</Button>
       </div>
     </Navbar>
   );
