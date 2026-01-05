@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import './App.css'
 import MenuHeader from "./components/MenuHeader";
 import StockList from "./components/StockList";
 import SummaryInfo from './components/SummaryInfo'; 
 import StockListFilter from "./components/StockListFilter";
+import AnalyticsPage from "./components/AnalyticsPage";
 import type { Stock } from "./types/stock";
 import "react-day-picker/dist/style.css";
 
 
-function App() {
+function ScreenerPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [allStocks, setAllStocks] = useState<Stock[]>([]);
-  const [filters, setFilters] = useState({
+  const [_filters, setFilters] = useState({
     market: "",
     previousRating: "",
     currentRating: "",
@@ -97,15 +99,27 @@ function App() {
   };
 
   return (
-    <div className="App bg-[#000000] min-h-screen text-[#F8FAFC]">
-      <MenuHeader />
+    <>
       <SummaryInfo stocks={stocks} />
       <StockListFilter onChange={handleFilterChange} />
       <div>
         <StockList stocks={stocks} />
       </div>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <div className="App bg-[#000000] min-h-screen text-[#F8FAFC]">
+      <MenuHeader />
+      <Routes>
+        <Route path="/" element={<ScreenerPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
+      </Routes>
     </div>
   );
 }
 
 export default App
+
