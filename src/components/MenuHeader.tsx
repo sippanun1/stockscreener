@@ -15,7 +15,11 @@ export default function MenuHeader() {
         <NavLink 
           to="/" 
           className={({ isActive }) => 
-            `text-[#F8FAFC] hover:text-[#00FF88] text-base font-medium ${isActive ? 'text-[#00FF88]' : ''}`
+            `text-base font-medium transition-all ${
+              isActive 
+                ? 'text-[#00FFB7]' 
+                : 'text-[#F8FAFC] hover:text-[#00FFB7]'
+            }`
           }
         >
           Screener
@@ -23,7 +27,11 @@ export default function MenuHeader() {
         <NavLink 
           to="/analytics" 
           className={({ isActive }) => 
-            `text-[#F8FAFC] hover:text-[#00FF88] text-base font-medium ${isActive ? 'text-[#00FF88]' : ''}`
+            `text-base font-medium transition-all ${
+              isActive 
+                ? 'text-[#00FFB7]' 
+                : 'text-[#F8FAFC] hover:text-[#00FFB7]'
+            }`
           }
         >
           Analytics
