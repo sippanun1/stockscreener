@@ -2,6 +2,20 @@ import { Navbar, NavbarBrand } from "flowbite-react";
 import { NavLink } from "react-router-dom";
 import goodtradeLogo from "../assets/goodtrade.svg";
 
+/**
+ * Helper function to generate NavLink className based on active state
+ * Includes accessible focus styles for keyboard navigation
+ */
+const getNavLinkClass = (isActive: boolean): string => {
+  const baseClasses = "text-base font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00FFB7] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F151F] rounded";
+  
+  if (isActive) {
+    return `${baseClasses} text-[#00FFB7]`;
+  }
+  
+  return `${baseClasses} text-[#F8FAFC] hover:text-[#00FFB7]`;
+};
+
 export default function MenuHeader() {
   return (
     <Navbar className="pl-[53px] pr-[53px]">
@@ -14,17 +28,13 @@ export default function MenuHeader() {
       <div className="flex justify-end gap-8 px-6">
         <NavLink 
           to="/" 
-          className={({ isActive }) => 
-            `text-[#F8FAFC] hover:text-[#00FF88] text-base font-medium ${isActive ? 'text-[#00FF88]' : ''}`
-          }
+          className={({ isActive }) => getNavLinkClass(isActive)}
         >
           Screener
         </NavLink>
         <NavLink 
           to="/analytics" 
-          className={({ isActive }) => 
-            `text-[#F8FAFC] hover:text-[#00FF88] text-base font-medium ${isActive ? 'text-[#00FF88]' : ''}`
-          }
+          className={({ isActive }) => getNavLinkClass(isActive)}
         >
           Analytics
         </NavLink>
@@ -32,4 +42,3 @@ export default function MenuHeader() {
     </Navbar>
   );
 }
-
