@@ -13,32 +13,32 @@ type StockTableProps = {
 };
 
 const getRatingColor = (rating: string | undefined) => {
-  if (!rating) return "bg-[#354052]";
+  if (!rating) return "text-[#7588A3]";
   switch (rating) {
     case "Strong Buy":
-      return "bg-[#065F46]";
+      return "text-[#065F46]";
     case "Buy":
-      return "bg-[#007957]";
+      return "text-[#007957]";
     case "Neutral":
-      return "bg-[#6B7280]";
+      return "text-[#6B7280]";
     case "Sell":
-      return "bg-[#CE0F44]";
+      return "text-[#CE0F44]";
     case "Strong Sell":
-      return "bg-[#A10F38]";
+      return "text-[#A10F38]";
     default:
-      return "bg-[#6B7280]";
+      return "text-[#6B7280]";
   }
 };
 
 export default function StockTable({ stocks }: StockTableProps) {
   const calculateChange = (stock: Stock) => {
-    if (!stock.previous_price) return 0;
-    return stock.current_price - stock.previous_price;
+    if (!stock.yesterday_price) return 0;
+    return stock.current_price - stock.yesterday_price;
   };
 
   const calculateChangePercent = (stock: Stock) => {
-    if (!stock.previous_price) return 0;
-    return ((stock.current_price - stock.previous_price) / stock.previous_price) * 100;
+    if (!stock.yesterday_price) return 0;
+    return ((stock.current_price - stock.yesterday_price) / stock.yesterday_price) * 100;
   };
 
   const getChangeColor = (change: number) => {
@@ -46,6 +46,35 @@ export default function StockTable({ stocks }: StockTableProps) {
     if (change < 0) return "text-[#EF4444]";
     return "text-[#7588A3]";
   };
+
+  function findPreviousRating(
+  history: {
+    Technical_Rating: string;
+    fetched_at: string;
+    fetched_at_epoch: number;
+  }[]
+) {
+  const sorted = [...history].sort(
+    (a, b) => a.fetched_at_epoch - b.fetched_at_epoch
+  );
+
+  const current = sorted[sorted.length - 1].Technical_Rating;
+
+  for (let i = sorted.length - 2; i >= 0; i--) {
+    if (sorted[i].Technical_Rating !== current) {
+      return {
+        previous_rating: sorted[i].Technical_Rating,
+        previous_rating_date: sorted[i].fetched_at,
+      };
+    }
+  }
+
+  return {
+    previous_rating: "N/A",
+    previous_rating_date: "N/A",
+  };
+}
+
 
   return (
     <div className="ml-[53px] mr-[53px] mt-[17px]">
@@ -88,6 +117,7 @@ export default function StockTable({ stocks }: StockTableProps) {
           {stocks.map((s, i) => {
             const change = calculateChange(s);
             const changePercent = calculateChangePercent(s);
+            const previousRatingInfo = s.history ? findPreviousRating(s.history) : { previous_rating: "N/A", previous_rating_date: "N/A" };
 
             return (
               <TableRow
@@ -130,10 +160,10 @@ export default function StockTable({ stocks }: StockTableProps) {
                   <div className="flex justify-center">
                     <div
                       className={`w-[91px] h-[20px] mt-1 mb-1 ${getRatingColor(
-                        s.Yesterday_Rating
-                      )} text-[#F8FAFC] rounded-[16px] flex items-center justify-center text-xs font-semibold`}
+                        previousRatingInfo.previous_rating
+                      )} rounded-[16px] flex items-center justify-center text-xs font-semibold`}
                     >
-                      {s.Yesterday_Rating || "N/A"}
+                      {previousRatingInfo.previous_rating}
                     </div>
                   </div>
                 </TableCell>
@@ -147,7 +177,7 @@ export default function StockTable({ stocks }: StockTableProps) {
                     <div
                       className={`w-[91px] h-[20px] mt-1 mb-1 ${getRatingColor(
                         s.Technical_Rating
-                      )} text-[#F8FAFC] rounded-[16px] flex items-center justify-center text-xs font-semibold`}
+                      )} rounded-[16px] flex items-center justify-center text-xs font-semibold`}
                     >
                       {s.Technical_Rating}
                     </div>
@@ -155,7 +185,7 @@ export default function StockTable({ stocks }: StockTableProps) {
                 </TableCell>
                 <TableCell className="text-[#7588A3]">
                   <div className="flex justify-center">
-                    <div className="truncate w-[100px]"></div>
+                    <div className="truncate w-[100px]">{previousRatingInfo.previous_rating_date}</div>
                   </div>
                 </TableCell>
                 <TableCell>

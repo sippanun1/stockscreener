@@ -27,15 +27,44 @@ function ScreenerPage() {
         const response = await fetch(`/src/api/data/ALL_MARKETS.json`);
         const data = await response.json();
 
+        // Get today's and yesterday's dates
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const todayStr = today.toISOString().split('T')[0];
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        // Group data by symbol to find today's and yesterday's entries
+        const symbolMap = new Map<string, any[]>();
+        data.forEach((entry: any) => {
+          const key = entry.symbol;
+          if (!symbolMap.has(key)) {
+            symbolMap.set(key, []);
+          }
+          symbolMap.get(key)!.push(entry);
+        });
+
         // Transform data to Stock type - limit to 50 rows
-        const stocks: Stock[] = data.slice(-50, -1).map((s: any) => ({
-          market: s.market,
-          symbol: s.symbol,
-          name: s.name,
-          current_price: Number(s.current_price),
-          Technical_Rating: s.Technical_Rating,
-          Yesterday_Rating: "N/A",
-        }));
+        const stocks: Stock[] = Array.from(symbolMap.values())
+          .slice(0, 50)
+          .map((entries: any[]) => {
+            // Find today's entry (most recent)
+            const todayEntry = entries.find(e => e.fetched_at?.includes(todayStr)) || entries[entries.length - 1];
+            
+            // Find yesterday's entry
+            const yesterdayEntry = entries.find(e => e.fetched_at?.includes(yesterdayStr));
+            
+            return {
+              market: todayEntry.market,
+              symbol: todayEntry.symbol,
+              name: todayEntry.name,
+              current_price: Number(todayEntry.current_price),
+              yesterday_price: yesterdayEntry ? Number(yesterdayEntry.current_price) : Number(todayEntry.current_price),
+              Technical_Rating: todayEntry.Technical_Rating,
+              Yesterday_Rating: "N/A",
+            };
+          });
 
         setAllStocks(stocks);
         setStocks(stocks);
