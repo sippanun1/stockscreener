@@ -146,11 +146,22 @@ def fetch_all_markets():
         combined_filename = DATA_DIR / f"ALL_MARKETS_{today}.json"
         combined.to_json(combined_filename, orient='records', indent=2)
         print(f"\n>> Saved combined file: {combined_filename}")
+        
+        # ⭐ Save to SQLite database
+        try:
+            import database
+            stocks_list = combined.to_dict('records')
+            database.save_daily_stocks(stocks_list, today)
+            print(">> Saved to SQLite database")
+        except Exception as e:
+            print(f">> Error saving to SQLite: {e}")
+        
         print("\n>> DONE - All Markets Fetched Successfully!")
     else:
         print("\n>> No data was fetched")
 
     print(f"\n{'='*50}")
+
 
 # ================================
 # Schedule function

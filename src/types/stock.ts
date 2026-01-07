@@ -6,6 +6,10 @@ export type Stock = {
   previous_price?: number;
   yesterday_price?: number;
   Technical_Rating: string;
+  Previous_Rating?: string;       // Last different rating
+  previous_rating_date?: string;  // When the rating last changed
+  fetched_date?: string;
+  backtest_acc_5d?: number;
   Yesterday_Rating?: string;
   history?: Array<{
     Technical_Rating: string;

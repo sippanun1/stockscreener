@@ -132,7 +132,7 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
             <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
           </button>
           {showMarketsDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-10">
+            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50">
               {marketOptions.map((option) => (
                 <div
                   key={option}
@@ -158,7 +158,7 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
             <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
           </button>
           {showPreviousRatingDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-10">
+            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50">
               {ratingOptions.map((rating) => (
                 <div
                   key={rating}
@@ -184,7 +184,7 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
             <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
           </button>
           {showCurrentRatingDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-10">
+            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50">
               {ratingOptions.map((rating) => (
                 <div
                   key={rating}
@@ -210,7 +210,7 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
             <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
           </button>
           {showTechnicalRatingDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-10 border-0.5">
+            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50 border-0.5">
               {technicalRatingOptions.map((rating) => (
                 <div
                   key={rating}
@@ -237,7 +237,7 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
 
           </button>
           {showDatePickerDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-20 p-4 w-80">
+            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50 p-4 w-80">
               <DayPicker
                 mode="single"
                 selected={date ? new Date(date) : undefined}

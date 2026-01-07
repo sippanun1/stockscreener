@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+/* Prevent page from scrolling outside content boundaries */
+html, body {
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* App container - full height, no overflow */
+#root {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Prevent rubber-band/bounce effect on scroll containers */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto {
+  overscroll-behavior: contain;
+}
