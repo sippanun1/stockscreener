@@ -18,7 +18,7 @@ const getNavLinkClass = (isActive: boolean): string => {
 
 export default function MenuHeader() {
   return (
-    <Navbar className="pl-[53px] pr-[53px]">
+    <Navbar className="pl-[53px] pr-[53px] !bg-[#000000]">
       <NavbarBrand href="/">
         <img
           src={goodtradeLogo}
