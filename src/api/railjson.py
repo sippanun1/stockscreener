@@ -218,8 +218,8 @@ if __name__ == "__main__":
     print(">> Starting Stock Screener API (Multi-Market Scheduler)")
 
     # Optional: run all once at startup
-    for market, url in screeners.items():
-        fetch_single_market_append(market, url)
+    #for market, url in screeners.items():
+    #    fetch_single_market_append(market, url)
 
     scheduler_thread = threading.Thread(
         target=schedule_market_fetches,
