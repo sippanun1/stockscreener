@@ -181,18 +181,71 @@ def schedule_daily_fetch():
 # Run once on startup + schedule
 # ================================
 if __name__ == "__main__":
-    print(">> Starting Stock Screener API...")
+    import argparse
     
-    # Run once immediately when the script starts
-    fetch_all_markets()
+    parser = argparse.ArgumentParser(description='Fetch stock market data')
+    parser.add_argument('--market', type=str, help='Specific market to fetch (US, HK, TH, JP)', default=None)
+    parser.add_argument('--once', action='store_true', help='Run once and exit (for GitHub Actions)')
+    args = parser.parse_args()
     
-    # Start the scheduler in a background thread
-    scheduler_thread = threading.Thread(target=schedule_daily_fetch, daemon=True)
-    scheduler_thread.start()
-    
-    # Keep the main thread alive
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n>> Shutting down...")
+    if args.once or args.market:
+        # Run once mode (for GitHub Actions or specific market)
+        print(f">> Running in once mode{f' for market: {args.market}' if args.market else ''}")
+        
+        if args.market:
+            # Fetch specific market only
+            market = args.market.upper()
+            if market in screeners:
+                today = datetime.now().strftime("%Y-%m-%d")
+                try:
+                    df = fetch_market(market, screeners[market])
+                    if df is not None:
+                        filename = DATA_DIR / f"{market}_{today}.json"
+                        df.to_json(filename, orient='records', indent=2)
+                        print(f">> Saved {filename} ({len(df)} rows)")
+                        
+                        # Save to SQLite
+                        try:
+                            import database
+                            stocks_list = df.to_dict('records')
+                            # Add fetched_at timestamp
+                            for stock in stocks_list:
+                                stock['fetched_at'] = datetime.now().isoformat()
+                            database.save_daily_stocks(stocks_list, today)
+                            print(">> Saved to SQLite database")
+                        except Exception as e:
+                            print(f">> Error saving to SQLite: {e}")
+                        
+                        print("\n>> DONE - Market Fetched Successfully!")
+                        sys.exit(0)
+                    else:
+                        print(f">> Error: No data fetched for {market}")
+                        sys.exit(1)
+                except Exception as e:
+                    print(f">> Error fetching {market}: {e}")
+                    sys.exit(1)
+            else:
+                print(f">> Error: Invalid market '{market}'. Choose from: {list(screeners.keys())}")
+                sys.exit(1)
+        else:
+            # Fetch all markets
+            fetch_all_markets()
+            sys.exit(0)
+    else:
+        # Original scheduler mode (for local development)
+        print(">> Starting Stock Screener API...")
+        
+        # Run once immediately when the script starts
+        fetch_all_markets()
+        
+        # Start the scheduler in a background thread
+        scheduler_thread = threading.Thread(target=schedule_daily_fetch, daemon=True)
+        scheduler_thread.start()
+        
+        # Keep the main thread alive
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\n>> Shutting down...")
+

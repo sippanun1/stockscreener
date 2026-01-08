@@ -1,0 +1,94 @@
+name: Fetch Japan Market Data
+
+on:
+  # Run at 13:15 ICT (06:15 UTC) - 15 min after Japan market closes
+  schedule:
+    - cron: '15 6 * * 1-5'  # Monday-Friday only
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  fetch-jp-market:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          cd src/api
+          pip install -r requirements.txt
+      
+      - name: Fetch Japan market data
+        id: fetch
+        run: |
+          cd src/api
+          python main.py --market JP --once
+        env:
+          TZ: Asia/Tokyo
+        continue-on-error: true
+      
+      - name: Validate data
+        if: steps.fetch.outcome == 'success'
+        run: |
+          cd src/api
+          python -c "
+          import json
+          import sys
+          from pathlib import Path
+          from datetime import datetime
+          
+          today = datetime.now().strftime('%Y-%m-%d')
+          file_path = Path('data') / f'JP_{today}.json'
+          
+          if file_path.exists():
+              with open(file_path) as f:
+                  data = json.load(f)
+                  print(f'✅ Japan: {len(data)} stocks fetched')
+                  if len(data) < 100:
+                      print(f'⚠️  Warning: Only {len(data)} stocks (expected >100)')
+                      sys.exit(1)
+          else:
+              print('❌ Japan data file not found')
+              sys.exit(1)
+          "
+      
+      - name: Pull latest changes
+        run: |
+          git pull --rebase origin ${{ github.ref_name }}
+      
+      - name: Commit and push
+        if: steps.fetch.outcome == 'success'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add src/api/data/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          git commit -m "chore: update Japan market data $(date +'%Y-%m-%d')"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## 🇯🇵 Japan Market Fetch" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.fetch.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
