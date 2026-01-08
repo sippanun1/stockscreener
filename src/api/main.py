@@ -2,6 +2,7 @@ import requests
 import json
 import pandas as pd
 import time
+import sys
 from datetime import datetime
 import schedule
 import threading
@@ -103,6 +104,9 @@ def fetch_market(market_name, url, batch_size=300):
         return None
 
     out = []
+    fetched_time = datetime.now()
+    fetched_at_str = fetched_time.strftime("%Y-%m-%d %H:%M:%S")
+    fetched_at_epoch = int(fetched_time.timestamp())
 
     for row in all_rows:
         d = row["d"]
@@ -114,7 +118,9 @@ def fetch_market(market_name, url, batch_size=300):
             "name": d[0],
             "current_price": d[1],
             "Technical_Score": score,
-            "Technical_Rating": convert_rating(score)
+            "Technical_Rating": convert_rating(score),
+            "fetched_at": fetched_at_str,
+            "fetched_at_epoch": fetched_at_epoch
         })
 
     return pd.DataFrame(out)

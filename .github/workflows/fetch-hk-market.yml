@@ -65,23 +65,21 @@ jobs:
               sys.exit(1)
           "
       
-      - name: Pull latest changes
-        run: |
-          git pull --rebase origin ${{ github.ref_name }}
+
       
-      - name: Commit and push
+      - name: Commit and push database
         if: steps.fetch.outcome == 'success'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add src/api/data/
+          git add src/api/data/stocks.db
           
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "No database changes"
             exit 0
           fi
           
-          git commit -m "chore: update Hong Kong market data $(date +'%Y-%m-%d')"
+          git commit -m "chore: update database with Hong Kong market data $(date +'%Y-%m-%d')"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
