@@ -23,6 +23,7 @@ import {
 import { useState, useRef, useCallback, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import type { Stock } from "@/types/stock"
+import { SortArrows } from "@/components/SortArrows"
 
 interface Filters {
   market?: string
@@ -68,6 +69,7 @@ export function DataTable({ columns, filters }: DataTableProps) {
           current_price: Number(s.current_price),
           previous_price: s.previous_price ? Number(s.previous_price) : undefined,
           Technical_Rating: s.Technical_Rating,
+          Previous_Rating: s.Previous_Rating,
           previous_rating_date: s.previous_rating_date,
           fetched_date: s.fetched_date,
         }))
@@ -177,12 +179,7 @@ export function DataTable({ columns, filters }: DataTableProps) {
 
   return (
     <div className="mx-[53px] mt-[17px] h-full flex flex-col">
-      {/* Stats and Search */}
-      <div className="flex justify-between items-center mb-4">
-        <div className="text-sm text-[#7588A3]">
-          Showing {data.length.toLocaleString()} of {filteredData.length.toLocaleString()} stocks
-        </div>
-      </div>
+
 
       {/* Table with scroll */}
       <div className="rounded-md border border-[#1E2530] overflow-hidden flex-1">
@@ -199,7 +196,7 @@ export function DataTable({ columns, filters }: DataTableProps) {
                     return (
                       <TableHead
                         key={header.id}
-                        className="text-[#F8FAFC] uppercase text-xs text-center cursor-pointer hover:bg-[#1E2530] bg-[#0F151F]"
+                        className="text-[#F8FAFC] text-xs text-center cursor-pointer hover:bg-[#1E2530] bg-[#0F151F] font-semibold"
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <div className="flex items-center justify-center gap-1">
@@ -209,8 +206,11 @@ export function DataTable({ columns, filters }: DataTableProps) {
                                 header.column.columnDef.header,
                                 header.getContext()
                               )}
-                          {header.column.getIsSorted() === "asc" && " ↑"}
-                          {header.column.getIsSorted() === "desc" && " ↓"}
+                          {header.column.getCanSort() && (
+                            <SortArrows 
+                              sortDirection={header.column.getIsSorted()}
+                            />
+                          )}
                         </div>
                       </TableHead>
                     )

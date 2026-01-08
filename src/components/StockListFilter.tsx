@@ -126,10 +126,10 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
         <div className="relative">
           <button 
             onClick={() => setShowMarketsDropdown(!showMarketsDropdown)}
-            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
+            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition"
           >
             {market || "Markets All"}
-            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
+            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-3 mt-1" />
           </button>
           {showMarketsDropdown && (
             <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50">
@@ -152,10 +152,10 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
         <div className="relative right-3.5">
           <button 
             onClick={() => setShowPreviousRatingDropdown(!showPreviousRatingDropdown)}
-            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
+            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition"
           >
             {previousRating || "Previous Rating"}
-            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
+            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-3 mt-1" />
           </button>
           {showPreviousRatingDropdown && (
             <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50">
@@ -178,10 +178,10 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
         <div className="relative right-7">
           <button 
             onClick={() => setShowCurrentRatingDropdown(!showCurrentRatingDropdown)}
-            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
+            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition"
           >
             {currentRating || "Current Rating"}
-            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
+            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-3 mt-1" />
           </button>
           {showCurrentRatingDropdown && (
             <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50">
@@ -204,10 +204,10 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
         <div className="relative right-10.5">
           <button 
             onClick={() => setShowTechnicalRatingDropdown(!showTechnicalRatingDropdown)}
-            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
+            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition"
           >
             {technicalRating || "Rating Change"}
-            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-2 mt-1" />
+            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-3 mt-1" />
           </button>
           {showTechnicalRatingDropdown && (
             <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50 border-0.5">
@@ -230,10 +230,10 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
         <div className="relative right-14">
           <button 
             onClick={() => setShowDatePickerDropdown(!showDatePickerDropdown)}
-            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm flex items-center justify-center hover:bg-[#354052]/80 transition"
+            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition"
           >
             <img src="/src/assets/date.svg" alt="calendar" className="mr-2" />
-            {date ? format(new Date(date), "MMM dd") : "DD/MM/YYYY"}
+            {date ? format(new Date(date), "MMM dd") : "MM/DD/YYYY"}
 
           </button>
           {showDatePickerDropdown && (
@@ -273,7 +273,7 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
 
         {/* Search */}
         <div className="relative left-35">
-          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7588A3] text-lg" />
+          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#F8FAFC] text-lg" />
 
           <input
             type="text" 
@@ -288,7 +288,7 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
               pl-10 pr-3 py-2
               rounded-xl
               text-sm
-              placeholder-[#7588A3]
+              placeholder-[#F8FAFC]
               focus:outline-none
               focus:border-[#7588A3]
             "
