@@ -3,6 +3,7 @@ import { format, isToday, isYesterday } from "date-fns"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Stock } from "@/types/stock"
 import { StockLogo } from "@/components/StockLogo"
+import { LongArrowRight } from "@/components/LongArrowRight"
 
 const getRatingColor = (rating: string | undefined) => {
   if (!rating) return "bg-[#354052]"
@@ -119,7 +120,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
     id: "arrow",
     cell: () => (
       <div className="flex justify-center">
-        <img src="/src/assets/arrow.svg" alt="arrow" className="h-3" />
+        <LongArrowRight className="text-[#F8FAFC]" />
       </div>
     ),
   },

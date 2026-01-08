@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { StockLogo } from "./StockLogo";
 import { ArrowRight } from "lucide-react";
+import { format, parseISO } from "date-fns";
 
 type RatingHistory = {
   date: string;
@@ -47,16 +48,41 @@ const getRatingColor = (rating: string | undefined) => {
   }
 };
 
+const getRatingTextColor = (rating: string | undefined) => {
+  if (!rating) return "text-[#7588A3]";
+  switch (rating) {
+    case "Strong Buy":
+    case "Buy":
+      return "text-[#10B981]";
+    case "Neutral":
+      return "text-[#7588A3]";
+    case "Sell":
+    case "Strong Sell":
+      return "text-[#EF4444]";
+    default:
+      return "text-[#7588A3]";
+  }
+};
+
 const getResultColor = (result: number | undefined) => {
-  if (!result) return "text-[#7588A3]";
+  if (result === undefined || result === null) return "text-[#7588A3]";
   if (result > 0) return "text-[#10B981]";
   if (result < 0) return "text-[#EF4444]";
   return "text-[#7588A3]";
 };
 
 const getSignalDot = (result: number | undefined) => {
-  if (!result) return "bg-[#7588A3]";
+  if (result === undefined || result === null) return "bg-[#7588A3]";
   return result >= 0 ? "bg-[#10B981]" : "bg-[#EF4444]";
+};
+
+const formatDateToDisplay = (dateStr: string) => {
+  try {
+    const date = parseISO(dateStr);
+    return format(date, "MMM dd, yyyy");
+  } catch {
+    return dateStr;
+  }
 };
 
 export default function StockDetail() {
@@ -64,7 +90,6 @@ export default function StockDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState<StockDetailData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStockDetail = async () => {
@@ -75,11 +100,9 @@ export default function StockDetail() {
       
       try {
         setLoading(true);
-        setError(null);
         const response = await fetch(`http://localhost:8000/api/stock/${encodeURIComponent(apiSymbol)}/detail`);
         
         if (!response.ok) {
-          // Navigate to 404 page for any error
           navigate('/404', { replace: true });
           return;
         }
@@ -88,7 +111,6 @@ export default function StockDetail() {
         setData(result);
       } catch (error) {
         console.error("Error fetching stock detail:", error);
-        // Navigate to 404 page on network error
         navigate('/404', { replace: true });
       } finally {
         setLoading(false);
@@ -107,7 +129,7 @@ export default function StockDetail() {
   }
 
   if (!data) {
-    return null; // Will redirect to 404
+    return null;
   }
 
   return (
@@ -117,7 +139,7 @@ export default function StockDetail() {
         <h1 className="text-2xl font-bold text-[#F8FAFC]">Stock Detail</h1>
         <button
           onClick={() => navigate("/")}
-          className="text-[#7588A3] hover:text-[#F8FAFC] transition-colors"
+          className="text-[#7588A3] hover:text-[#F8FAFC] transition-colors text-sm"
         >
           BACK
         </button>
@@ -127,8 +149,8 @@ export default function StockDetail() {
       <div className="bg-[#131A26] rounded-xl p-6 mb-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            {/* Star icon placeholder */}
-            <span className="text-[#7588A3] text-xl">☆</span>
+            {/* Star icon */}
+            <span className="text-[#7588A3] text-xl cursor-pointer hover:text-yellow-400 transition-colors">☆</span>
             
             {/* Logo + Symbol */}
             <div className="flex items-center gap-3">
@@ -162,111 +184,116 @@ export default function StockDetail() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-[#131A26] rounded-xl p-4 border border-[#1E2530]">
-          <div className="text-[#7588A3] text-sm mb-1">Total Signals</div>
-          <div className="text-[#F8FAFC] text-xs text-opacity-60 mb-2">All time</div>
-          <div className="text-[#F8FAFC] text-3xl font-bold">{data.stats.total_signals}</div>
+      {/* Stats Cards - Figma Style: Horizontal Layout */}
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="bg-[#131A26] rounded-xl p-6 border border-[#1E2530] flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="text-[#F8FAFC] text-base">Total Signals</div>
+            <div className="text-[#F8FAFC] text-sm opacity-50">All time</div>
+          </div>
+          <div className="text-[#F8FAFC] text-5xl font-bold">{data.stats.total_signals}</div>
         </div>
 
-        <div className="bg-[#131A26] rounded-xl p-4 border border-[#1E2530]">
-          <div className="text-[#7588A3] text-sm mb-1">Win Rate</div>
-          <div className="text-[#F8FAFC] text-xs text-opacity-60 mb-2">Historical accuracy</div>
-          <div className="text-[#F8FAFC] text-3xl font-bold">{data.stats.win_rate.toFixed(0)}%</div>
+        <div className="bg-[#131A26] rounded-xl p-6 border border-[#1E2530] flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="text-[#F8FAFC] text-base">Win Rate</div>
+            <div className="text-[#F8FAFC] text-sm opacity-50">Historical accuracy</div>
+          </div>
+          <div className="text-[#F8FAFC] text-5xl font-bold">{data.stats.win_rate.toFixed(0)}%</div>
         </div>
 
-        <div className="bg-[#131A26] rounded-xl p-4 border border-[#1E2530]">
-          <div className="text-[#7588A3] text-sm mb-1">Average Return</div>
-          <div className="text-[#F8FAFC] text-xs text-opacity-60 mb-2">Per signal</div>
-          <div className={`text-3xl font-bold ${getResultColor(data.stats.avg_return)}`}>
+        <div className="bg-[#131A26] rounded-xl p-6 border border-[#1E2530] flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="text-[#F8FAFC] text-base">Average Return</div>
+            <div className="text-[#F8FAFC] text-sm opacity-50">Per signal</div>
+          </div>
+          <div className="text-[#F8FAFC] text-5xl font-bold">
             {data.stats.avg_return >= 0 ? "+" : ""}{data.stats.avg_return.toFixed(1)}%
           </div>
         </div>
 
-        <div className="bg-[#131A26] rounded-xl p-4 border border-[#1E2530]">
-          <div className="text-[#7588A3] text-sm mb-1">Best Return</div>
-          <div className="text-[#F8FAFC] text-xs text-opacity-60 mb-2">Single trade</div>
-          <div className={`text-3xl font-bold ${getResultColor(data.stats.best_return)}`}>
+        <div className="bg-[#131A26] rounded-xl p-6 border border-[#1E2530] flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="text-[#F8FAFC] text-base">Best Return</div>
+            <div className="text-[#F8FAFC] text-sm opacity-50">Single trade</div>
+          </div>
+          <div className="text-[#F8FAFC] text-5xl font-bold">
             {data.stats.best_return >= 0 ? "+" : ""}{data.stats.best_return.toFixed(1)}%
           </div>
         </div>
       </div>
 
-      {/* Rating History */}
+      {/* Rating History - Figma Style */}
       <div>
         <h2 className="text-[#F8FAFC] text-lg font-semibold mb-4">Rating History</h2>
         
-        <div className="space-y-3">
-          {/* History Cards */}
+        <div className="space-y-4">
           {data.history.length > 0 ? (
             data.history.map((item, index) => (
               <div
                 key={index}
-                className="bg-[#131A26] rounded-xl border border-[#1E2530] flex items-stretch overflow-hidden min-h-[80px]"
+                className="flex items-stretch"
               >
-                {/* Left Section: Dot, Date, Rating Change */}
-                <div className="flex-1 flex items-center p-5">
-                  {/* Signal Dot */}
-                  <div className={`w-3 h-3 rounded-full ${getSignalDot(item.result)} mr-4 flex-shrink-0`}></div>
-                  
-                  {/* Content */}
-                  <div>
+                {/* Signal Dot - Outside the card */}
+                <div className="flex items-center mr-3">
+                  <div className={`w-3 h-3 rounded-full ${getSignalDot(item.result)}`}></div>
+                </div>
+
+                {/* Main Card */}
+                <div className="flex-1 bg-[#131A26] rounded-xl border border-[#1E2530] flex items-stretch overflow-hidden min-h-[80px]">
+                  {/* Left Section: Date, Rating Change */}
+                  <div className="flex-1 flex flex-col justify-center p-5">
                     {/* Date */}
-                    <div className="flex items-center gap-2 text-[#7588A3] text-sm mb-2">
+                    <div className="flex items-center gap-2 text-[#F8FAFC] text-sm mb-2">
                       <span>📅</span>
-                      <span>{item.date}</span>
+                      <span>{formatDateToDisplay(item.date)}</span>
                     </div>
                     
-                    {/* Rating Change Badges */}
+                    {/* Rating Change - Both as colored text */}
                     <div className="flex items-center gap-2">
-                      <span
-                        className={`px-3 py-1 ${getRatingColor(item.from_rating)} text-[#F8FAFC] rounded text-xs font-medium`}
-                      >
+                      <span className={`${getRatingTextColor(item.from_rating)} text-sm font-medium`}>
                         {item.from_rating}
                       </span>
                       <ArrowRight className="w-4 h-4 text-[#7588A3]" />
-                      <span
-                        className={`px-3 py-1 ${getRatingColor(item.to_rating)} text-[#F8FAFC] rounded text-xs font-medium`}
-                      >
+                      <span className={`${getRatingTextColor(item.to_rating)} text-sm font-medium`}>
                         {item.to_rating}
                       </span>
                     </div>
                   </div>
-                </div>
 
-                {/* Vertical Divider */}
-                <div className="w-px bg-[#1E2530]"></div>
+                  {/* Vertical Divider */}
+                  <div className="w-px bg-[#1E2530]"></div>
 
-                {/* Entry Price */}
-                <div className="w-[140px] flex flex-col justify-center items-center py-2 px-4">
-                  <div className="text-[#7588A3] text-xs mb-1">Entry Price</div>
-                  <div className="text-[#F8FAFC] font-semibold">
-                    ${item.entry_price.toFixed(2)}
+                  {/* Entry Price */}
+                  <div className="w-[140px] flex flex-col justify-center items-center py-2 px-4">
+                    <div className="text-[#F8FAFC] text-sm font-semibold mb-2">Entry Price</div>
+                    <div className="text-[#F8FAFC] text-base font-semibold">
+                      ${item.entry_price.toFixed(2)}
+                    </div>
                   </div>
-                </div>
 
-                {/* Vertical Divider */}
-                <div className="w-px bg-[#1E2530]"></div>
+                  {/* Vertical Divider */}
+                  <div className="w-px bg-[#1E2530]"></div>
 
-                {/* Days Held */}
-                <div className="w-[140px] flex flex-col justify-center items-center py-2 px-4">
-                  <div className="text-[#7588A3] text-xs mb-1">Days Held</div>
-                  <div className="text-[#F8FAFC] whitespace-nowrap">
-                    {item.days_held !== undefined ? `${item.days_held} days` : "-"}
+                  {/* Days Held */}
+                  <div className="w-[140px] flex flex-col justify-center items-center py-2 px-4">
+                    <div className="text-[#F8FAFC] text-sm font-semibold mb-2">Days Held</div>
+                    <div className="text-[#F8FAFC] text-base font-semibold whitespace-nowrap">
+                      {item.days_held !== undefined ? `${item.days_held} days` : "-"}
+                    </div>
                   </div>
-                </div>
 
-                {/* Vertical Divider */}
-                <div className="w-px bg-[#1E2530]"></div>
+                  {/* Vertical Divider */}
+                  <div className="w-px bg-[#1E2530]"></div>
 
-                {/* Result */}
-                <div className="w-[140px] flex flex-col justify-center items-center py-2 px-4">
-                  <div className="text-[#7588A3] text-xs mb-1">Result</div>
-                  <div className={`font-semibold ${getResultColor(item.result)}`}>
-                    {item.result !== undefined
-                      ? `${item.result >= 0 ? "+" : ""}${item.result.toFixed(1)}%`
-                      : "-"}
+                  {/* Result */}
+                  <div className="w-[140px] flex flex-col justify-center items-center py-2 px-4">
+                    <div className="text-[#F8FAFC] text-sm font-semibold mb-2">Result</div>
+                    <div className={`text-base font-semibold ${getResultColor(item.result)}`}>
+                      {item.result !== undefined
+                        ? `${item.result >= 0 ? "+" : ""}${item.result.toFixed(1)}%`
+                        : "-"}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -178,6 +178,19 @@ def fetch_single_market_append(market, url):
     combined_all.to_json(all_file, orient="records", indent=2)
     print(f">> Appended {len(df)} rows to {all_file}")
 
+    # =====================
+    # 3️⃣ SQLite Database
+    # =====================
+    try:
+        import database
+        stocks_list = df.to_dict('records')
+        date_str = now.strftime("%Y-%m-%d")
+        database.save_daily_stocks(stocks_list, date_str)
+        print(f">> Saved {len(stocks_list)} rows to SQLite database (date: {date_str})")
+    except Exception as e:
+        print(f">> Error saving to SQLite: {e}")
+
+
 
 # ================================
 # Schedule function
