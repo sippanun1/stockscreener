@@ -143,7 +143,7 @@ def get_stocks_with_previous_rating(
     
     # Get the latest date if not specified
     if date is None:
-        cursor.execute("SELECT MAX(fetched_date) as max_date FROM stock_ratings")
+        cursor.execute("SELECT DATE(MAX(fetched_date)) as max_date FROM stock_ratings")
         result = cursor.fetchone()
         date = result["max_date"] if result else datetime.now().strftime("%Y-%m-%d")
     
@@ -161,7 +161,7 @@ def get_stocks_with_previous_rating(
                 SELECT prev.technical_rating 
                 FROM stock_ratings prev 
                 WHERE prev.symbol = today.symbol 
-                    AND prev.fetched_date < today.fetched_date
+                    AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                     AND prev.technical_rating != today.technical_rating
                 ORDER BY prev.fetched_date DESC 
                 LIMIT 1
@@ -170,7 +170,7 @@ def get_stocks_with_previous_rating(
                 SELECT prev.fetched_date 
                 FROM stock_ratings prev 
                 WHERE prev.symbol = today.symbol 
-                    AND prev.fetched_date < today.fetched_date
+                    AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                     AND prev.technical_rating != today.technical_rating
                 ORDER BY prev.fetched_date DESC 
                 LIMIT 1
@@ -179,13 +179,13 @@ def get_stocks_with_previous_rating(
                 SELECT prev.current_price 
                 FROM stock_ratings prev 
                 WHERE prev.symbol = today.symbol 
-                    AND prev.fetched_date < today.fetched_date
+                    AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                     AND prev.technical_rating != today.technical_rating
                 ORDER BY prev.fetched_date DESC 
                 LIMIT 1
             ) AS previous_price
         FROM stock_ratings today
-        WHERE today.fetched_date = ?
+        WHERE DATE(today.fetched_date) = ?
     """
     
     params = [date]
@@ -237,7 +237,7 @@ def get_signal_changes(
     cursor = conn.cursor()
     
     if date is None:
-        cursor.execute("SELECT MAX(fetched_date) as max_date FROM stock_ratings")
+        cursor.execute("SELECT DATE(MAX(fetched_date)) as max_date FROM stock_ratings")
         result = cursor.fetchone()
         date = result["max_date"] if result else datetime.now().strftime("%Y-%m-%d")
     
@@ -280,7 +280,7 @@ def get_available_dates():
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT DISTINCT fetched_date 
+        SELECT DISTINCT DATE(fetched_date) as fetched_date
         FROM stock_ratings 
         ORDER BY fetched_date DESC
     """)
