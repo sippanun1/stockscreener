@@ -1,9 +1,21 @@
 import { useState } from "react";
 import { HiOutlineSearch } from "react-icons/hi";
-import { DayPicker } from "react-day-picker";
 import { format } from "date-fns";
-
-
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
 
 type StockFiltersProps = {
   onChange?: (filters: any) => void;
@@ -14,65 +26,79 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
   const [previousRating, setPreviousRating] = useState<string>("");
   const [currentRating, setCurrentRating] = useState<string>("");
   const [technicalRating, setTechnicalRating] = useState<string>("");
-  const [date, setDate] = useState<string>("");
+  const [date, setDate] = useState<Date | undefined>(undefined);
   const [search, setSearch] = useState<string>("");
-
-  const [showMarketsDropdown, setShowMarketsDropdown] = useState(false);
-  const [showPreviousRatingDropdown, setShowPreviousRatingDropdown] = useState(false);
-  const [showCurrentRatingDropdown, setShowCurrentRatingDropdown] = useState(false);
-  const [showTechnicalRatingDropdown, setShowTechnicalRatingDropdown] = useState(false);
-  const [showDatePickerDropdown, setShowDatePickerDropdown] = useState(false);
 
   const ratingOptions = ["Strong Buy", "Buy", "Neutral", "Sell", "Strong Sell"];
   const marketOptions = ["US", "HK", "TH", "JP"];
   const technicalRatingOptions = ["Positive", "Negative"];
 
+  // Helper function to get hover color for each rating
+  const getRatingHoverColor = (rating: string) => {
+    switch (rating) {
+      case "Strong Sell":
+        return "hover:bg-[#A10F38] focus:bg-[#A10F38]";
+      case "Sell":
+        return "hover:bg-[#CE0F44] focus:bg-[#CE0F44]";
+      case "Neutral":
+        return "hover:bg-[#8490A7] focus:bg-[#8490A7]";
+      case "Buy":
+        return "hover:bg-[#007957] focus:bg-[#007957]";
+      case "Strong Buy":
+        return "hover:bg-[#065F46] focus:bg-[#065F46]";
+      default:
+        return "hover:bg-[#354052] focus:bg-[#354052]";
+    }
+  };
+
   const handleMarketSelect = (value: string) => {
-    const newMarket = market === value ? "" : value;
+    const newMarket = value === "all" ? "" : value;
     setMarket(newMarket);
-    setShowMarketsDropdown(false);
     onChange?.({
       market: newMarket,
       previousRating,
       currentRating,
+      technicalRating,
+      date: date ? format(date, "yyyy-MM-dd") : "",
       search,
     });
   };
 
   const handlePreviousRatingSelect = (value: string) => {
-    const newRating = previousRating === value ? "" : value;
+    const newRating = value === "all" ? "" : value;
     setPreviousRating(newRating);
-    setShowPreviousRatingDropdown(false);
     onChange?.({
       market,
       previousRating: newRating,
       currentRating,
+      technicalRating,
+      date: date ? format(date, "yyyy-MM-dd") : "",
       search,
     });
   };
 
   const handleCurrentRatingSelect = (value: string) => {
-    const newRating = currentRating === value ? "" : value;
+    const newRating = value === "all" ? "" : value;
     setCurrentRating(newRating);
-    setShowCurrentRatingDropdown(false);
     onChange?.({
       market,
       previousRating,
       currentRating: newRating,
       technicalRating,
+      date: date ? format(date, "yyyy-MM-dd") : "",
       search,
     });
   };
 
   const handleTechnicalRatingSelect = (value: string) => {
-    const newRating = technicalRating === value ? "" : value;
+    const newRating = value === "all" ? "" : value;
     setTechnicalRating(newRating);
-    setShowTechnicalRatingDropdown(false);
     onChange?.({
       market,
       previousRating,
       currentRating,
       technicalRating: newRating,
+      date: date ? format(date, "yyyy-MM-dd") : "",
       search,
     });
   };
@@ -84,20 +110,19 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
       previousRating,
       currentRating,
       technicalRating,
-      date,
+      date: date ? format(date, "yyyy-MM-dd") : "",
       search: value,
     });
   };
 
-  const handleDateChange = (value: string) => {
-    setDate(value);
-    setShowDatePickerDropdown(false);
+  const handleDateChange = (selectedDate: Date | undefined) => {
+    setDate(selectedDate);
     onChange?.({
       market,
       previousRating,
       currentRating,
       technicalRating,
-      date: value,
+      date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : "",
       search,
     });
   };
@@ -107,7 +132,7 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
     setPreviousRating("");
     setCurrentRating("");
     setTechnicalRating("");
-    setDate("");
+    setDate(undefined);
     setSearch("");
     onChange?.({
       market: "",
@@ -124,157 +149,136 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-2">
         {/* Markets All */}
         <div className="relative">
-          <button 
-            onClick={() => setShowMarketsDropdown(!showMarketsDropdown)}
-            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition"
-          >
-            {market || "Markets All"}
-            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-3 mt-1" />
-          </button>
-          {showMarketsDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50">
-              {marketOptions.map((option) => (
-                <div
-                  key={option}
-                  onClick={() => handleMarketSelect(option)}
-                  className={`px-3 py-2 cursor-pointer text-[#F8FAFC] text-sm hover:bg-[#354052] ${
-                    market === option ? "bg-[#354052]" : ""
-                  }`}
+          <Select value={market || "all"} onValueChange={handleMarketSelect}>
+            <SelectTrigger className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
+              <SelectValue>
+                {market ? market : "Markets All"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0">
+              <SelectGroup>
+                <SelectItem 
+                  value="all"
+                  className="text-white hover:text-white focus:text-white hover:bg-[#7588A380] focus:bg-[#7588A380] cursor-pointer px-3 py-2.5 rounded-none"
                 >
-                  {option}
-                </div>
-              ))}
-            </div>
-          )}
+                  Markets All
+                </SelectItem>
+                {marketOptions.map((option) => (
+                  <SelectItem 
+                    key={option} 
+                    value={option}
+                    className="text-white hover:text-white focus:text-white hover:bg-[#7588A380] focus:bg-[#7588A380] cursor-pointer px-3 py-2.5 rounded-none"
+                  >
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Previous Rating */}
         <div className="relative right-3.5">
-          <button 
-            onClick={() => setShowPreviousRatingDropdown(!showPreviousRatingDropdown)}
-            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition"
-          >
-            {previousRating || "Previous Rating"}
-            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-3 mt-1" />
-          </button>
-          {showPreviousRatingDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50">
-              {ratingOptions.map((rating) => (
-                <div
-                  key={rating}
-                  onClick={() => handlePreviousRatingSelect(rating)}
-                  className={`px-3 py-2 cursor-pointer text-[#F8FAFC] text-sm hover:bg-[#354052] ${
-                    previousRating === rating ? "bg-[#354052]" : ""
-                  }`}
-                >
-                  {rating}
-                </div>
-              ))}
-            </div>
-          )}
+          <Select value={previousRating || "all"} onValueChange={handlePreviousRatingSelect}>
+            <SelectTrigger className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
+              <SelectValue>
+                {previousRating ? previousRating : "Previous Rating"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0">
+              <SelectGroup>
+                {ratingOptions.map((rating) => (
+                  <SelectItem 
+                    key={rating} 
+                    value={rating}
+                    className={`text-white hover:text-white focus:text-white ${getRatingHoverColor(rating)} cursor-pointer py-2.5 pl-3 pr-10 rounded-none relative`}
+                  >
+                    <div className="flex items-center">
+                      <span>{rating}</span>
+                    </div>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2">→</span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Current Rating */}
         <div className="relative right-7">
-          <button 
-            onClick={() => setShowCurrentRatingDropdown(!showCurrentRatingDropdown)}
-            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition"
-          >
-            {currentRating || "Current Rating"}
-            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-3 mt-1" />
-          </button>
-          {showCurrentRatingDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50">
-              {ratingOptions.map((rating) => (
-                <div
-                  key={rating}
-                  onClick={() => handleCurrentRatingSelect(rating)}
-                  className={`px-3 py-2 cursor-pointer text-[#F8FAFC] text-sm hover:bg-[#354052] ${
-                    currentRating === rating ? "bg-[#354052]" : ""
-                  }`}
-                >
-                  {rating}
-                </div>
-              ))}
-            </div>
-          )}
+          <Select value={currentRating || "all"} onValueChange={handleCurrentRatingSelect}>
+            <SelectTrigger className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
+              <SelectValue>
+                {currentRating ? currentRating : "Current Rating"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0">
+              <SelectGroup>
+                {ratingOptions.map((rating) => (
+                  <SelectItem 
+                    key={rating} 
+                    value={rating}
+                    className={`text-white hover:text-white focus:text-white ${getRatingHoverColor(rating)} cursor-pointer px-3 py-2.5 rounded-none`}
+                  >
+                    {rating}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Technical Rating */}
         <div className="relative right-10.5">
-          <button 
-            onClick={() => setShowTechnicalRatingDropdown(!showTechnicalRatingDropdown)}
-            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition"
-          >
-            {technicalRating || "Rating Change"}
-            <img src="/src/assets/Vector.svg" alt="Vector" className="ml-3 mt-1" />
-          </button>
-          {showTechnicalRatingDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50 border-0.5">
-              {technicalRatingOptions.map((rating) => (
-                <div
-                  key={rating}
-                  onClick={() => handleTechnicalRatingSelect(rating)}
-                  className={`px-3 py-2 cursor-pointer text-[#F8FAFC] text-sm hover:bg-[#354052] ${
-                    technicalRating === rating ? "bg-[#354052]" : ""
-                  }`}
-                >
-                  {rating}
-                </div>
-              ))}
-            </div>
-          )}
+          <Select value={technicalRating || "all"} onValueChange={handleTechnicalRatingSelect}>
+            <SelectTrigger className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
+              <SelectValue>
+                {technicalRating ? technicalRating : "Rating Change"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0">
+              <SelectGroup>
+                {technicalRatingOptions.map((rating) => (
+                  <SelectItem 
+                    key={rating} 
+                    value={rating}
+                    className="text-white hover:text-white focus:text-white hover:bg-[#354052] focus:bg-[#354052] cursor-pointer px-3 py-2.5 rounded-none"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xl ${rating === "Positive" ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>●</span>
+                      <span>{rating}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Date Picker */}
         <div className="relative right-14">
-          <button 
-            onClick={() => setShowDatePickerDropdown(!showDatePickerDropdown)}
-            className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition"
-          >
-            <img src="/src/assets/date.svg" alt="calendar" className="mr-2" />
-            {date ? format(new Date(date), "MMM dd") : "MM/DD/YYYY"}
-
-          </button>
-          {showDatePickerDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-3 bg-[#171E2D] rounded shadow-lg z-50 p-4 w-80">
-              <DayPicker
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] rounded-xl text-sm font-semibold flex items-center justify-center hover:bg-[#354052]/80 transition">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, "MMM dd") : "MM/DD/YYYY"}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-4 bg-[#0F151F] border-0" align="start">
+              <Calendar
                 mode="single"
-                selected={date ? new Date(date) : undefined}
-                onSelect={(selectedDate) => {
-                  if (selectedDate) {
-                    const formattedDate = format(selectedDate, "yyyy-MM-dd");
-                    handleDateChange(formattedDate);
-                  }
-                }}
-                classNames={{
-                  caption:
-                    "flex justify-between items-center mb-4",
-
-                  caption_label:
-                    "text-center text-[#F8FAFC] text-sm font-semibold flex-1",
-
-                  nav:
-                    "flex gap-2",
-
-                  nav_button:
-                    "h-7 w-7 bg-[#1F2A3B] hover:bg-[#354052] text-[#F8FAFC] rounded flex items-center justify-center transition",
-
-                  nav_button_previous:
-                    "",
-
-                  nav_button_next:
-                    "",
-                }}
+                selected={date}
+                onSelect={handleDateChange}
+                initialFocus
+                className="text-white"
               />
-            </div>
-          )}
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Search */}
         <div className="relative left-35">
           <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#F8FAFC] text-lg" />
-
           <input
             type="text" 
             value={search}
