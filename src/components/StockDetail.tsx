@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { StockLogo } from "./StockLogo";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 type RatingHistory = {
@@ -48,22 +48,6 @@ const getRatingColor = (rating: string | undefined) => {
   }
 };
 
-const getRatingTextColor = (rating: string | undefined) => {
-  if (!rating) return "text-[#7588A3]";
-  switch (rating) {
-    case "Strong Buy":
-    case "Buy":
-      return "text-[#10B981]";
-    case "Neutral":
-      return "text-[#7588A3]";
-    case "Sell":
-    case "Strong Sell":
-      return "text-[#EF4444]";
-    default:
-      return "text-[#7588A3]";
-  }
-};
-
 const getResultColor = (result: number | undefined) => {
   if (result === undefined || result === null) return "text-[#7588A3]";
   if (result > 0) return "text-[#10B981]";
@@ -71,15 +55,10 @@ const getResultColor = (result: number | undefined) => {
   return "text-[#7588A3]";
 };
 
-const getSignalDot = (result: number | undefined) => {
-  if (result === undefined || result === null) return "bg-[#7588A3]";
-  return result >= 0 ? "bg-[#10B981]" : "bg-[#EF4444]";
-};
-
 const formatDateToDisplay = (dateStr: string) => {
   try {
     const date = parseISO(dateStr);
-    return format(date, "MMM dd, yyyy");
+    return format(date, "MMM dd, yyyy").toUpperCase();
   } catch {
     return dateStr;
   }
@@ -90,12 +69,13 @@ export default function StockDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState<StockDetailData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<"1D" | "5D" | "10D">("1D");
 
   useEffect(() => {
     const fetchStockDetail = async () => {
       if (!symbol) return;
       
-      // Convert URL format (NASDAQ-AAPL) back to API format (NASDAQ:AAPL)
       const apiSymbol = symbol.replace('-', ':');
       
       try {
@@ -123,7 +103,10 @@ export default function StockDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-[#7588A3] text-lg">Loading...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-[#7588A3] text-sm">Loading stock details...</div>
+        </div>
       </div>
     );
   }
@@ -132,178 +115,252 @@ export default function StockDetail() {
     return null;
   }
 
+  const filterButtons = ["Strong Sell", "Sell", "Buy", "Strong Buy"];
+
+  const filteredHistory = selectedFilter
+    ? data.history.filter(item => item.to_rating === selectedFilter)
+    : data.history;
+
+  const isPositiveChange = data.change_percent >= 0;
+
   return (
     <div className="px-[53px] py-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-[#F8FAFC]">Stock Detail</h1>
-        <button
-          onClick={() => navigate("/")}
-          className="text-[#7588A3] hover:text-[#F8FAFC] transition-colors text-sm"
-        >
-          BACK
-        </button>
-      </div>
+      {/* Back Button */}
+      <button
+        onClick={() => navigate("/")}
+        className="flex items-center gap-2 text-[#7588A3] hover:text-[#F8FAFC] transition-colors mb-6 group"
+      >
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        <span className="text-sm">Back to Screener</span>
+      </button>
 
-      {/* Stock Info Header */}
-      <div className="bg-[#131A26] rounded-xl p-6 mb-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            {/* Star icon */}
-            <span className="text-[#7588A3] text-xl cursor-pointer hover:text-yellow-400 transition-colors">☆</span>
-            
-            {/* Logo + Symbol */}
-            <div className="flex items-center gap-3">
-              <StockLogo 
-                symbol={data.symbol} 
-                name={data.name} 
-                className="w-12 h-12 text-xl" 
-              />
-              <span className="text-[#F8FAFC] font-bold text-xl">
-                {data.symbol.split(":")[1] || data.symbol}
-              </span>
-            </div>
-
-            {/* Rating Badge */}
-            <div
-              className={`px-3 py-1 ${getRatingColor(data.current_rating)} text-[#F8FAFC] rounded-full text-sm font-semibold`}
-            >
-              {data.current_rating}
+      {/* Compact Header */}
+      <div className="flex justify-between items-center mb-8 bg-[#131A26] rounded-2xl p-6 border border-[#1E2530] shadow-sm">
+        <div className="flex items-center gap-5">
+          <div className="relative">
+            <StockLogo 
+              symbol={data.symbol} 
+              name={data.name} 
+              className="w-14 h-14 text-xl shadow-lg" 
+            />
+            <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full ${isPositiveChange ? 'bg-[#10B981]' : 'bg-[#EF4444]'} flex items-center justify-center shadow-md`}>
+              {isPositiveChange ? (
+                <TrendingUp className="w-3 h-3 text-white" />
+              ) : (
+                <TrendingDown className="w-3 h-3 text-white" />
+              )}
             </div>
           </div>
-
-          {/* Price */}
-          <div className="text-right">
-            <div className="text-[#F8FAFC] text-3xl font-bold">
-              ${data.current_price.toFixed(2)}
+          <div>
+            <div className="text-[#F8FAFC] font-bold text-3xl tracking-tight">
+              {data.symbol.split(":")[1] || data.symbol}
             </div>
-            <div className={getResultColor(data.change_percent)}>
+            <div className="text-[#7588A3] text-sm mt-0.5">{data.name}</div>
+          </div>
+        </div>
+
+        <div className="text-right">
+          <div className="text-[#F8FAFC] text-4xl font-bold tracking-tight">
+            ${data.current_price.toFixed(2)}
+          </div>
+          <div className={`text-base font-medium flex items-center justify-end gap-2 mt-1 ${getResultColor(data.change_percent)}`}>
+            {isPositiveChange ? (
+              <TrendingUp className="w-4 h-4" />
+            ) : (
+              <TrendingDown className="w-4 h-4" />
+            )}
+            <span>
               {data.change >= 0 ? "+" : ""}{data.change.toFixed(2)} ({data.change_percent >= 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Signals + Win Rate */}
+      <div className="grid grid-cols-[2fr_1fr] gap-6 mb-8">
+        {/* Filter Signals */}
+        <div className="bg-[#131A26] rounded-2xl p-6 border border-[#1E2530] hover:border-[#2D3748] transition-colors">
+          <div className="flex justify-between items-center mb-10">
+            <h3 className="text-[#F8FAFC] text-lg font-semibold">Filter Signals</h3>
+            <button className="text-[#7588A3] text-sm hover:text-[#10B981] transition-colors flex items-center gap-1">
+              View History
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-4 gap-3">
+            {filterButtons.map((filter) => {
+              const isActive = selectedFilter === filter;
+              return (
+                <button
+                  key={filter}
+                  onClick={() => setSelectedFilter(isActive ? null : filter)}
+                  className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? `${getRatingColor(filter)} border-transparent text-[#F8FAFC] shadow-lg scale-[1.02]`
+                      : "bg-[#0F151F] border-[#2D3748] text-[#7588A3] hover:border-[#4A5568] hover:text-[#F8FAFC] hover:bg-[#1A2332]"
+                  }`}
+                >
+                  {filter}
+                </button>
+              );
+            })}
+          </div>
+          
+          {selectedFilter && (
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <span className="text-[#7588A3]">
+                Showing <span className="text-[#F8FAFC] font-medium">{filteredHistory.length}</span> signals
+              </span>
+              <button 
+                onClick={() => setSelectedFilter(null)}
+                className="text-[#10B981] hover:underline"
+              >
+                Clear filter
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Win Rate Card */}
+        <div className="bg-gradient-to-br from-[#131A26] to-[#0F151F] rounded-2xl p-6 border border-[#1E2530] hover:border-[#2D3748] transition-colors relative overflow-hidden">
+          {/* Subtle glow effect */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#10B981]/5 rounded-full blur-3xl"></div>
+          
+          <div className="relative flex justify-between items-start">
+            <div>
+              <div className="text-[#F8FAFC] text-7xl font-bold tracking-tighter">
+                {data.stats.win_rate.toFixed(0)}
+                <span className="text-4xl text-[#7588A3] ml-1">%</span>
+              </div>
+              <div className="text-[#7588A3] text-sm mt-2 mb-4">Win Rate</div>
+              
+              {/* Time Period Tabs */}
+              <div className="flex gap-1 bg-[#0F151F] p-1 rounded-lg">
+                {(["1D", "5D", "10D"] as const).map((period) => (
+                  <button
+                    key={period}
+                    onClick={() => setSelectedPeriod(period)}
+                    className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
+                      selectedPeriod === period
+                        ? "bg-[#10B981] text-white shadow-md"
+                        : "bg-transparent text-[#7588A3] hover:text-[#F8FAFC]"
+                    }`}
+                  >
+                    {period}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="text-right">
+              <div className="flex items-center gap-2 text-[#10B981] text-sm font-semibold bg-[#10B981]/10 px-3 py-1.5 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
+                Total: {data.stats.total_signals}
+              </div>
+              <div className="text-[#7588A3] text-xs mt-2">Historical accuracy</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Cards - Figma Style: Horizontal Layout */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="bg-[#131A26] rounded-xl p-6 border border-[#1E2530] flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="text-[#F8FAFC] text-base">Total Signals</div>
-            <div className="text-[#F8FAFC] text-sm opacity-50">All time</div>
-          </div>
-          <div className="text-[#F8FAFC] text-5xl font-bold">{data.stats.total_signals}</div>
-        </div>
-
-        <div className="bg-[#131A26] rounded-xl p-6 border border-[#1E2530] flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="text-[#F8FAFC] text-base">Win Rate</div>
-            <div className="text-[#F8FAFC] text-sm opacity-50">Historical accuracy</div>
-          </div>
-          <div className="text-[#F8FAFC] text-5xl font-bold">{data.stats.win_rate.toFixed(0)}%</div>
-        </div>
-
-        <div className="bg-[#131A26] rounded-xl p-6 border border-[#1E2530] flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="text-[#F8FAFC] text-base">Average Return</div>
-            <div className="text-[#F8FAFC] text-sm opacity-50">Per signal</div>
-          </div>
-          <div className="text-[#F8FAFC] text-5xl font-bold">
-            {data.stats.avg_return >= 0 ? "+" : ""}{data.stats.avg_return.toFixed(1)}%
-          </div>
-        </div>
-
-        <div className="bg-[#131A26] rounded-xl p-6 border border-[#1E2530] flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="text-[#F8FAFC] text-base">Best Return</div>
-            <div className="text-[#F8FAFC] text-sm opacity-50">Single trade</div>
-          </div>
-          <div className="text-[#F8FAFC] text-5xl font-bold">
-            {data.stats.best_return >= 0 ? "+" : ""}{data.stats.best_return.toFixed(1)}%
-          </div>
-        </div>
-      </div>
-
-      {/* Rating History - Figma Style */}
-      <div>
-        <h2 className="text-[#F8FAFC] text-lg font-semibold mb-4">Rating History</h2>
-        
-        <div className="space-y-4">
-          {data.history.length > 0 ? (
-            data.history.map((item, index) => (
-              <div
-                key={index}
-                className="flex items-stretch"
+      {/* Signal History */}
+      <div className="space-y-4">
+        {filteredHistory.length > 0 ? (
+          filteredHistory.map((item, index) => {
+            const isProfit = item.result !== undefined && item.result >= 0;
+            const status = item.result !== undefined ? (isProfit ? "COMPLETED" : "CLOSED") : "PENDING";
+            
+            return (
+              <div 
+                key={index} 
+                className="flex items-center gap-6"
               >
-                {/* Signal Dot - Outside the card */}
-                <div className="flex items-center mr-3">
-                  <div className={`w-3 h-3 rounded-full ${getSignalDot(item.result)}`}></div>
+                {/* Signal Dot - Ring Style */}
+                <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${
+                  isProfit ? "border-[#10B981]" : "border-[#EF4444]"
+                } flex items-center justify-center`}>
+                  <div className={`w-2 h-2 rounded-full ${
+                    isProfit ? "bg-[#10B981]" : "bg-[#EF4444]"
+                  }`}></div>
                 </div>
 
                 {/* Main Card */}
-                <div className="flex-1 bg-[#131A26] rounded-xl border border-[#1E2530] flex items-stretch overflow-hidden min-h-[80px]">
-                  {/* Left Section: Date, Rating Change */}
-                  <div className="flex-1 flex flex-col justify-center p-5">
-                    {/* Date */}
-                    <div className="flex items-center gap-2 text-[#F8FAFC] text-sm mb-2">
-                      <span>📅</span>
-                      <span>{formatDateToDisplay(item.date)}</span>
+                <div className="flex-1 bg-[#131A26] rounded-xl border border-[#1E2530] py-5 px-6">
+                  {/* Grid Layout for Perfect Alignment */}
+                  <div className="grid grid-cols-[350px_1fr_100px] items-center gap-4">
+                    {/* Left: Date + Status + Rating Change */}
+                    <div className="flex items-center gap-8">
+                      <div>
+                        <div className="text-[#7588A3] text-xs mb-1">{formatDateToDisplay(item.date)}</div>
+                        <span className={`px-2.5 py-0.5 text-[10px] font-semibold rounded border ${
+                          status === "COMPLETED" ? "border-[#7588A3] text-[#7588A3]" :
+                          status === "CLOSED" ? "border-[#7588A3] text-[#7588A3]" :
+                          "border-[#7588A3] text-[#7588A3]"
+                        }`}>
+                          {status}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <div className={`px-3 py-1 ${getRatingColor(item.from_rating)} text-[#F8FAFC] rounded text-sm font-medium`}>
+                          {item.from_rating}
+                        </div>
+                        <span className="text-[#7588A3]">→</span>
+                        <div className={`px-3 py-1 ${getRatingColor(item.to_rating)} text-[#F8FAFC] rounded text-sm font-medium`}>
+                          {item.to_rating}
+                        </div>
+                      </div>
                     </div>
-                    
-                    {/* Rating Change - Both as colored text */}
-                    <div className="flex items-center gap-2">
-                      <span className={`${getRatingTextColor(item.from_rating)} text-sm font-medium`}>
-                        {item.from_rating}
-                      </span>
-                      <ArrowRight className="w-4 h-4 text-[#7588A3]" />
-                      <span className={`${getRatingTextColor(item.to_rating)} text-sm font-medium`}>
-                        {item.to_rating}
-                      </span>
+
+                    {/* Middle: Entry + Days + Exit - Using Fixed Width Inner Columns */}
+                    <div className="flex justify-center">
+                      <div className="flex items-center bg-[#0F151F] rounded-lg px-2 py-3">
+                        <div className="w-[120px] text-center border-r border-[#2D3748]">
+                          <div className="text-[#7588A3] text-[10px] mb-1 uppercase tracking-wider">Entry Price</div>
+                          <div className="text-[#F8FAFC] text-lg font-semibold">${item.entry_price.toFixed(2)}</div>
+                        </div>
+                        
+                        <div className="w-[140px] text-center border-r border-[#2D3748]">
+                          <div className="text-[#7588A3] text-[10px] mb-1">
+                            {item.days_held !== undefined ? `${item.days_held} days` : "—"}
+                          </div>
+                          <div className="text-[#7588A3] text-lg tracking-widest leading-none mt-1">• • •</div>
+                        </div>
+
+                        <div className="w-[120px] text-center">
+                          <div className="text-[#7588A3] text-[10px] mb-1 uppercase tracking-wider">
+                            {item.result !== undefined ? "Exit" : "Current"}
+                          </div>
+                          <div className="text-[#F8FAFC] text-lg font-semibold">${data.current_price.toFixed(2)}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Vertical Divider */}
-                  <div className="w-px bg-[#1E2530]"></div>
-
-                  {/* Entry Price */}
-                  <div className="w-[140px] flex flex-col justify-center items-center py-2 px-4">
-                    <div className="text-[#F8FAFC] text-sm font-semibold mb-2">Entry Price</div>
-                    <div className="text-[#F8FAFC] text-base font-semibold">
-                      ${item.entry_price.toFixed(2)}
-                    </div>
-                  </div>
-
-                  {/* Vertical Divider */}
-                  <div className="w-px bg-[#1E2530]"></div>
-
-                  {/* Days Held */}
-                  <div className="w-[140px] flex flex-col justify-center items-center py-2 px-4">
-                    <div className="text-[#F8FAFC] text-sm font-semibold mb-2">Days Held</div>
-                    <div className="text-[#F8FAFC] text-base font-semibold whitespace-nowrap">
-                      {item.days_held !== undefined ? `${item.days_held} days` : "-"}
-                    </div>
-                  </div>
-
-                  {/* Vertical Divider */}
-                  <div className="w-px bg-[#1E2530]"></div>
-
-                  {/* Result */}
-                  <div className="w-[140px] flex flex-col justify-center items-center py-2 px-4">
-                    <div className="text-[#F8FAFC] text-sm font-semibold mb-2">Result</div>
-                    <div className={`text-base font-semibold ${getResultColor(item.result)}`}>
-                      {item.result !== undefined
-                        ? `${item.result >= 0 ? "+" : ""}${item.result.toFixed(1)}%`
-                        : "-"}
+                    {/* Right: Result */}
+                    <div className="text-right">
+                      <div className={`text-2xl font-bold ${getResultColor(item.result)}`}>
+                        {item.result !== undefined
+                          ? `${item.result >= 0 ? "+" : ""}${item.result.toFixed(1)}%`
+                          : "—"}
+                      </div>
+                      {item.result !== undefined && (
+                        <div className={`text-xs ${getResultColor(item.result)}`}>
+                          {isProfit ? "Profit" : "Loss"}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="bg-[#131A26] rounded-xl p-8 text-[#7588A3] text-center border border-[#1E2530]">
-              No rating history available
-            </div>
-          )}
-        </div>
+            );
+          })
+        ) : (
+          <div className="bg-[#131A26] rounded-xl p-12 text-center border border-[#1E2530]">
+            <div className="text-[#7588A3] text-lg mb-2">No signals found</div>
+            <div className="text-[#4A5568] text-sm">Try adjusting your filter selection</div>
+          </div>
+        )}
       </div>
     </div>
   );

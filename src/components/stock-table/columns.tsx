@@ -103,6 +103,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "Previous_Rating",
     header: "Previous Rating",
+    enableSorting: false,
     cell: ({ row }) => {
       const rating = row.getValue("Previous_Rating") as string
       return (
@@ -118,6 +119,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
   },
   {
     id: "arrow",
+    enableSorting: false,
     cell: () => (
       <div className="flex justify-center">
         <LongArrowRight className="text-[#F8FAFC]" />
@@ -127,6 +129,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "Technical_Rating",
     header: "Current Rating",
+    enableSorting: false,
     cell: ({ row }) => {
       const rating = row.getValue("Technical_Rating") as string
       return (
