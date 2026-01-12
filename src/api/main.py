@@ -21,7 +21,8 @@ DATA_DIR.mkdir(exist_ok=True)
 columns = [
     "name",
     "close",
-    "Recommend.All"
+    "Recommend.All",
+    "description"
 ]
 
 # ================================
@@ -115,7 +116,7 @@ def fetch_market(market_name, url, batch_size=300):
         out.append({
             "market": market_name,
             "symbol": row["s"],
-            "name": d[0],
+            "name": d[3],
             "current_price": d[1],
             "Technical_Score": score,
             "Technical_Rating": convert_rating(score),

@@ -70,7 +70,7 @@ export default function StockDetail() {
   const [data, setData] = useState<StockDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<"1D" | "5D" | "10D">("1D");
+
 
   useEffect(() => {
     const fetchStockDetail = async () => {
@@ -227,42 +227,28 @@ export default function StockDetail() {
           {/* Subtle glow effect */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#10B981]/5 rounded-full blur-3xl"></div>
           
-          <div className="relative flex justify-between items-start">
+          <div className="relative flex justify-between items-center">
             <div>
               <div className="text-[#F8FAFC] text-7xl font-bold tracking-tighter">
                 {data.stats.win_rate.toFixed(0)}
                 <span className="text-4xl text-[#7588A3] ml-1">%</span>
               </div>
-              <div className="text-[#7588A3] text-sm mt-2 mb-4">Win Rate</div>
-              
-              {/* Time Period Tabs */}
-              <div className="flex gap-1 bg-[#0F151F] p-1 rounded-lg">
-                {(["1D", "5D", "10D"] as const).map((period) => (
-                  <button
-                    key={period}
-                    onClick={() => setSelectedPeriod(period)}
-                    className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
-                      selectedPeriod === period
-                        ? "bg-[#10B981] text-white shadow-md"
-                        : "bg-transparent text-[#7588A3] hover:text-[#F8FAFC]"
-                    }`}
-                  >
-                    {period}
-                  </button>
-                ))}
-              </div>
+              <div className="text-[#7588A3] text-sm mt-2">Win Rate</div>
             </div>
+
+            {/* Vertical Divider */}
+            <div className="h-16 w-px bg-[#2D3748] mx-8"></div>
             
             <div className="text-right">
-              <div className="flex items-center gap-2 text-[#10B981] text-sm font-semibold bg-[#10B981]/10 px-3 py-1.5 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
+              <div className="flex items-center justify-end gap-2 text-[#F8FAFC] text-xl font-bold mb-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
                 Total: {data.stats.total_signals}
               </div>
-              <div className="text-[#7588A3] text-xs mt-2">Historical accuracy</div>
+              <div className="text-[#7588A3] text-sm">Historical accuracy</div>
             </div>
           </div>
-        </div>
       </div>
+    </div>
 
       {/* Signal History */}
       <div className="space-y-4">

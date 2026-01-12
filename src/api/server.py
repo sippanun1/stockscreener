@@ -140,52 +140,135 @@ def get_stock_detail(symbol: str):
     # Get current info from most recent entry
     current = history[0] if history else {}
     
-    # Build rating change history (find where rating changed)
-    rating_changes = []
-    for i in range(len(history) - 1):
-        current_entry = history[i]
-        prev_entry = history[i + 1]
+    # Process history Chronologically (Oldest -> Newest) to find signals
+    # history is currently DESC (Newest -> Oldest), so reverse it
+    chronological_history = history[::-1]
+    
+    signals = []
+    
+    if chronological_history:
+        current_signal = {
+            "rating": chronological_history[0].get("technical_rating", "Neutral"),
+            "start_date": chronological_history[0].get("fetched_date"),
+            "entry_price": chronological_history[0].get("current_price", 0),
+            "status": "OPEN"
+        }
         
-        if current_entry.get("technical_rating") != prev_entry.get("technical_rating"):
-            # Rating changed
-            rating_changes.append({
-                "date": prev_entry.get("fetched_date", ""),
-                "from_rating": prev_entry.get("technical_rating", "N/A"),
-                "to_rating": current_entry.get("technical_rating", "N/A"),
-                "entry_price": prev_entry.get("current_price", 0),
-                "days_held": None,  # Would need more data to calculate
-                "result": None  # Would need price tracking to calculate
-            })
+        from datetime import datetime
+        
+        for entry in chronological_history[1:]:
+            entry_rating = entry.get("technical_rating", "Neutral")
+            entry_date = entry.get("fetched_date")
+            entry_price = entry.get("current_price", 0)
+            
+            if entry_rating != current_signal["rating"]:
+                # Signal Changed! Complete the previous signal
+                # The exit price is the price on the day the rating changed (today in this loop)
+                
+                # Calculate days held
+                try:
+                    start = datetime.strptime(current_signal["start_date"].split(" ")[0], "%Y-%m-%d")
+                    end = datetime.strptime(entry_date.split(" ")[0], "%Y-%m-%d")
+                    days_held = (end - start).days
+                except:
+                    days_held = 0
+                
+                # Calculate profit
+                profit_percent = 0.0
+                if current_signal["entry_price"] > 0:
+                    profit_percent = ((entry_price - current_signal["entry_price"]) / current_signal["entry_price"]) * 100
+                    
+                signals.append({
+                    "date": current_signal["start_date"], # When it started
+                    "from_rating": current_signal["rating"],
+                    "to_rating": entry_rating, # What it changed TO at the end
+                    "entry_price": current_signal["entry_price"],
+                    "exit_price": entry_price,
+                    "days_held": days_held,
+                    "result": profit_percent,
+                    "status": "COMPLETED"
+                })
+                
+                # Start new signal
+                current_signal = {
+                    "rating": entry_rating,
+                    "start_date": entry_date,
+                    "entry_price": entry_price,
+                    "status": "OPEN"
+                }
+        
+        # Add the final (current) signal
+        # For current signal, result is unrealized profit (Current Price - Entry Price)
+        current_price = chronological_history[-1].get("current_price", 0)
+        
+        # Calculate days held so far
+        try:
+            start = datetime.strptime(current_signal["start_date"].split(" ")[0], "%Y-%m-%d")
+            now = datetime.now()
+            days_held = (now - start).days
+        except:
+            days_held = 0
+            
+        profit_percent = 0.0
+        if current_signal["entry_price"] > 0:
+            profit_percent = ((current_price - current_signal["entry_price"]) / current_signal["entry_price"]) * 100
+
+        signals.append({
+            "date": current_signal["start_date"],
+            "from_rating": current_signal["rating"],
+            "to_rating": "Current",
+            "entry_price": current_signal["entry_price"],
+            "exit_price": current_price,
+            "days_held": days_held,
+            "result": profit_percent,
+            "status": "OPEN" # Current active signal
+        })
     
-    # Generate mock stats (in production, calculate from actual returns)
-    total_signals = len(rating_changes)
+    # Reverse signals back to Newest -> Oldest for display
+    rating_changes = signals[::-1]
     
-    # For demo, generate plausible stats
-    import random
-    random.seed(hash(symbol) % 1000)  # Consistent per symbol
+    # Calculate Real Stats from these signals
+    completed_signals = [s for s in rating_changes if s["status"] == "COMPLETED"]
+    total_signals = len(completed_signals)
     
+    win_rate = 0
+    if total_signals > 0:
+        wins = len([s for s in completed_signals if s["result"] > 0])
+        win_rate = (wins / total_signals) * 100
+        
+    avg_return = 0
+    if total_signals > 0:
+        avg_return = sum(s["result"] for s in completed_signals) / total_signals
+
     stats = {
-        "total_signals": max(total_signals, random.randint(5, 30)),
-        "win_rate": random.randint(55, 85),
-        "avg_return": random.uniform(3, 12),
-        "best_return": random.uniform(15, 35)
+        "total_signals": total_signals,
+        "win_rate": win_rate,
+        "avg_return": avg_return,
+        "best_return": max([s["result"] for s in completed_signals]) if completed_signals else 0
     }
     
-    # Add mock results to rating changes for demo
-    for change in rating_changes:
-        change["days_held"] = random.randint(5, 25)
-        change["result"] = random.uniform(-8, 18)
+    # Calculate REAL price change from history (already done above but ensuring variables exist)
+    change = 0.0
+    change_percent = 0.0
     
+    if len(history) > 1:
+        prev_entry = history[1]
+        prev_price = prev_entry.get("current_price", 0)
+        
+        if prev_price and prev_price > 0:
+            change = current.get("current_price", 0) - prev_price
+            change_percent = (change / prev_price) * 100
+
     return {
         "symbol": symbol,
         "name": symbol.split(":")[1] if ":" in symbol else symbol,
         "market": symbol.split(":")[0] if ":" in symbol else "",
         "current_price": current.get("current_price", 0),
         "current_rating": current.get("technical_rating", "N/A"),
-        "change": random.uniform(-5, 10),  # Mock change
-        "change_percent": random.uniform(-3, 5),  # Mock change %
+        "change": change,
+        "change_percent": change_percent,
         "stats": stats,
-        "history": rating_changes[:20]  # Limit to 20 most recent
+        "history": rating_changes  # Return all signals
     }
 
 

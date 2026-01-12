@@ -1,5 +1,6 @@
 "use client"
-import { format, isToday, isYesterday } from "date-fns"
+import { format, isToday, isYesterday, parseISO } from "date-fns"
+import { Link } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Stock } from "@/types/stock"
 import { StockLogo } from "@/components/StockLogo"
@@ -152,7 +153,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
 
       let displayDate = dateString
       // Assuming dateString is "YYYY-MM-DD" or similar
-      const date = new Date(dateString)
+      const date = parseISO(dateString)
       
       if (!isNaN(date.getTime())) {
         if (isToday(date)) {
@@ -172,15 +173,18 @@ export const stockColumns: ColumnDef<Stock>[] = [
     },
   },
   {
-    accessorKey: "backtest_acc_5d",
-    header: "Backtest Acc (5D)",
+    id: "actions",
+    header: "",
     cell: ({ row }) => {
-      const acc = row.original.backtest_acc_5d
-      if (acc === undefined) return <div className="text-[#7588A3] text-right text-sm">-</div>
-      const color = acc > 0 ? "text-[#10B981]" : acc < 0 ? "text-[#EF4444]" : "text-[#7588A3]"
       return (
-        <div className={`text-right text-sm ${color}`}>
-          {acc > 0 ? "+" : ""}{acc.toFixed(1)}%
+        <div className="text-right">
+          <Link
+            to={`/symbols/${encodeURIComponent(row.original.symbol)}`}
+            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-[#1E293B] hover:bg-[#10B981] text-[#F8FAFC] text-xs font-semibold transition-all duration-200 group"
+          >
+            View Details
+            <LongArrowRight className="ml-2 w-4 h-4 text-[#7588A3] group-hover:text-white transition-colors" />
+          </Link>
         </div>
       )
     },
