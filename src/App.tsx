@@ -39,7 +39,7 @@ function ScreenerPage() {
 
 function App() {
   return (
-    <div className="App bg-[#000000] h-screen flex flex-col overflow-x-hidden overflow-y-auto text-[#F8FAFC]">
+    <div className="App bg-[#000000] h-screen flex flex-col overflow-x-hidden overflow-y-auto">
       <MenuHeader />
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
         <Routes>

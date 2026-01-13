@@ -8,20 +8,20 @@ type StockTableProps = {
 };
 
 const getRatingColor = (rating: string | undefined) => {
-  if (!rating) return "bg-[#354052]";
+  if (!rating) return "text-[#354052]";
   switch (rating) {
     case "Strong Buy":
-      return "bg-[#065F46]";
+      return "text-[#065F46]";
     case "Buy":
-      return "bg-[#007957]";
+      return "text-[#007957]";
     case "Neutral":
-      return "bg-[#6B7280]";
+      return "text-[#6B7280]";
     case "Sell":
-      return "bg-[#CE0F44]";
+      return "text-[#CE0F44]";
     case "Strong Sell":
-      return "bg-[#A10F38]";
+      return "text-[#A10F38]";
     default:
-      return "bg-[#6B7280]";
+      return "text-[#6B7280]";
   }
 };
 
@@ -149,7 +149,7 @@ export default function StockTable({ stocks }: StockTableProps) {
                 {/* Previous Rating */}
                 <div className="w-[120px] flex justify-center flex-shrink-0 px-2">
                   <div
-                    className={`w-[91px] h-[20px] ${getRatingColor(s.Previous_Rating)} text-[#F8FAFC] rounded-[16px] flex items-center justify-center text-xs font-semibold`}
+                    className={`w-[91px] h-[20px] ${getRatingColor(s.Previous_Rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold`}
                   >
                     {s.Previous_Rating || "N/A"}
                   </div>
@@ -163,7 +163,7 @@ export default function StockTable({ stocks }: StockTableProps) {
                 {/* Current Rating */}
                 <div className="w-[120px] flex justify-center flex-shrink-0 px-2">
                   <div
-                    className={`w-[91px] h-[20px] ${getRatingColor(s.Technical_Rating)} text-[#F8FAFC] rounded-[16px] flex items-center justify-center text-xs font-semibold`}
+                    className={`w-[91px] h-[20px] ${getRatingColor(s.Technical_Rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold`}
                   >
                     {s.Technical_Rating}
                   </div>
