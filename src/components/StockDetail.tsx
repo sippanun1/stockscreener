@@ -233,7 +233,7 @@ export default function StockDetail() {
                 {data.stats.win_rate.toFixed(0)}
                 <span className="text-4xl text-[#7588A3] ml-1">%</span>
               </div>
-              <div className="text-[#7588A3] text-sm mt-2">Win Rate</div>
+              <div className="text-[#7588A3] text-sm mt-2">Accuracy</div>
             </div>
 
             {/* Vertical Divider */}
@@ -303,7 +303,7 @@ export default function StockDetail() {
                     <div className="flex justify-center">
                       <div className="flex items-center bg-[#0F151F] rounded-lg px-2 py-3">
                         <div className="w-[120px] text-center border-r border-[#2D3748]">
-                          <div className="text-[#7588A3] text-[10px] mb-1 uppercase tracking-wider">Entry Price</div>
+                          <div className="text-[#7588A3] text-[10px] mb-1 uppercase tracking-wider">Previous Price</div>
                           <div className="text-[#F8FAFC] text-lg font-semibold">${item.entry_price.toFixed(2)}</div>
                         </div>
                         

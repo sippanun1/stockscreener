@@ -6,22 +6,29 @@ import type { Stock } from "@/types/stock"
 import { StockLogo } from "@/components/StockLogo"
 import { LongArrowRight } from "@/components/LongArrowRight"
 
-const getRatingColor = (rating: string | undefined) => {
-  if (!rating) return "bg-[#354052]"
+const getRatingTextColor = (rating: string | undefined) => {
+  if (!rating) return "text-[#7588A3]"
   switch (rating) {
     case "Strong Buy":
-      return "bg-[#065F46]"
+      return "text-[#00FFB7]"
     case "Buy":
-      return "bg-[#007957]"
+      return "text-[#00FFB7]"
     case "Neutral":
-      return "bg-[#6B7280]"
+      return "text-[#FFFFFF]"
     case "Sell":
-      return "bg-[#CE0F44]"
+      return "text-[#FF3069]"
     case "Strong Sell":
-      return "bg-[#A10F38]"
+      return "text-[#FF3069]"
     default:
-      return "bg-[#6B7280]"
+      return "text-[#7588A3]"
   }
+}
+
+const getRatingStyles = (rating: string | undefined) => {
+  if (rating === "Strong Buy") {
+    return "bg-[#07FFB91A] text-[#00FFB7]"
+  }
+  return getRatingTextColor(rating)
 }
 
 export const stockColumns: ColumnDef<Stock>[] = [
@@ -49,7 +56,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
     cell: ({ row }) => {
       const symbol = row.original.symbol
       return (
-        <div className="text-[#7588A3] text-sm">
+        <div className="text-[#F8FAFC] text-sm">
           {symbol.split(":")[0]}
         </div>
       )
@@ -76,7 +83,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
     header: "Change",
     cell: ({ row }) => {
       const change = row.getValue("change") as number
-      const color = change > 0 ? "text-[#10B981]" : change < 0 ? "text-[#EF4444]" : "text-[#7588A3]"
+      const color = change > 0 ? "text-[#00FFB7]" : change < 0 ? "text-[#FF3069]" : "text-[#7588A3]"
       return (
         <div className={`text-right text-sm ${color}`}>
           {change > 0 ? "+" : ""}{change.toFixed(2)}
@@ -86,14 +93,14 @@ export const stockColumns: ColumnDef<Stock>[] = [
   },
   {
     accessorFn: (row) => {
-      if (!row.previous_price) return 0
+      if (!row.previous_price || row.previous_price === 0) return 0
       return ((row.current_price - row.previous_price) / row.previous_price) * 100
     },
     id: "changePercent",
     header: "Change%",
     cell: ({ row }) => {
       const pct = row.getValue("changePercent") as number
-      const color = pct > 0 ? "text-[#10B981]" : pct < 0 ? "text-[#EF4444]" : "text-[#7588A3]"
+      const color = pct > 0 ? "text-[#00FFB7]" : pct < 0 ? "text-[#FF3069]" : "text-[#7588A3]"
       return (
         <div className={`text-right text-sm ${color}`}>
           {pct > 0 ? "+" : ""}{pct.toFixed(2)}%
@@ -110,7 +117,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       return (
         <div className="flex justify-center">
           <div
-            className={`w-[91px] h-[20px] ${getRatingColor(rating)} text-[#F8FAFC] rounded-[16px] flex items-center justify-center text-xs font-semibold`}
+            className={`w-[91px] h-[20px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold`}
           >
             {rating || "N/A"}
           </div>
@@ -136,7 +143,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       return (
         <div className="flex justify-center">
           <div
-            className={`w-[91px] h-[20px] ${getRatingColor(rating)} text-[#F8FAFC] rounded-[16px] flex items-center justify-center text-xs font-semibold`}
+            className={`w-[91px] h-[20px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold`}
           >
             {rating}
           </div>
@@ -149,7 +156,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
     header: "Date",
     cell: ({ row }) => {
       const dateString = row.getValue("fetched_date") as string
-      if (!dateString) return <div className="text-[#7588A3] text-center text-sm">-</div>
+      if (!dateString) return <div className="text-[#F8FAFC] text-center text-sm">-</div>
 
       let displayDate = dateString
       // Assuming dateString is "YYYY-MM-DD" or similar
@@ -166,7 +173,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       }
 
       return (
-        <div className="text-[#7588A3] text-center text-sm">
+        <div className="text-[#F8FAFC] text-center text-sm">
           {displayDate}
         </div>
       )
@@ -174,16 +181,16 @@ export const stockColumns: ColumnDef<Stock>[] = [
   },
   {
     id: "actions",
-    header: "",
+    header: "History",
     cell: ({ row }) => {
       return (
-        <div className="text-right">
+        <div className="flex justify-center">
           <Link
             to={`/symbols/${encodeURIComponent(row.original.symbol)}`}
-            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-[#1E293B] hover:bg-[#10B981] text-[#F8FAFC] text-xs font-semibold transition-all duration-200 group"
+            className="relative inline-flex items-center justify-center w-[90px] h-[28px] rounded-full bg-[#1E40AF] hover:bg-[#1E3A8A] text-[#F8FAFC] text-xs font-semibold transition-all duration-200 group overflow-hidden"
           >
-            View Details
-            <LongArrowRight className="ml-2 w-4 h-4 text-[#7588A3] group-hover:text-white transition-colors" />
+            <span className="group-hover:-translate-x-2 transition-transform duration-200">History</span>
+            <LongArrowRight className="absolute right-3 w-4 h-4 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
           </Link>
         </div>
       )

@@ -8,7 +8,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
 
@@ -59,6 +58,8 @@ export function DataTable({ columns, filters }: DataTableProps) {
     const loadData = async () => {
       try {
         setLoading(true)
+        
+        // Fetch stocks without date filter to show all markets
         const response = await fetch(`http://localhost:8000/api/stocks?limit=25000`)
         const result = await response.json()
         
@@ -114,6 +115,15 @@ export function DataTable({ columns, filters }: DataTableProps) {
         )
       }
     }
+    // Date Filter - filter by when current rating started (fetched_date)
+    if (filters?.date) {
+      filtered = filtered.filter((stock) => {
+        if (!stock.fetched_date) return false
+        // Extract date portion from timestamp (YYYY-MM-DD)
+        const stockDate = stock.fetched_date.split('T')[0]
+        return stockDate === filters.date
+      })
+    }
     // External Search
     if (filters?.search && filters.search.trim() !== "") {
       const searchLower = filters.search.toLowerCase()
@@ -123,11 +133,38 @@ export function DataTable({ columns, filters }: DataTableProps) {
       )
     }
 
+    // Apply Sorting to the full dataset
+    if (sorting.length > 0) {
+      const { id, desc } = sorting[0]
+      filtered.sort((a, b) => {
+        let aValue: any = a[id as keyof Stock]
+        let bValue: any = b[id as keyof Stock]
+
+        // Handle calculated columns
+        if (id === "change") {
+          aValue = (a.current_price || 0) - (a.previous_price || 0)
+          bValue = (b.current_price || 0) - (b.previous_price || 0)
+        } else if (id === "changePercent") {
+          const aPrev = a.previous_price || 0
+          const bPrev = b.previous_price || 0
+          aValue = aPrev === 0 ? 0 : ((a.current_price || 0) - aPrev) / aPrev
+          bValue = bPrev === 0 ? 0 : ((b.current_price || 0) - bPrev) / bPrev
+        }
+
+        if (aValue === bValue) return 0
+        if (aValue === null || aValue === undefined) return 1
+        if (bValue === null || bValue === undefined) return -1
+
+        if (aValue > bValue) return desc ? -1 : 1
+        if (aValue < bValue) return desc ? 1 : -1
+        return 0
+      })
+    }
 
     setFilteredData(filtered)
     setDisplayCount(BATCH_SIZE)
     setData(filtered.slice(0, BATCH_SIZE))
-  }, [filters, allData])
+  }, [filters, allData, sorting])
 
 
   // Load more when displayCount changes
@@ -159,7 +196,8 @@ export function DataTable({ columns, filters }: DataTableProps) {
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    // getSortedRowModel: getSortedRowModel(), // Disable client-side sorting of the slice
+    manualSorting: true, // Enable manual sorting
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     state: {

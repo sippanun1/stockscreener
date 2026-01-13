@@ -122,6 +122,12 @@ def get_stats():
     return database.get_stats()
 
 
+@app.get("/api/summary")
+def get_summary():
+    """Get today's summary statistics for the dashboard cards."""
+    return database.get_today_summary()
+
+
 @app.get("/api/stock/{symbol}/detail")
 def get_stock_detail(symbol: str):
     """
@@ -179,7 +185,7 @@ def get_stock_detail(symbol: str):
                     profit_percent = ((entry_price - current_signal["entry_price"]) / current_signal["entry_price"]) * 100
                     
                 signals.append({
-                    "date": current_signal["start_date"], # When it started
+                    "date": entry_date, # When it changed to the new rating
                     "from_rating": current_signal["rating"],
                     "to_rating": entry_rating, # What it changed TO at the end
                     "entry_price": current_signal["entry_price"],
@@ -261,7 +267,7 @@ def get_stock_detail(symbol: str):
 
     return {
         "symbol": symbol,
-        "name": symbol.split(":")[1] if ":" in symbol else symbol,
+        "name": current.get("name") or (symbol.split(":")[1] if ":" in symbol else symbol),
         "market": symbol.split(":")[0] if ":" in symbol else "",
         "current_price": current.get("current_price", 0),
         "current_rating": current.get("technical_rating", "N/A"),

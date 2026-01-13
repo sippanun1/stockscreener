@@ -22,3 +22,40 @@ html, body {
 .overflow-x-auto {
   overscroll-behavior: contain;
 }
+
+/* Calendar Styling Override */
+
+/* Remove default focus rings and borders */
+[data-slot="calendar"] button {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+[data-slot="calendar"] button:focus,
+[data-slot="calendar"] button:focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Today's date (Red circle, White text) */
+[data-slot="calendar"] button[data-today="true"] {
+  background-color: #FF3069 !important;
+  color: white !important;
+  border-radius: 9999px !important;
+}
+
+/* Selected date (White circle, Dark Blue text) */
+[data-slot="calendar"] button[data-selected-single="true"],
+[data-slot="calendar"] button[data-range-start="true"],
+[data-slot="calendar"] button[data-range-end="true"] {
+  background-color: white !important;
+  color: #1E293B !important;
+  border-radius: 9999px !important;
+}
+
+/* Ensure Selected > Today (If today is selected, show as selected style) */
+[data-slot="calendar"] button[data-today="true"][data-selected-single="true"] {
+  background-color: white !important;
+  color: #1E293B !important;
+}

@@ -126,12 +126,12 @@ def get_stocks_with_previous_rating(
     """
     Get stocks with their "last different rating".
     
-    This returns the most recent rating that was DIFFERENT from the current rating,
-    not just yesterday's rating.
+    If date is None, returns the latest entry for each stock (regardless of when it was fetched).
+    This allows showing all markets even when they have different latest dates.
     
     Args:
         market: Filter by market (US, TH, HK, JP) or None for all
-        date: Date to query. Defaults to most recent date in DB.
+        date: Date to query. If None, gets latest entry per stock.
         limit: Maximum number of results
         offset: Pagination offset
     
@@ -141,61 +141,115 @@ def get_stocks_with_previous_rating(
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Get the latest date if not specified
     if date is None:
-        cursor.execute("SELECT DATE(MAX(fetched_date)) as max_date FROM stock_ratings")
-        result = cursor.fetchone()
-        date = result["max_date"] if result else datetime.now().strftime("%Y-%m-%d")
-    
-    # Query with subquery to find "last different rating"
-    query = """
-        SELECT 
-            today.symbol,
-            today.market,
-            today.name,
-            today.current_price,
-            today.technical_score,
-            today.technical_rating AS current_rating,
-            today.fetched_date,
-            (
-                SELECT prev.technical_rating 
-                FROM stock_ratings prev 
-                WHERE prev.symbol = today.symbol 
-                    AND DATE(prev.fetched_date) < DATE(today.fetched_date)
-                    AND prev.technical_rating != today.technical_rating
-                ORDER BY prev.fetched_date DESC 
-                LIMIT 1
-            ) AS previous_rating,
-            (
-                SELECT prev.fetched_date 
-                FROM stock_ratings prev 
-                WHERE prev.symbol = today.symbol 
-                    AND DATE(prev.fetched_date) < DATE(today.fetched_date)
-                    AND prev.technical_rating != today.technical_rating
-                ORDER BY prev.fetched_date DESC 
-                LIMIT 1
-            ) AS previous_rating_date,
-            (
-                SELECT prev.current_price 
-                FROM stock_ratings prev 
-                WHERE prev.symbol = today.symbol 
-                    AND DATE(prev.fetched_date) < DATE(today.fetched_date)
-                    AND prev.technical_rating != today.technical_rating
-                ORDER BY prev.fetched_date DESC 
-                LIMIT 1
-            ) AS previous_price
-        FROM stock_ratings today
-        WHERE DATE(today.fetched_date) = ?
-    """
-    
-    params = [date]
-    
-    if market:
-        query += " AND today.market = ?"
-        params.append(market)
-    
-    query += " ORDER BY today.symbol LIMIT ? OFFSET ?"
-    params.extend([limit, offset])
+        # Get latest entry for each stock (across all dates)
+        query = """
+            WITH latest_stocks AS (
+                SELECT 
+                    symbol,
+                    MAX(fetched_date) as max_date
+                FROM stock_ratings
+                GROUP BY symbol
+            )
+            SELECT 
+                today.symbol,
+                today.market,
+                today.name,
+                today.current_price,
+                today.technical_score,
+                today.technical_rating AS current_rating,
+                today.fetched_date,
+                (
+                    SELECT prev.technical_rating 
+                    FROM stock_ratings prev 
+                    WHERE prev.symbol = today.symbol 
+                        AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                        AND prev.technical_rating != today.technical_rating
+                    ORDER BY prev.fetched_date DESC 
+                    LIMIT 1
+                ) AS previous_rating,
+                (
+                    SELECT prev.fetched_date 
+                    FROM stock_ratings prev 
+                    WHERE prev.symbol = today.symbol 
+                        AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                        AND prev.technical_rating != today.technical_rating
+                    ORDER BY prev.fetched_date DESC 
+                    LIMIT 1
+                ) AS previous_rating_date,
+                (
+                    SELECT prev.current_price 
+                    FROM stock_ratings prev 
+                    WHERE prev.symbol = today.symbol 
+                        AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                        AND prev.technical_rating != today.technical_rating
+                    ORDER BY prev.fetched_date DESC 
+                    LIMIT 1
+                ) AS previous_price
+            FROM stock_ratings today
+            INNER JOIN latest_stocks ls 
+                ON today.symbol = ls.symbol 
+                AND today.fetched_date = ls.max_date
+        """
+        params = []
+        
+        if market:
+            query += " WHERE today.market = ?"
+            params.append(market)
+        
+        # Order by when current rating started (most recent first)
+        query += " ORDER BY today.fetched_date DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+    else:
+        # Original behavior: filter by specific date
+        query = """
+            SELECT 
+                today.symbol,
+                today.market,
+                today.name,
+                today.current_price,
+                today.technical_score,
+                today.technical_rating AS current_rating,
+                today.fetched_date,
+                (
+                    SELECT prev.technical_rating 
+                    FROM stock_ratings prev 
+                    WHERE prev.symbol = today.symbol 
+                        AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                        AND prev.technical_rating != today.technical_rating
+                    ORDER BY prev.fetched_date DESC 
+                    LIMIT 1
+                ) AS previous_rating,
+                (
+                    SELECT prev.fetched_date 
+                    FROM stock_ratings prev 
+                    WHERE prev.symbol = today.symbol 
+                        AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                        AND prev.technical_rating != today.technical_rating
+                    ORDER BY prev.fetched_date DESC 
+                    LIMIT 1
+                ) AS previous_rating_date,
+                (
+                    SELECT prev.current_price 
+                    FROM stock_ratings prev 
+                    WHERE prev.symbol = today.symbol 
+                        AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                        AND prev.technical_rating != today.technical_rating
+                    ORDER BY prev.fetched_date DESC 
+                    LIMIT 1
+                ) AS previous_price
+            FROM stock_ratings today
+            WHERE DATE(today.fetched_date) = ?
+        """
+        
+        params = [date]
+        
+        if market:
+            query += " AND today.market = ?"
+            params.append(market)
+        
+        query += " ORDER BY today.symbol LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
     
     cursor.execute(query, params)
     
@@ -299,7 +353,8 @@ def get_stock_history(symbol: str, days: int = 30):
         SELECT 
             fetched_date,
             current_price,
-            technical_rating
+            technical_rating,
+            name
         FROM stock_ratings
         WHERE symbol = ?
         ORDER BY fetched_date DESC
@@ -338,6 +393,128 @@ def get_stats():
             "oldest": date_range["oldest"],
             "newest": date_range["newest"]
         }
+    }
+
+
+def get_today_summary():
+    """
+    Get summary statistics for today's signals.
+    
+    Returns:
+        - total_signals_today: Number of stocks that changed rating today
+        - upgrades: Number of stocks with positive rating changes
+        - strong_buy_count: Number of upgrades to Strong Buy
+    """
+    from datetime import datetime
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Get the latest date in database
+    cursor.execute("SELECT MAX(DATE(fetched_date)) as latest_date FROM stock_ratings")
+    latest_result = cursor.fetchone()
+    latest_date = latest_result["latest_date"] if latest_result else datetime.now().strftime("%Y-%m-%d")
+    
+    # Get all stocks that changed rating today (fetched_date = today)
+    query = """
+        SELECT 
+            today.symbol,
+            today.technical_rating AS current_rating,
+            (
+                SELECT prev.technical_rating 
+                FROM stock_ratings prev 
+                WHERE prev.symbol = today.symbol 
+                    AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                    AND prev.technical_rating != today.technical_rating
+                ORDER BY prev.fetched_date DESC 
+                LIMIT 1
+            ) AS previous_rating
+        FROM stock_ratings today
+        WHERE DATE(today.fetched_date) = ?
+    """
+    
+    cursor.execute(query, [latest_date])
+    results = cursor.fetchall()
+    
+    # Define rating hierarchy
+    rating_values = {
+        "Strong Sell": 1,
+        "Sell": 2,
+        "Neutral": 3,
+        "Buy": 4,
+        "Strong Buy": 5
+    }
+    
+    total_signals = 0
+    upgrades = 0
+    strong_buy_count = 0
+    
+    for row in results:
+        current = row["current_rating"]
+        previous = row["previous_rating"]
+        
+        # Only count if there was a previous rating (i.e., rating changed)
+        if previous:
+            total_signals += 1
+            
+            # Check if it's an upgrade
+            current_val = rating_values.get(current, 0)
+            previous_val = rating_values.get(previous, 0)
+            
+            if current_val > previous_val:
+                upgrades += 1
+                
+                # Count Strong Buy upgrades
+                if current == "Strong Buy":
+                    strong_buy_count += 1
+    
+    # Get yesterday's data for comparison
+    from datetime import datetime, timedelta
+    
+    # Calculate yesterday's date
+    latest_dt = datetime.strptime(latest_date, "%Y-%m-%d")
+    yesterday_dt = latest_dt - timedelta(days=1)
+    yesterday_date = yesterday_dt.strftime("%Y-%m-%d")
+    
+    yesterday_total = 0
+    yesterday_upgrades = 0
+    
+    # Get yesterday's signals
+    cursor.execute(query, [yesterday_date])
+    yesterday_results = cursor.fetchall()
+    
+    for row in yesterday_results:
+        current = row["current_rating"]
+        previous = row["previous_rating"]
+        
+        if previous:
+            yesterday_total += 1
+            
+            current_val = rating_values.get(current, 0)
+            previous_val = rating_values.get(previous, 0)
+            
+            if current_val > previous_val:
+                yesterday_upgrades += 1
+    
+    # Calculate percentage change
+    change_percent = 0
+    upgrades_change_percent = 0
+    
+    if yesterday_total > 0:
+        change_percent = ((total_signals - yesterday_total) / yesterday_total) * 100
+    
+    if yesterday_upgrades > 0:
+        upgrades_change_percent = ((upgrades - yesterday_upgrades) / yesterday_upgrades) * 100
+    
+    conn.close()
+    
+    return {
+        "total_signals_today": total_signals,
+        "upgrades": upgrades,
+        "strong_buy_count": strong_buy_count,
+        "date": latest_date,
+        "change_from_yesterday": round(change_percent, 1),
+        "upgrades_change_from_yesterday": round(upgrades_change_percent, 1)
     }
 
 
