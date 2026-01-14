@@ -32,17 +32,6 @@ export default function MenuHeader() {
         >
           Screener
         </NavLink>
-        <span className={getNavLinkClass(false)}>
-          Analytics
-        </span>
-        {/**
-       <NavLink 
-         to="/analytics" 
-          className={({ isActive }) => getNavLinkClass(isActive)}
-        >
-          Analytics
-        </NavLink>
-        */}
       </div>
     </Navbar>
   );
