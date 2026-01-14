@@ -202,33 +202,6 @@ def get_stock_detail(symbol: str):
                     "entry_price": entry_price,
                     "status": "OPEN"
                 }
-        
-        # Add the final (current) signal
-        # For current signal, result is unrealized profit (Current Price - Entry Price)
-        current_price = chronological_history[-1].get("current_price", 0)
-        
-        # Calculate days held so far
-        try:
-            start = datetime.strptime(current_signal["start_date"].split(" ")[0], "%Y-%m-%d")
-            now = datetime.now()
-            days_held = (now - start).days
-        except:
-            days_held = 0
-            
-        profit_percent = 0.0
-        if current_signal["entry_price"] > 0:
-            profit_percent = ((current_price - current_signal["entry_price"]) / current_signal["entry_price"]) * 100
-
-        signals.append({
-            "date": current_signal["start_date"],
-            "from_rating": current_signal["rating"],
-            "to_rating": "Current",
-            "entry_price": current_signal["entry_price"],
-            "exit_price": current_price,
-            "days_held": days_held,
-            "result": profit_percent,
-            "status": "OPEN" # Current active signal
-        })
     
     # Reverse signals back to Newest -> Oldest for display
     rating_changes = signals[::-1]
@@ -253,6 +226,18 @@ def get_stock_detail(symbol: str):
         "best_return": max([s["result"] for s in completed_signals]) if completed_signals else 0
     }
     
+    # Calculate accuracy stats per signal type (to_rating)
+    accuracy_stats = {}
+    for signal in completed_signals:
+        rating = signal["to_rating"]
+        if rating not in accuracy_stats:
+            accuracy_stats[rating] = {"wins": 0, "losses": 0}
+        
+        if signal["result"] > 0:
+            accuracy_stats[rating]["wins"] += 1
+        elif signal["result"] < 0:
+            accuracy_stats[rating]["losses"] += 1
+    
     # Calculate REAL price change from history (already done above but ensuring variables exist)
     change = 0.0
     change_percent = 0.0
@@ -274,7 +259,8 @@ def get_stock_detail(symbol: str):
         "change": change,
         "change_percent": change_percent,
         "stats": stats,
-        "history": rating_changes  # Return all signals
+        "accuracy_stats": accuracy_stats,  # NEW: Per-rating accuracy
+        "history": completed_signals  # Return only COMPLETED signals (no "Current")
     }
 
 

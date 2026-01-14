@@ -28,6 +28,12 @@ type StockDetailData = {
     avg_return: number;
     best_return: number;
   };
+  accuracy_stats: {
+    [rating: string]: {
+      wins: number;
+      losses: number;
+    };
+  };
   history: RatingHistory[];
 };
 
@@ -48,10 +54,39 @@ const getRatingTextColor = (rating: string | undefined) => {
 };
 
 const getRatingStyles = (rating: string | undefined) => {
-  if (rating === "Strong Buy") {
-    return "bg-[#07FFB91A] text-[#00FFB7]";
+  if (!rating) return "text-[#7588A3]";
+  
+  switch (rating) {
+    case "Strong Buy":
+    case "Buy":
+      return "text-[#00FFB7]";
+    case "Neutral":
+      return "text-[#FFFFFF]";
+    case "Sell":
+    case "Strong Sell":
+      return "text-[#FF3069]";
+    default:
+      return "text-[#7588A3]";
   }
-  return getRatingTextColor(rating);
+};
+
+const getHeaderBadgeStyles = (rating: string | undefined) => {
+  if (!rating) return "text-[#7588A3]";
+  
+  switch (rating) {
+    case "Strong Buy":
+      return "bg-[#07FFB91A] text-[#00FFB7]";
+    case "Buy":
+      return "bg-[#07FFB91A] text-[#00FFB7]";
+    case "Neutral":
+      return "bg-[#FFFFFF1A] text-[#FFFFFF]";
+    case "Sell":
+      return "bg-[#FF30691A] text-[#FF3069]";
+    case "Strong Sell":
+      return "bg-[#FF30691A] text-[#FF3069]";
+    default:
+      return "text-[#7588A3]";
+  }
 };
 
 const getResultColor = (result: number | undefined) => {
@@ -75,7 +110,7 @@ export default function StockDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState<StockDetailData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
+  const [selectedRating, setSelectedRating] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStockDetail = async () => {
@@ -121,16 +156,40 @@ export default function StockDetail() {
   }
 
   const filterButtons = ["Strong Sell", "Sell", "Buy", "Strong Buy"];
-
-  const filteredHistory = selectedFilter
-    ? data.history.filter(item => item.to_rating === selectedFilter)
-    : data.history;
-
   const isPositiveChange = data.change_percent >= 0;
 
-  // Calculate wins/losses for the header
-  const wins = data.history.filter(h => h.result !== undefined && h.result > 0).length;
-  const losses = data.history.filter(h => h.result !== undefined && h.result < 0).length;
+  // Get stats for selected rating or overall
+  const getDisplayStats = () => {
+    if (selectedRating) {
+      // When a rating is selected, show only that rating's stats
+      const stats = data.accuracy_stats[selectedRating];
+      if (stats) {
+        const total = stats.wins + stats.losses;
+        const winRate = total > 0 ? (stats.wins / total) * 100 : 0;
+        return {
+          wins: stats.wins,
+          losses: stats.losses,
+          winRate: winRate
+        };
+      }
+      // Rating selected but no signals exist for it - show 0
+      return {
+        wins: 0,
+        losses: 0,
+        winRate: 0
+      };
+    }
+    // No filter selected - show overall stats
+    const wins = data.history.filter(h => h.result !== undefined && h.result > 0).length;
+    const losses = data.history.filter(h => h.result !== undefined && h.result < 0).length;
+    return {
+      wins,
+      losses,
+      winRate: data.stats.win_rate
+    };
+  };
+
+  const displayStats = getDisplayStats();
 
   return (
     <div className="px-[53px] py-6">
@@ -162,35 +221,32 @@ export default function StockDetail() {
                 <div className="flex items-center gap-3">
                     <span className="text-[#F8FAFC] text-3xl font-bold">{data.symbol.split(":")[1] || data.symbol}</span>
                     <span className="text-[#7588A3] text-sm">{data.name}</span>
-                    <div className={`w-[91px] h-[20px] ${getRatingStyles(data.current_rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold`}>
+                    <div className={`px-3 h-[20px] ${getHeaderBadgeStyles(data.current_rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold whitespace-nowrap`}>
                         {data.current_rating}
                     </div>
                 </div>
                 
-                {/* Filter Buttons */}
+                {/* Accuracy Stats Buttons */}
                 <div className="flex gap-2">
                     {filterButtons.map((filter) => {
-                        const isActive = selectedFilter === filter;
+                        const isActive = selectedRating === filter;
+                        const isSellRating = filter === "Strong Sell" || filter === "Sell";
                         
-                        // Determine color based on rating type
-                        const getFilterColor = (rating: string) => {
-                            if (rating === "Strong Sell" || rating === "Sell") {
-                                return "text-[#FF3069] border-[#FF3069]";
-                            }
-                            return "text-[#00FFB7] border-[#00FFB7]";
-                        };
+                        // Determine colors based on rating type
+                        const textColor = isSellRating ? "text-[#FF3069]" : "text-[#00FFB7]";
+                        const activeBorderColor = isSellRating ? "border-[#FF3069]" : "border-[#00FFB7]";
                         
                         return (
                             <button
                             key={filter}
-                            onClick={() => setSelectedFilter(isActive ? null : filter)}
+                            onClick={() => setSelectedRating(isActive ? null : filter)}
                             className={`px-4 py-1.5 rounded-full border text-xs font-medium transition-all duration-200 ${
                                 isActive
-                                ? "bg-[#1E293B] border-[#00FFB7] text-[#00FFB7]" // Selected style
-                                : `bg-transparent ${getFilterColor(filter)} hover:bg-[#1E293B]/50`
+                                ? `bg-[#1E293B] ${activeBorderColor} ${textColor}`
+                                : `border-[#2D3748] ${textColor} hover:bg-[#1E293B]/50`
                             }`}
                             >
-                            {filter}
+                                {filter}
                             </button>
                         );
                     })}
@@ -212,18 +268,18 @@ export default function StockDetail() {
         {/* Right: Accuracy Stats */}
         <div className="flex items-center justify-center gap-10">
             <div className="text-center">
-                <div className="text-[#00FFB7] text-6xl font-bold">{data.stats.win_rate.toFixed(0)}%</div>
+                <div className="text-[#00FFB7] text-6xl font-bold">{displayStats.winRate.toFixed(0)}%</div>
                 <div className="text-[#F8FAFC] text-sm font-medium mt-1">Accuracy</div>
             </div>
             
             <div className="space-y-3">
                 <div className="flex items-center gap-3">
                     <div className="w-2.5 h-2.5 rounded-full bg-[#00FFB7] shadow-[0_0_8px_rgba(0,255,183,0.6)]"></div>
-                    <span className="text-[#F8FAFC] text-sm font-medium">Wins : {wins}</span>
+                    <span className="text-[#F8FAFC] text-sm font-medium">Wins : {displayStats.wins}</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="w-2.5 h-2.5 rounded-full bg-[#FF3069] shadow-[0_0_8px_rgba(255,48,105,0.6)]"></div>
-                    <span className="text-[#F8FAFC] text-sm font-medium">Losses : {losses}</span>
+                    <span className="text-[#F8FAFC] text-sm font-medium">Losses : {displayStats.losses}</span>
                 </div>
             </div>
         </div>
@@ -250,8 +306,8 @@ export default function StockDetail() {
 
         {/* History Rows */}
         <div className="space-y-4">
-          {filteredHistory.length > 0 ? (
-            filteredHistory.map((item, index) => {
+          {data.history.length > 0 ? (
+            data.history.map((item, index) => {
               const isProfit = item.result !== undefined && item.result > 0;
               const isLoss = item.result !== undefined && item.result < 0;
               // Determine dot color: Green for profit, Red for loss, Grey for Neutral/Pending
