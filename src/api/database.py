@@ -496,16 +496,52 @@ def get_today_summary():
             if current_val > previous_val:
                 yesterday_upgrades += 1
     
-    # Calculate percentage change
-    change_percent = 0
-    upgrades_change_percent = 0
-    
+    # Calculate percentage changes
+    change_from_yesterday = 0.0
     if yesterday_total > 0:
-        change_percent = ((total_signals - yesterday_total) / yesterday_total) * 100
-    
+        change_from_yesterday = ((total_signals - yesterday_total) / yesterday_total) * 100
+        
+    upgrades_change_from_yesterday = 0.0
     if yesterday_upgrades > 0:
-        upgrades_change_percent = ((upgrades - yesterday_upgrades) / yesterday_upgrades) * 100
-    
+        upgrades_change_from_yesterday = ((upgrades - yesterday_upgrades) / yesterday_upgrades) * 100
+
+    # Best Signal: Top gainer with Buy/Strong Buy rating
+    best_signal = None
+    if latest_date:
+        query_best = """
+        SELECT 
+            today.symbol,
+            today.current_price,
+            (
+                SELECT prev.current_price 
+                FROM stock_ratings prev 
+                WHERE prev.symbol = today.symbol 
+                AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                ORDER BY prev.fetched_date DESC 
+                LIMIT 1
+            ) as previous_price
+        FROM stock_ratings today
+        WHERE DATE(today.fetched_date) = ?
+        AND today.technical_rating IN ('Buy', 'Strong Buy')
+        """
+        cursor.execute(query_best, (latest_date,))
+        candidates = []
+        for row in cursor.fetchall():
+            curr = row["current_price"]
+            prev = row["previous_price"]
+            if curr and prev and prev > 0:
+                change_pct = ((curr - prev) / prev) * 100
+                candidates.append({
+                    "symbol": row["symbol"].split(":")[1] if ":" in row["symbol"] else row["symbol"],
+                    "market": row["symbol"].split(":")[0] if ":" in row["symbol"] else "",
+                    "change_percent": change_pct
+                })
+        
+        if candidates:
+            # Sort by change percent descending
+            candidates.sort(key=lambda x: x["change_percent"], reverse=True)
+            best_signal = candidates[0]
+
     conn.close()
     
     return {
@@ -513,8 +549,9 @@ def get_today_summary():
         "upgrades": upgrades,
         "strong_buy_count": strong_buy_count,
         "date": latest_date,
-        "change_from_yesterday": round(change_percent, 1),
-        "upgrades_change_from_yesterday": round(upgrades_change_percent, 1)
+        "change_from_yesterday": round(change_from_yesterday, 1),
+        "upgrades_change_from_yesterday": round(upgrades_change_from_yesterday, 1),
+        "best_signal": best_signal
     }
 
 

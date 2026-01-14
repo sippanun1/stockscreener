@@ -6,7 +6,6 @@ import { DataTable } from "./components/stock-table/data-table";
 import { stockColumns } from "./components/stock-table/columns";
 import SummaryInfo from './components/SummaryInfo'; 
 import StockListFilter from "./components/StockListFilter";
-import AnalyticsPage from "./components/AnalyticsPage";
 import StockDetail from "./components/StockDetail";
 import NotFound from "./components/NotFound";
 import "react-day-picker/dist/style.css";
@@ -44,7 +43,6 @@ function App() {
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
         <Routes>
           <Route path="/" element={<ScreenerPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/symbols/:symbol" element={<StockDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
