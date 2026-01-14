@@ -203,6 +203,19 @@ def get_stock_detail(symbol: str):
                     "status": "OPEN"
                 }
     
+    # Add current OPEN signal if exists (for pending display)
+    if current_signal:
+        signals.append({
+            "date": current_signal["start_date"],
+            "from_rating": current_signal["rating"],
+            "to_rating": "Current",
+            "entry_price": current_signal["entry_price"],
+            "exit_price": None,  # Pending - market not closed
+            "days_held": 0,
+            "result": None,  # Pending - no confirmed result
+            "status": "OPEN"
+        })
+    
     # Reverse signals back to Newest -> Oldest for display
     rating_changes = signals[::-1]
     
@@ -260,7 +273,7 @@ def get_stock_detail(symbol: str):
         "change_percent": change_percent,
         "stats": stats,
         "accuracy_stats": accuracy_stats,  # NEW: Per-rating accuracy
-        "history": completed_signals  # Return only COMPLETED signals (no "Current")
+        "history": rating_changes  # Return all signals including OPEN (pending)
     }
 
 

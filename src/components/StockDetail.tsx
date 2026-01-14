@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { StockLogo } from "./StockLogo";
-import { ArrowRight, ArrowLeft, Calendar, Star } from "lucide-react";
+import { ArrowRight, Calendar, Star } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 type RatingHistory = {
@@ -37,34 +37,21 @@ type StockDetailData = {
   history: RatingHistory[];
 };
 
-const getRatingTextColor = (rating: string | undefined) => {
-  if (!rating) return "text-[#7588A3]";
-  switch (rating) {
-    case "Strong Buy":
-    case "Buy":
-      return "text-[#00FFB7]";
-    case "Neutral":
-      return "text-[#FFFFFF]";
-    case "Sell":
-    case "Strong Sell":
-      return "text-[#FF3069]";
-    default:
-      return "text-[#7588A3]";
-  }
-};
 
 const getRatingStyles = (rating: string | undefined) => {
   if (!rating) return "text-[#7588A3]";
   
   switch (rating) {
     case "Strong Buy":
+      return "bg-[#07FFB91A] text-[#00FFB7]";
     case "Buy":
       return "text-[#00FFB7]";
     case "Neutral":
       return "text-[#FFFFFF]";
     case "Sell":
-    case "Strong Sell":
       return "text-[#FF3069]";
+    case "Strong Sell":
+      return "bg-[#FF30691A] text-[#FF3069]";
     default:
       return "text-[#7588A3]";
   }
@@ -207,10 +194,6 @@ export default function StockDetail() {
       <div className="bg-[#0F151F] rounded-2xl p-8 border border-[#1E2530] mb-8 grid grid-cols-[1.5fr_1fr_1fr] items-center gap-8 shadow-sm">
         {/* Left: Logo & Info */}
         <div className="flex items-start gap-6">
-            <button className="text-[#7588A3] hover:text-white transition-colors mt-2">
-                <Star className="w-5 h-5" />
-            </button>
-            
             <StockLogo 
               symbol={data.symbol} 
               name={data.name} 
@@ -255,13 +238,16 @@ export default function StockDetail() {
         </div>
 
         {/* Middle: Price */}
-        <div className="flex flex-col items-center justify-center border-l border-r border-[#1E2530] h-full py-2">
+        <div className="flex items-baseline justify-center gap-4 border-l border-r border-[#1E2530] h-full py-2 px-6">
              <div className="flex items-baseline gap-1">
                  <span className="text-[#F8FAFC] text-5xl font-bold tracking-tight">{data.current_price.toFixed(2)}</span>
                  <span className="text-[#7588A3] text-lg font-medium">USD</span>
              </div>
-             <span className={`text-lg font-medium mt-1 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                {data.change > 0 ? "+" : ""}{data.change.toFixed(2)} ({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)
+             <span className={`text-2xl font-medium ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                {data.change > 0 ? "+" : ""}{data.change.toFixed(2)}
+             </span>
+             <span className={`text-xl font-medium ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                ({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)
              </span>
         </div>
 
@@ -349,7 +335,7 @@ export default function StockDetail() {
 
                           {/* Arrow Column */}
                           <div className="flex justify-center">
-                              {item.exit_price && <ArrowRight className="w-3 h-3 text-[#7588A3]" />}
+                              {item.exit_price && <ArrowRight className="w-4 h-4 text-[#7588A3]" />}
                           </div>
 
                           {/* Exit Price */}
@@ -366,10 +352,10 @@ export default function StockDetail() {
 
                           {/* Result */}
                           <div className={`text-right pr-4 font-bold text-lg ${getResultColor(item.result)}`}>
-                              {item.result !== undefined ? (
+                              {item.result !== undefined && item.result !== null ? (
                                   <>{item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%</>
                               ) : (
-                                  "—"
+                                  <span className="text-[#7588A3] text-xl tracking-widest leading-none pb-1">•••</span>
                               )}
                           </div>
                     </div>
