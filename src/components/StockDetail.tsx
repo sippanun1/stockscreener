@@ -190,84 +190,96 @@ export default function StockDetail() {
           </button>
       </div>
 
-      {/* Main Header Card */}
-      <div className="bg-[#0F151F] rounded-2xl p-8 border border-[#1E2530] mb-8 grid grid-cols-[1.5fr_1fr_1fr] items-center gap-8 shadow-sm">
-        {/* Left: Logo & Info */}
-        <div className="flex items-start gap-6">
+      {/* Two Cards in Same Row */}
+      <div className="flex gap-4 mb-8">
+        {/* Card 1: Stock Information */}
+        <div className="flex-[3] bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex items-stretch justify-between shadow-sm">
+          {/* Left Side: Logo + Basic Info */}
+          <div className="flex items-center gap-4">
             <StockLogo 
               symbol={data.symbol} 
               name={data.name} 
-              className="w-16 h-16 text-2xl" 
+              className="w-14 h-14 text-xl" 
             />
             
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col h-full justify-between py-0.5">
+                {/* Symbol + Name */}
                 <div className="flex items-center gap-3">
-                    <span className="text-[#F8FAFC] text-3xl font-bold">{data.symbol.split(":")[1] || data.symbol}</span>
+                    <span className="text-[#F8FAFC] text-2xl font-bold">{data.symbol.split(":")[1] || data.symbol}</span>
                     <span className="text-[#7588A3] text-sm">{data.name}</span>
-                    <div className={`px-3 h-[20px] ${getHeaderBadgeStyles(data.current_rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold whitespace-nowrap`}>
-                        {data.current_rating}
-                    </div>
                 </div>
                 
-                {/* Accuracy Stats Buttons */}
-                <div className="flex gap-2">
-                    {filterButtons.map((filter) => {
-                        const isActive = selectedRating === filter;
-                        const isSellRating = filter === "Strong Sell" || filter === "Sell";
-                        
-                        // Determine colors based on rating type
-                        const textColor = isSellRating ? "text-[#FF3069]" : "text-[#00FFB7]";
-                        const activeBorderColor = isSellRating ? "border-[#FF3069]" : "border-[#00FFB7]";
-                        
-                        return (
-                            <button
-                            key={filter}
-                            onClick={() => setSelectedRating(isActive ? null : filter)}
-                            className={`px-4 py-1.5 rounded-full border text-xs font-medium transition-all duration-200 ${
-                                isActive
-                                ? `bg-[#1E293B] ${activeBorderColor} ${textColor}`
-                                : `border-[#2D3748] ${textColor} hover:bg-[#1E293B]/50`
-                            }`}
-                            >
-                                {filter}
-                            </button>
-                        );
-                    })}
+                {/* Price + Change Value */}
+                <div className="flex items-baseline gap-2">
+                    <span className="text-[#F8FAFC] text-3xl font-bold">{data.current_price.toFixed(2)}</span>
+                    <span className="text-[#7588A3] text-sm font-medium">USD</span>
+                    <span className={`text-lg font-medium ml-4 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                        {data.change > 0 ? "+" : ""}{data.change.toFixed(2)}
+                    </span>
                 </div>
             </div>
+          </div>
+
+          {/* Right Side: Badge + Percent Change */}
+          <div className="flex flex-col items-end justify-between py-0.5">
+              <div className={`px-3 h-[24px] ${getHeaderBadgeStyles(data.current_rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold whitespace-nowrap`}>
+                  {data.current_rating}
+              </div>
+              <span className={`text-lg font-medium ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                  ({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)
+              </span>
+          </div>
         </div>
 
-        {/* Middle: Price */}
-        <div className="flex items-baseline justify-center gap-4 border-l border-r border-[#1E2530] h-full py-2 px-6">
-             <div className="flex items-baseline gap-1">
-                 <span className="text-[#F8FAFC] text-5xl font-bold tracking-tight">{data.current_price.toFixed(2)}</span>
-                 <span className="text-[#7588A3] text-lg font-medium">USD</span>
-             </div>
-             <span className={`text-2xl font-medium ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                {data.change > 0 ? "+" : ""}{data.change.toFixed(2)}
-             </span>
-             <span className={`text-xl font-medium ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                ({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)
-             </span>
-        </div>
+        {/* Card 2: Filters & Accuracy Stats */}
+        <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex items-center justify-between shadow-sm flex-[7]">
+          {/* Left: Rating Filter Buttons */}
+          <div className="flex gap-3">
+              {filterButtons.map((filter) => {
+                  const isActive = selectedRating === filter;
+                  const isSellRating = filter === "Strong Sell" || filter === "Sell";
+                  
+                  // Determine colors based on rating type
+                  const textColor = isSellRating ? "text-[#FF3069]" : "text-[#00FFB7]";
+                  const activeBorderColor = isSellRating ? "border-[#FF3069]" : "border-[#00FFB7]";
+                  
+                  return (
+                      <button
+                      key={filter}
+                      onClick={() => setSelectedRating(isActive ? null : filter)}
+                      className={`px-6 py-2.5 rounded-full border text-sm font-medium transition-all duration-200 ${
+                          isActive
+                          ? `bg-[#1E293B] ${activeBorderColor} ${textColor}`
+                          : `border-[#2D3748] ${textColor} hover:bg-[#1E293B]/50`
+                      }`}
+                      >
+                          {filter}
+                      </button>
+                  );
+              })}
+          </div>
 
-        {/* Right: Accuracy Stats */}
-        <div className="flex items-center justify-center gap-10">
-            <div className="text-center">
-                <div className="text-[#00FFB7] text-6xl font-bold">{displayStats.winRate.toFixed(0)}%</div>
-                <div className="text-[#F8FAFC] text-sm font-medium mt-1">Accuracy</div>
-            </div>
-            
-            <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#00FFB7] shadow-[0_0_8px_rgba(0,255,183,0.6)]"></div>
-                    <span className="text-[#F8FAFC] text-sm font-medium">Wins : {displayStats.wins}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#FF3069] shadow-[0_0_8px_rgba(255,48,105,0.6)]"></div>
-                    <span className="text-[#F8FAFC] text-sm font-medium">Losses : {displayStats.losses}</span>
-                </div>
-            </div>
+          {/* Right: Accuracy Stats */}
+          <div className="flex items-center gap-8 mr-4">
+              <div className="text-center">
+                  <div className="text-[#00FFB7] text-5xl font-bold">{displayStats.winRate.toFixed(0)}%</div>
+                  <div className="text-[#F8FAFC] text-sm font-medium mt-1">Accuracy</div>
+              </div>
+              
+              {/* Vertical Divider */}
+              <div className="h-16 w-px bg-[#1E2530]"></div>
+              
+              <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#00FFB7] shadow-[0_0_8px_rgba(0,255,183,0.6)]"></div>
+                      <span className="text-[#F8FAFC] text-sm font-medium">Wins : {displayStats.wins}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#FF3069] shadow-[0_0_8px_rgba(255,48,105,0.6)]"></div>
+                      <span className="text-[#F8FAFC] text-sm font-medium">Losses : {displayStats.losses}</span>
+                  </div>
+              </div>
+          </div>
         </div>
       </div>
 
@@ -280,13 +292,12 @@ export default function StockDetail() {
         {/* Table Headers */}
         <div className="flex items-center mb-2">
             <div className="w-36 flex-shrink-0"></div>
-            <div className="flex-1 grid grid-cols-[1.2fr_1.5fr_1fr_0.2fr_1fr_0.8fr] px-8 py-3 text-[#F8FAFC] text-sm font-medium">
+            <div className="flex-1 grid grid-cols-[1.2fr_1.5fr_1fr_0.4fr_1.2fr] px-8 py-3 text-[#F8FAFC] text-sm font-medium">
                 <div>Date</div>
-                <div>Signal</div>
-                <div className="text-center">Previous Price</div>
-                <div></div> {/* Arrow Column Header */}
-                <div className="text-center">Exit Price</div>
-                <div className="text-right pr-4">Result</div>
+                <div className="text-center">Signal</div>
+                <div className="text-right">Previous Close</div>
+                <div></div> {/* Arrow Column */}
+                <div>Result</div>
             </div>
         </div>
 
@@ -309,7 +320,7 @@ export default function StockDetail() {
                     </div>
 
                     {/* Card */}
-                    <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.2fr_1fr_0.8fr] items-center hover:border-[#2D3748] transition-colors">
+                    <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.4fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
                           {/* Date */}
                           <div className="flex items-center gap-3 text-[#F8FAFC]">
                               <Calendar className="w-4 h-4 text-[#F8FAFC]" />
@@ -317,7 +328,7 @@ export default function StockDetail() {
                           </div>
 
                           {/* Signal Transition */}
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center gap-3">
                               <div className={`w-[91px] h-[20px] ${getRatingStyles(item.from_rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold`}>
                                   {item.from_rating}
                               </div>
@@ -327,35 +338,33 @@ export default function StockDetail() {
                               </div>
                           </div>
 
-                          {/* Previous Price */}
-                          <div className="text-center">
+                          {/* Previous Close */}
+                          <div className="text-right">
                               <span className="text-[#F8FAFC] font-bold">{item.entry_price.toFixed(2)}</span>
                               <span className="text-[#7588A3] text-xs font-medium ml-1">USD</span>
                           </div>
 
                           {/* Arrow Column */}
-                          <div className="flex justify-center">
-                              {item.exit_price && <ArrowRight className="w-4 h-4 text-[#7588A3]" />}
-                          </div>
-
-                          {/* Exit Price */}
-                          <div className="text-center">
-                              {item.exit_price ? (
-                                  <>
-                                      <span className="text-[#F8FAFC] font-bold">{item.exit_price.toFixed(2)}</span>
-                                      <span className="text-[#7588A3] text-xs font-medium ml-1">USD</span>
-                                  </>
-                              ) : (
-                                  <span className="text-[#F8FAFC] text-xl tracking-widest leading-none pb-1">•••</span>
-                              )}
+                          <div className="flex justify-center items-center">
+                              <ArrowRight className="w-4 h-4 text-[#7588A3]" />
                           </div>
 
                           {/* Result */}
-                          <div className={`text-right pr-4 font-bold text-lg ${getResultColor(item.result)}`}>
-                              {item.result !== undefined && item.result !== null ? (
-                                  <>{item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%</>
+                          <div>
+                              {item.exit_price && item.result !== undefined && item.result !== null ? (
+                                  <div className="flex items-center gap-2">
+                                      <span className="text-[#F8FAFC] font-bold">{item.exit_price.toFixed(2)}</span>
+                                      <span className="text-[#7588A3] text-xs font-medium">USD</span>
+                                      <span className={`font-bold text-lg ml-2 ${getResultColor(item.result)}`}>
+                                          ({item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%)
+                                      </span>
+                                  </div>
                               ) : (
-                                  <span className="text-[#7588A3] text-xl tracking-widest leading-none pb-1">•••</span>
+                                  <div className="flex items-center">
+                                      <div className="bg-[#1E40AF] text-white px-4 py-1.5 rounded-full text-sm font-semibold">
+                                          Pending
+                                      </div>
+                                  </div>
                               )}
                           </div>
                     </div>

@@ -505,35 +505,43 @@ def get_today_summary():
     if yesterday_upgrades > 0:
         upgrades_change_from_yesterday = ((upgrades - yesterday_upgrades) / yesterday_upgrades) * 100
 
-    # Best Signal: Top gainer with Buy/Strong Buy rating
+    # Best Signal: Top gainer compared to yesterday
     best_signal = None
     if latest_date:
+        # Calculate yesterday's date
+        from datetime import datetime, timedelta
+        latest_dt = datetime.strptime(latest_date, "%Y-%m-%d")
+        yesterday_dt = latest_dt - timedelta(days=1)
+        yesterday_date = yesterday_dt.strftime("%Y-%m-%d")
+        
         query_best = """
         SELECT 
             today.symbol,
+            today.name,
             today.current_price,
+            today.technical_rating,
             (
                 SELECT prev.current_price 
                 FROM stock_ratings prev 
                 WHERE prev.symbol = today.symbol 
-                AND DATE(prev.fetched_date) < DATE(today.fetched_date)
-                ORDER BY prev.fetched_date DESC 
+                AND DATE(prev.fetched_date) = ?
                 LIMIT 1
-            ) as previous_price
+            ) as yesterday_price
         FROM stock_ratings today
         WHERE DATE(today.fetched_date) = ?
         AND today.technical_rating IN ('Buy', 'Strong Buy')
         """
-        cursor.execute(query_best, (latest_date,))
+        cursor.execute(query_best, (yesterday_date, latest_date))
         candidates = []
         for row in cursor.fetchall():
             curr = row["current_price"]
-            prev = row["previous_price"]
-            if curr and prev and prev > 0:
-                change_pct = ((curr - prev) / prev) * 100
+            yesterday = row["yesterday_price"]
+            if curr and yesterday and yesterday > 0:
+                change_pct = ((curr - yesterday) / yesterday) * 100
                 candidates.append({
                     "symbol": row["symbol"].split(":")[1] if ":" in row["symbol"] else row["symbol"],
                     "market": row["symbol"].split(":")[0] if ":" in row["symbol"] else "",
+                    "name": row["name"],
                     "change_percent": change_pct
                 })
         

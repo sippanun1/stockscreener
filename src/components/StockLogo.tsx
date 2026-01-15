@@ -8,9 +8,30 @@ interface StockLogoProps {
 }
 
 const getStockLogoUrl = (symbol: string) => {
-  // Clean symbol (e.g. "NASDAQ:NVDA" -> "NVDA") because FMP uses pure symbol
-  const cleanSymbol = symbol.split(':')[1] || symbol
-  return `https://financialmodelingprep.com/image-stock/${cleanSymbol}.png`
+  // Extract ticker and exchange from symbol (e.g. "NASDAQ:NVDA" -> ticker: "NVDA", exchange: "NASDAQ")
+  const parts = symbol.split(':')
+  const ticker = parts[1] || symbol
+  const exchange = parts[0]
+  
+  // Format ticker based on exchange for Elbstream API
+  let formattedTicker = ticker
+  
+  // Hong Kong stocks: add .HK suffix
+  if (exchange === 'HKEX') {
+    formattedTicker = `${ticker}.HK`
+  }
+  // Tokyo stocks: add .T suffix
+  else if (exchange === 'TSE' || exchange === 'SAPSE') {
+    formattedTicker = `${ticker}.T`
+  }
+  // Bangkok/Thailand stocks: add .BK suffix
+  else if (exchange === 'SET') {
+    formattedTicker = `${ticker}.BK`
+  }
+  // US stocks: use ticker as-is (AAPL, TSLA, etc.)
+  
+  // Elbstream Logo API - correct endpoint format
+  return `https://api.elbstream.com/logos/symbol/${formattedTicker}?size=64&format=png`
 }
 
 // Generate consistent pastel color based on name string

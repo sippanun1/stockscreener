@@ -15,6 +15,7 @@ type SummaryData = {
   best_signal?: {
     symbol: string;
     market: string;
+    name: string;
     change_percent: number;
   };
 };
@@ -87,8 +88,15 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
              <p className="text-[#7588A3] text-xs mt-2">No signals yet</p>
           )}
         </div>
-        <div className="text-[#F8FAFC] text-4xl font-bold ml-4">
-          {summary.best_signal ? summary.best_signal.symbol : "—"}
+        <div className="text-right">
+          <div className="text-[#F8FAFC] text-4xl font-bold">
+            {summary.best_signal ? summary.best_signal.symbol : "—"}
+          </div>
+          {summary.best_signal && summary.best_signal.name && (
+            <div className="text-[#7588A3] text-xs mt-1 truncate max-w-[200px]">
+              {summary.best_signal.name}
+            </div>
+          )}
         </div>
       </div>
     </div>

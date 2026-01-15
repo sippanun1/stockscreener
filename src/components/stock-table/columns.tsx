@@ -56,7 +56,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
     cell: ({ row }) => {
       const symbol = row.original.symbol
       return (
-        <div className="text-[#F8FAFC] text-sm">
+        <div className="text-[#F8FAFC] text-left text-sm">
           {symbol.split(":")[0]}
         </div>
       )
@@ -68,8 +68,9 @@ export const stockColumns: ColumnDef<Stock>[] = [
     cell: ({ row }) => {
       const price = parseFloat(row.getValue("current_price"))
       return (
-        <div className="text-[#F8FAFC] text-right text-sm">
-          ${price.toFixed(2)}
+        <div className="text-right text-sm">
+          <span className="text-[#F8FAFC]">{price.toFixed(2)}</span>
+          <span className="text-[#7588A3] text-xs ml-1">USD</span>
         </div>
       )
     },
@@ -187,9 +188,9 @@ export const stockColumns: ColumnDef<Stock>[] = [
         <div className="flex justify-center">
           <Link
             to={`/symbols/${encodeURIComponent(row.original.symbol)}`}
-            className="relative inline-flex items-center justify-center w-[90px] h-[28px] rounded-full bg-[#1E40AF] hover:bg-[#1E3A8A] text-[#F8FAFC] text-xs font-semibold transition-all duration-200 group overflow-hidden"
+            className="relative inline-flex items-center justify-center w-[110px] h-[28px] rounded-full bg-[#1E40AF] hover:bg-[#1E3A8A] text-[#F8FAFC] text-xs font-semibold transition-all duration-200 group overflow-hidden"
           >
-            <span className="group-hover:-translate-x-2 transition-transform duration-200">History</span>
+            <span className="group-hover:-translate-x-2 transition-transform duration-200">View Details</span>
             <LongArrowRight className="absolute right-3 w-4 h-4 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
           </Link>
         </div>
@@ -197,3 +198,4 @@ export const stockColumns: ColumnDef<Stock>[] = [
     },
   },
 ]
+

@@ -231,13 +231,23 @@ export function DataTable({ columns, filters }: DataTableProps) {
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-[#1E2530] hover:bg-[#1E2530]">
                   {headerGroup.headers.map((header) => {
+                    // Determine alignment based on column
+                    const isExchange = header.column.id === 'exchange'
+                    const isNumeric = ['current_price', 'change', 'changePercent'].includes(header.column.id)
+                    
+                    const alignClass = isExchange 
+                      ? 'text-left justify-start' 
+                      : isNumeric 
+                        ? 'text-right justify-end' 
+                        : 'text-center justify-center'
+                    
                     return (
                       <TableHead
                         key={header.id}
-                        className="text-[#F8FAFC] text-xs text-center cursor-pointer hover:bg-[#1E2530] bg-[#0F151F] font-semibold"
+                        className={`text-[#F8FAFC] text-xs cursor-pointer hover:bg-[#1E2530] bg-[#0F151F] font-semibold ${alignClass}`}
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        <div className="flex items-center justify-center gap-1">
+                        <div className={`flex items-center gap-1 ${alignClass.split(' ')[1]}`}>
                           {header.isPlaceholder
                             ? null
                             : flexRender(

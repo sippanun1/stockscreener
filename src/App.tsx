@@ -47,6 +47,10 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
+      {/* Elbstream Logo API Attribution - Required for free tier */}
+      <footer className="text-center py-3 text-xs text-[#7588A3] border-t border-[#1E2530]">
+        Stock logos provided by <a href="https://elbstream.com" target="_blank" rel="noopener noreferrer" className="text-[#00FFB7] hover:underline">Elbstream</a>
+      </footer>
     </div>
   );
 }
