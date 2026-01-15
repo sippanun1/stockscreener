@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import type { Stock } from "@/types/stock"
 import { SortArrows } from "@/components/SortArrows"
@@ -41,13 +41,12 @@ interface DataTableProps {
 const BATCH_SIZE = 100
 
 export function DataTable({ columns, filters }: DataTableProps) {
-  const [data, setData] = useState<Stock[]>([])
   const [allData, setAllData] = useState<Stock[]>([])
-  const [filteredData, setFilteredData] = useState<Stock[]>([])
   const [displayCount, setDisplayCount] = useState(BATCH_SIZE)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [sorting, setSorting] = useState<SortingState>([])
+  // Default sort by Date (fetched_date key) descending
+  const [sorting, setSorting] = useState<SortingState>([{ id: "fetched_date", desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const navigate = useNavigate()
@@ -72,12 +71,11 @@ export function DataTable({ columns, filters }: DataTableProps) {
           Technical_Rating: s.Technical_Rating,
           Previous_Rating: s.Previous_Rating,
           previous_rating_date: s.previous_rating_date,
+          rating_change_date: s.rating_change_date,
           fetched_date: s.fetched_date,
         }))
         
         setAllData(stocks)
-        setFilteredData(stocks)
-        setData(stocks.slice(0, BATCH_SIZE))
       } catch (error) {
         console.error("Error loading stock data:", error)
       } finally {
@@ -88,11 +86,12 @@ export function DataTable({ columns, filters }: DataTableProps) {
     loadData()
   }, [])
 
-  // Apply external filters and internal search
-  useEffect(() => {
-    if (allData.length === 0) return
+  // Apply external filters and internal search using useMemo
+  // This prevents double-rendering by calculating state during render instead of in an effect
+  const filteredData = useMemo(() => {
+    if (allData.length === 0) return []
 
-    let filtered = allData
+    let filtered = [...allData]
 
     // External Filters
     if (filters?.market) {
@@ -115,7 +114,7 @@ export function DataTable({ columns, filters }: DataTableProps) {
         )
       }
     }
-    // Date Filter - filter by when current rating started (fetched_date)
+    // Date Filter
     if (filters?.date) {
       filtered = filtered.filter((stock) => {
         if (!stock.fetched_date) return false
@@ -133,7 +132,7 @@ export function DataTable({ columns, filters }: DataTableProps) {
       )
     }
 
-    // Apply Sorting to the full dataset
+    // Apply Sorting
     if (sorting.length > 0) {
       const { id, desc } = sorting[0]
       filtered.sort((a, b) => {
@@ -142,13 +141,19 @@ export function DataTable({ columns, filters }: DataTableProps) {
 
         // Handle calculated columns
         if (id === "change") {
-          aValue = (a.current_price || 0) - (a.previous_price || 0)
-          bValue = (b.current_price || 0) - (b.previous_price || 0)
+          const aPrev = a.previous_price || 0
+          const bPrev = b.previous_price || 0
+          aValue = aPrev === 0 ? 0 : ((a.current_price || 0) - aPrev) / aPrev
+          bValue = bPrev === 0 ? 0 : ((b.current_price || 0) - bPrev) / bPrev
         } else if (id === "changePercent") {
           const aPrev = a.previous_price || 0
           const bPrev = b.previous_price || 0
           aValue = aPrev === 0 ? 0 : ((a.current_price || 0) - aPrev) / aPrev
           bValue = bPrev === 0 ? 0 : ((b.current_price || 0) - bPrev) / bPrev
+        } else if (id === "fetched_date") {
+          // Sort by signal date (rating_change_date) if available
+          aValue = a.rating_change_date || a.fetched_date
+          bValue = b.rating_change_date || b.fetched_date
         }
 
         if (aValue === bValue) return 0
@@ -161,18 +166,13 @@ export function DataTable({ columns, filters }: DataTableProps) {
       })
     }
 
-    setFilteredData(filtered)
-    setDisplayCount(BATCH_SIZE)
-    setData(filtered.slice(0, BATCH_SIZE))
+    return filtered
   }, [filters, allData, sorting])
 
-
-  // Load more when displayCount changes
-  useEffect(() => {
-    if (filteredData.length > 0) {
-      setData(filteredData.slice(0, displayCount))
-    }
-  }, [displayCount, filteredData])
+  // Slice data for display
+  const currentData = useMemo(() => {
+    return filteredData.slice(0, displayCount)
+  }, [filteredData, displayCount])
 
   // Handle scroll to load more
   const handleScroll = useCallback(() => {
@@ -191,7 +191,7 @@ export function DataTable({ columns, filters }: DataTableProps) {
   }, [displayCount, filteredData.length, loadingMore])
 
   const table = useReactTable({
-    data,
+    data: currentData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -253,7 +253,7 @@ export function DataTable({ columns, filters }: DataTableProps) {
                             : flexRender(
                                 header.column.columnDef.header,
                                 header.getContext()
-                              )}
+                                )}
                           {header.column.getCanSort() && (
                             <SortArrows 
                               sortDirection={header.column.getIsSorted()}

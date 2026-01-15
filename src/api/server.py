@@ -281,4 +281,5 @@ if __name__ == "__main__":
     import uvicorn
     print(">> Starting Stock Screener API Server...")
     print(">> API docs available at: http://localhost:8000/docs")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Enable reload for development
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)

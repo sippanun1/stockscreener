@@ -69,7 +69,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       const price = parseFloat(row.getValue("current_price"))
       return (
         <div className="text-right text-sm">
-          <span className="text-[#F8FAFC]">{price.toFixed(2)}</span>
+          <span className="text-[#F8FAFC]">{price}</span>
           <span className="text-[#7588A3] text-xs ml-1">USD</span>
         </div>
       )
@@ -156,21 +156,27 @@ export const stockColumns: ColumnDef<Stock>[] = [
     accessorKey: "fetched_date",
     header: "Date",
     cell: ({ row }) => {
-      const dateString = row.getValue("fetched_date") as string
+      // Use rating_change_date if available (signal start date), otherwise fetched_date
+      const dateString = (row.original.rating_change_date || row.getValue("fetched_date")) as string
+      
       if (!dateString) return <div className="text-[#F8FAFC] text-center text-sm">-</div>
 
       let displayDate = dateString
-      // Assuming dateString is "YYYY-MM-DD" or similar
-      const date = parseISO(dateString)
-      
-      if (!isNaN(date.getTime())) {
-        if (isToday(date)) {
-          displayDate = "Today"
-        } else if (isYesterday(date)) {
-          displayDate = "Yesterday"
-        } else {
-          displayDate = format(date, "MMM dd")
+      // Try to parse both simple date (YYYY-MM-DD) and ISO string
+      try {
+        const date = parseISO(dateString)
+        
+        if (!isNaN(date.getTime())) {
+          if (isToday(date)) {
+            displayDate = "Today"
+          } else if (isYesterday(date)) {
+            displayDate = "Yesterday"
+          } else {
+            displayDate = format(date, "MMM dd")
+          }
         }
+      } catch (e) {
+        // Fallback to original string if parse fails
       }
 
       return (

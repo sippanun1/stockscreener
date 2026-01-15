@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { format, isToday, isYesterday, parseISO } from "date-fns";
 import type { Stock } from "../types/stock";
 
 type StockTableProps = {
@@ -69,6 +70,20 @@ export default function StockTable({ stocks }: StockTableProps) {
     return "text-[#7588A3]";
   };
 
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return "-";
+    try {
+      const date = parseISO(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      
+      if (isToday(date)) return "Today";
+      if (isYesterday(date)) return "Yesterday";
+      return format(date, "MMM dd");
+    } catch (error) {
+      return dateString;
+    }
+  };
+
   return (
     <div className="ml-[53px] mr-[53px] mt-[17px]">
       {/* Stats bar */}
@@ -133,7 +148,7 @@ export default function StockTable({ stocks }: StockTableProps) {
 
                 {/* Price */}
                 <div className="w-[120px] text-[#F8FAFC] text-right text-sm flex-shrink-0 px-2">
-                  ${Number(s.current_price).toFixed(2)}
+                  ${Number(s.current_price)}
                 </div>
 
                 {/* Change */}
@@ -171,7 +186,7 @@ export default function StockTable({ stocks }: StockTableProps) {
 
                 {/* Date */}
                 <div className="w-[100px] text-[#7588A3] text-center text-sm flex-shrink-0 px-2 truncate">
-                  {s.fetched_date || ""}
+                  {formatDate(s.rating_change_date || s.fetched_date)}
                 </div>
 
                 {/* Backtest */}

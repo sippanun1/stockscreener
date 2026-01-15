@@ -185,7 +185,21 @@ def get_stocks_with_previous_rating(
                         AND prev.technical_rating != today.technical_rating
                     ORDER BY prev.fetched_date DESC 
                     LIMIT 1
-                ) AS previous_price
+                ) AS previous_price,
+                (
+                    SELECT MIN(rcd.fetched_date)
+                    FROM stock_ratings rcd
+                    WHERE rcd.symbol = today.symbol
+                    AND DATE(rcd.fetched_date) > IFNULL((
+                        SELECT DATE(prev.fetched_date) 
+                        FROM stock_ratings prev 
+                        WHERE prev.symbol = today.symbol 
+                            AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                            AND prev.technical_rating != today.technical_rating
+                        ORDER BY prev.fetched_date DESC 
+                        LIMIT 1
+                    ), '1970-01-01')
+                ) AS rating_change_date
             FROM stock_ratings today
             INNER JOIN latest_stocks ls 
                 ON today.symbol = ls.symbol 
@@ -237,7 +251,21 @@ def get_stocks_with_previous_rating(
                         AND prev.technical_rating != today.technical_rating
                     ORDER BY prev.fetched_date DESC 
                     LIMIT 1
-                ) AS previous_price
+                ) AS previous_price,
+                (
+                    SELECT MIN(rcd.fetched_date)
+                    FROM stock_ratings rcd
+                    WHERE rcd.symbol = today.symbol
+                    AND DATE(rcd.fetched_date) > IFNULL((
+                        SELECT DATE(prev.fetched_date) 
+                        FROM stock_ratings prev 
+                        WHERE prev.symbol = today.symbol 
+                            AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                            AND prev.technical_rating != today.technical_rating
+                        ORDER BY prev.fetched_date DESC 
+                        LIMIT 1
+                    ), '1970-01-01')
+                ) AS rating_change_date
             FROM stock_ratings today
             WHERE DATE(today.fetched_date) = ?
         """
@@ -264,6 +292,7 @@ def get_stocks_with_previous_rating(
             "Technical_Rating": row["current_rating"],
             "Previous_Rating": row["previous_rating"],
             "previous_rating_date": row["previous_rating_date"],
+            "rating_change_date": row["rating_change_date"],
             "fetched_date": row["fetched_date"]
         })
     
