@@ -31,6 +31,21 @@ const getRatingStyles = (rating: string | undefined) => {
   return getRatingTextColor(rating)
 }
 
+const getCurrencySymbol = (market: string | undefined) => {
+  switch (market?.toUpperCase()) {
+    case "TH":
+      return "THB"
+    case "HK":
+      return "HKD"
+    case "JP":
+      return "JPY"
+    case "US":
+      return "USD"
+    default:
+      return "USD"
+  }
+}
+
 export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "symbol",
@@ -67,10 +82,11 @@ export const stockColumns: ColumnDef<Stock>[] = [
     header: "Price",
     cell: ({ row }) => {
       const price = parseFloat(row.getValue("current_price"))
+      const market = row.original.market
       return (
         <div className="text-right text-sm">
           <span className="text-[#F8FAFC]">{price}</span>
-          <span className="text-[#7588A3] text-xs ml-1">USD</span>
+          <span className="text-[#F8FAFC] text-[0.65rem] ml-1">{getCurrencySymbol(market)}</span>
         </div>
       )
     },
