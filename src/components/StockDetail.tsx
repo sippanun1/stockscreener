@@ -193,7 +193,7 @@ export default function StockDetail() {
       {/* Two Cards in Same Row */}
       <div className="flex gap-4 mb-8">
         {/* Card 1: Stock Information */}
-        <div className="flex-[3] bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex items-stretch justify-between shadow-sm">
+        <div className="flex-shrink-0 bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex items-stretch justify-between shadow-sm">
           {/* Left Side: Logo + Basic Info */}
           <div className="flex items-center gap-4">
             <StockLogo 
@@ -211,74 +211,76 @@ export default function StockDetail() {
                 
                 {/* Price + Change Value */}
                 <div className="flex items-baseline gap-2">
-                    <span className="text-[#F8FAFC] text-3xl font-bold">{data.current_price.toFixed(2)}</span>
+                    <span className="text-[#F8FAFC] text-3xl font-bold">{data.current_price}</span>
                     <span className="text-[#7588A3] text-sm font-medium">USD</span>
                     <span className={`text-lg font-medium ml-4 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                        {data.change > 0 ? "+" : ""}{data.change.toFixed(2)}
+                        {data.change > 0 ? "+" : ""}{data.change}
+                    </span>
+                    <span className={`text-lg font-medium ml-3 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                        ({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)
                     </span>
                 </div>
             </div>
           </div>
 
-          {/* Right Side: Badge + Percent Change */}
-          <div className="flex flex-col items-end justify-between py-0.5">
+          {/* Right Side: Badge */}
+          <div className="flex flex-col items-end justify-start py-0.5">
               <div className={`px-3 h-[24px] ${getHeaderBadgeStyles(data.current_rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold whitespace-nowrap`}>
                   {data.current_rating}
               </div>
-              <span className={`text-lg font-medium ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                  ({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)
-              </span>
           </div>
         </div>
 
         {/* Card 2: Filters & Accuracy Stats */}
-        <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex items-center justify-between shadow-sm flex-[7]">
-          {/* Left: Rating Filter Buttons */}
-          <div className="flex gap-3">
-              {filterButtons.map((filter) => {
-                  const isActive = selectedRating === filter;
-                  const isSellRating = filter === "Strong Sell" || filter === "Sell";
-                  
-                  // Determine colors based on rating type
-                  const textColor = isSellRating ? "text-[#FF3069]" : "text-[#00FFB7]";
-                  const activeBorderColor = isSellRating ? "border-[#FF3069]" : "border-[#00FFB7]";
-                  
-                  return (
-                      <button
-                      key={filter}
-                      onClick={() => setSelectedRating(isActive ? null : filter)}
-                      className={`px-6 py-2.5 rounded-full border text-sm font-medium transition-all duration-200 ${
-                          isActive
-                          ? `bg-[#1E293B] ${activeBorderColor} ${textColor}`
-                          : `border-[#2D3748] ${textColor} hover:bg-[#1E293B]/50`
-                      }`}
-                      >
-                          {filter}
-                      </button>
-                  );
-              })}
-          </div>
+        <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] shadow-sm flex-1">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left: Rating Filter Buttons */}
+            <div className="flex gap-3 flex-shrink-0">
+                {filterButtons.map((filter) => {
+                    const isActive = selectedRating === filter;
+                    const isSellRating = filter === "Strong Sell" || filter === "Sell";
+                    
+                    // Determine colors based on rating type
+                    const textColor = isSellRating ? "text-[#FF3069]" : "text-[#00FFB7]";
+                    const activeBorderColor = isSellRating ? "border-[#FF3069]" : "border-[#00FFB7]";
+                    
+                    return (
+                        <button
+                        key={filter}
+                        onClick={() => setSelectedRating(isActive ? null : filter)}
+                        className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200 whitespace-nowrap ${
+                            isActive
+                            ? `bg-[#1E293B] ${activeBorderColor} ${textColor}`
+                            : `border-[#2D3748] ${textColor} hover:bg-[#1E293B]/50`
+                        }`}
+                        >
+                            {filter}
+                        </button>
+                    );
+                })}
+            </div>
 
-          {/* Right: Accuracy Stats */}
-          <div className="flex items-center gap-8 mr-4">
-              <div className="text-center">
-                  <div className="text-[#00FFB7] text-5xl font-bold">{displayStats.winRate.toFixed(0)}%</div>
-                  <div className="text-[#F8FAFC] text-sm font-medium mt-1">Accuracy</div>
-              </div>
-              
-              {/* Vertical Divider */}
-              <div className="h-16 w-px bg-[#1E2530]"></div>
-              
-              <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#00FFB7] shadow-[0_0_8px_rgba(0,255,183,0.6)]"></div>
-                      <span className="text-[#F8FAFC] text-sm font-medium">Wins : {displayStats.wins}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#FF3069] shadow-[0_0_8px_rgba(255,48,105,0.6)]"></div>
-                      <span className="text-[#F8FAFC] text-sm font-medium">Losses : {displayStats.losses}</span>
-                  </div>
-              </div>
+            {/* Right: Accuracy Stats */}
+            <div className="flex items-center gap-6 flex-shrink-0 mr-2">
+                <div className="text-center">
+                    <div className="text-[#00FFB7] text-5xl font-bold">{displayStats.winRate.toFixed(0)}%</div>
+                    <div className="text-[#F8FAFC] text-sm font-medium mt-1">Accuracy</div>
+                </div>
+                
+                {/* Vertical Divider */}
+                <div className="h-16 w-px bg-[#1E2530]"></div>
+                
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#00FFB7] shadow-[0_0_8px_rgba(0,255,183,0.6)]"></div>
+                        <span className="text-[#F8FAFC] text-sm font-medium">Wins : {displayStats.wins}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#FF3069] shadow-[0_0_8px_rgba(255,48,105,0.6)]"></div>
+                        <span className="text-[#F8FAFC] text-sm font-medium">Losses : {displayStats.losses}</span>
+                    </div>
+                </div>
+            </div>
           </div>
         </div>
       </div>
@@ -340,7 +342,7 @@ export default function StockDetail() {
 
                           {/* Previous Close */}
                           <div className="text-right">
-                              <span className="text-[#F8FAFC] font-bold">{item.entry_price.toFixed(2)}</span>
+                              <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
                               <span className="text-[#7588A3] text-xs font-medium ml-1">USD</span>
                           </div>
 
@@ -353,7 +355,7 @@ export default function StockDetail() {
                           <div>
                               {item.exit_price && item.result !== undefined && item.result !== null ? (
                                   <div className="flex items-center gap-2">
-                                      <span className="text-[#F8FAFC] font-bold">{item.exit_price.toFixed(2)}</span>
+                                      <span className="text-[#F8FAFC] font-bold">{item.exit_price}</span>
                                       <span className="text-[#7588A3] text-xs font-medium">USD</span>
                                       <span className={`font-bold text-lg ml-2 ${getResultColor(item.result)}`}>
                                           ({item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%)
