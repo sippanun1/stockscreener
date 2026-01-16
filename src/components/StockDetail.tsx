@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { StockLogo } from "./StockLogo";
 import { ArrowRight, Calendar, Star } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { getCurrencySymbol } from "./stock-table/columns";
 
 type RatingHistory = {
   date: string;
@@ -212,7 +213,7 @@ export default function StockDetail() {
                 {/* Price + Change Value */}
                 <div className="flex items-baseline gap-2">
                     <span className="text-[#F8FAFC] text-3xl font-bold">{data.current_price}</span>
-                    <span className="text-[#7588A3] text-sm font-medium">USD</span>
+                    <span className="text-[#7588A3] text-[0.65rem]">{getCurrencySymbol(data.market)}</span>
                     <span className={`text-lg font-medium ml-4 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
                         {data.change > 0 ? "+" : ""}{data.change}
                     </span>
@@ -343,7 +344,7 @@ export default function StockDetail() {
                           {/* Previous Close */}
                           <div className="text-right">
                               <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
-                              <span className="text-[#7588A3] text-xs font-medium ml-1">USD</span>
+                              <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
                           </div>
 
                           {/* Arrow Column */}
@@ -356,7 +357,7 @@ export default function StockDetail() {
                               {item.exit_price && item.result !== undefined && item.result !== null ? (
                                   <div className="flex items-center gap-2">
                                       <span className="text-[#F8FAFC] font-bold">{item.exit_price}</span>
-                                      <span className="text-[#7588A3] text-xs font-medium">USD</span>
+                                      <span className="text-[#7588A3] text-[0.65rem]">{getCurrencySymbol(data.market)}</span>
                                       <span className={`font-bold text-lg ml-2 ${getResultColor(item.result)}`}>
                                           ({item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%)
                                       </span>

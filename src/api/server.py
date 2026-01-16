@@ -266,7 +266,7 @@ def get_stock_detail(symbol: str):
     return {
         "symbol": symbol,
         "name": current.get("name") or (symbol.split(":")[1] if ":" in symbol else symbol),
-        "market": symbol.split(":")[0] if ":" in symbol else "",
+        "market": current.get("market") or (symbol.split(":")[0] if ":" in symbol else ""),
         "current_price": current.get("current_price", 0),
         "current_rating": current.get("technical_rating", "N/A"),
         "change": change,

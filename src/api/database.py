@@ -383,7 +383,8 @@ def get_stock_history(symbol: str, days: int = 30):
             fetched_date,
             current_price,
             technical_rating,
-            name
+            name,
+            market
         FROM stock_ratings
         WHERE symbol = ?
         ORDER BY fetched_date DESC

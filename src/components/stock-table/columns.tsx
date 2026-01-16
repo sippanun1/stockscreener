@@ -31,7 +31,7 @@ const getRatingStyles = (rating: string | undefined) => {
   return getRatingTextColor(rating)
 }
 
-const getCurrencySymbol = (market: string | undefined) => {
+export const getCurrencySymbol = (market: string | undefined) => {
   switch (market?.toUpperCase()) {
     case "TH":
       return "THB"
