@@ -352,15 +352,14 @@ export default function StockDetail() {
       {/* Signal History Table Container */}
       {/* Signal History Table Container */}
       <div>
-        {/* Table Headers */}
-        <div className="flex items-center mb-2">
+        {/* Table Headers - Card Style */}
+        <div className="flex items-center mb-4">
             <div className="w-36 flex-shrink-0"></div>
-            <div className="flex-1 grid grid-cols-[1.2fr_1.5fr_1fr_0.4fr_1.2fr] px-8 py-3 text-[#F8FAFC] text-sm font-medium">
+            <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1.2fr] text-[#7588A3] text-sm font-semibold uppercase tracking-wide">
                 <div>Date</div>
                 <div className="text-center">Signal</div>
-                <div className="text-right">Previous Close</div>
-                <div></div> {/* Arrow Column */}
-                <div>Result</div>
+                <div className="text-center">Prev Close</div>
+                <div className="text-center">Result</div>
             </div>
         </div>
 
@@ -383,7 +382,7 @@ export default function StockDetail() {
                     </div>
 
                     {/* Card */}
-                    <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.4fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
+                    <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
                           {/* Date */}
                           <div className="flex items-center gap-3 text-[#F8FAFC]">
                               <Calendar className="w-4 h-4 text-[#F8FAFC]" />
@@ -401,29 +400,24 @@ export default function StockDetail() {
                               </div>
                           </div>
 
-                          {/* Previous Close */}
-                          <div className="text-right">
+                          {/* Previous Close - Centered */}
+                          <div className="text-center">
                               <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
                               <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
                           </div>
 
-                          {/* Arrow Column */}
-                          <div className="flex justify-center items-center">
-                              <ArrowRight className="w-4 h-4 text-[#7588A3]" />
-                          </div>
-
-                          {/* Result */}
-                          <div>
+                          {/* Result - Centered */}
+                          <div className="text-center">
                               {item.exit_price && item.result !== undefined && item.result !== null ? (
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center justify-center gap-2">
                                       <span className="text-[#F8FAFC] font-bold">{item.exit_price}</span>
                                       <span className="text-[#7588A3] text-[0.65rem]">{getCurrencySymbol(data.market)}</span>
-                                      <span className={`font-bold text-lg ml-2 ${getResultColor(item.result)}`}>
+                                      <span className={`font-bold text-lg ${getResultColor(item.result)}`}>
                                           ({item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%)
                                       </span>
                                   </div>
                               ) : (
-                                  <div className="flex items-center">
+                                  <div className="inline-flex">
                                       <div className="bg-[#1E40AF] text-white px-4 py-1.5 rounded-full text-sm font-semibold">
                                           Pending
                                       </div>
