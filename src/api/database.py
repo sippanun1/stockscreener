@@ -207,8 +207,11 @@ def get_stocks_with_previous_rating(
         """
         params = []
         
+        # Always filter out stocks with price below 0.1
+        query += " WHERE today.current_price >= 0.1"
+        
         if market:
-            query += " WHERE today.market = ?"
+            query += " AND today.market = ?"
             params.append(market)
         
         # Order by when current rating started (most recent first)

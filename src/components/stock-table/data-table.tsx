@@ -93,6 +93,9 @@ export function DataTable({ columns, filters }: DataTableProps) {
 
     let filtered = [...allData]
 
+    // Filter out stocks with price below 0.1
+    filtered = filtered.filter((stock) => stock.current_price >= 0.1)
+
     // External Filters
     if (filters?.market) {
       filtered = filtered.filter((stock) => stock.market === filters.market)
