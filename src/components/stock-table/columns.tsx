@@ -1,5 +1,5 @@
 "use client"
-import { format, isToday, isYesterday, parseISO } from "date-fns"
+import { format, parseISO } from "date-fns"
 import { Link } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Stock } from "@/types/stock"
@@ -183,13 +183,8 @@ export const stockColumns: ColumnDef<Stock>[] = [
         const date = parseISO(dateString)
         
         if (!isNaN(date.getTime())) {
-          if (isToday(date)) {
-            displayDate = "Today"
-          } else if (isYesterday(date)) {
-            displayDate = "Yesterday"
-          } else {
-            displayDate = format(date, "MMM dd")
-          }
+          // Always show actual date format (MMM dd)
+          displayDate = format(date, "MMM dd")
         }
       } catch (e) {
         // Fallback to original string if parse fails

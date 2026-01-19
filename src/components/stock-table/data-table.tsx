@@ -27,10 +27,8 @@ import { SortArrows } from "@/components/SortArrows"
 
 interface Filters {
   market?: string
-  previousRating?: string
   currentRating?: string
   technicalRating?: string
-  date?: string
   search?: string
 }
 
@@ -91,9 +89,6 @@ export function DataTable({ columns, filters }: DataTableProps) {
     if (filters?.market) {
       filtered = filtered.filter((stock) => stock.market === filters.market)
     }
-    if (filters?.previousRating) {
-      filtered = filtered.filter((stock) => stock.Previous_Rating === filters.previousRating)
-    }
     if (filters?.currentRating) {
       filtered = filtered.filter((stock) => stock.Technical_Rating === filters.currentRating)
     }
@@ -107,15 +102,6 @@ export function DataTable({ columns, filters }: DataTableProps) {
           stock.Technical_Rating === "Sell" || stock.Technical_Rating === "Strong Sell"
         )
       }
-    }
-    // Date Filter
-    if (filters?.date) {
-      filtered = filtered.filter((stock) => {
-        if (!stock.fetched_date) return false
-        // Extract date portion from timestamp (YYYY-MM-DD)
-        const stockDate = stock.fetched_date.split('T')[0]
-        return stockDate === filters.date
-      })
     }
     // External Search
     if (filters?.search && filters.search.trim() !== "") {
