@@ -62,7 +62,7 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
       <div className="flex items-center justify-between bg-[#0F151F] rounded-lg p-6 border border-[#7588A3]/20 w-full h-[95px]">
         <div className="flex-1 min-w-0">
           <p className="text-[#F8FAFC] text-sm mb-2">Total Signals Today</p>
-          <p className={`text-xs mt-2 ${summary.change_from_yesterday >= 0 ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+          <p className={`text-sm mt-2 ${summary.change_from_yesterday >= 0 ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
             {summary.change_from_yesterday >= 0 ? '↑' : '↓'} {Math.abs(summary.change_from_yesterday)}% from yesterday
           </p>
         </div>
@@ -73,7 +73,7 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
       <div className="flex items-center justify-between bg-[#0F151F] rounded-lg p-6 border border-[#7588A3]/20 w-full h-[95px]">
         <div className="flex-1 min-w-0">
           <p className="text-[#F8FAFC] text-sm mb-2">Upgrades</p>
-          <p className="text-[#F8FAFC] text-xs mt-2">{summary.strong_buy_count.toLocaleString()} Strong Buy</p>
+          <p className="text-[#F8FAFC] text-sm mt-2">{summary.strong_buy_count.toLocaleString()} Strong Buy</p>
         </div>
         <div className="text-[#F8FAFC] text-4xl font-bold ml-4">{summary.upgrades.toLocaleString()}</div>
       </div>
@@ -83,9 +83,9 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
         <div className="flex-1 min-w-0">
           <p className="text-[#F8FAFC] text-sm mb-2">Best Signal</p>
           {summary.best_signal ? (
-             <p className="text-[#00FFB7] text-xs mt-2">+{summary.best_signal.change_percent.toFixed(2)}% Today</p>
+             <p className="text-[#00FFB7] text-sm mt-2">+{summary.best_signal.change_percent.toFixed(2)}% Today</p>
           ) : (
-             <p className="text-[#7588A3] text-xs mt-2">No signals yet</p>
+             <p className="text-[#7588A3] text-sm mt-2">No signals yet</p>
           )}
         </div>
         <div className="text-right">
@@ -93,7 +93,7 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
             {summary.best_signal ? summary.best_signal.symbol : "—"}
           </div>
           {summary.best_signal && summary.best_signal.name && (
-            <div className="text-[#7588A3] text-xs mt-1 truncate max-w-[200px]">
+            <div className="text-[#7588A3] text-sm mt-1 truncate max-w-[200px]">
               {summary.best_signal.name}
             </div>
           )}

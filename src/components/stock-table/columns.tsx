@@ -134,7 +134,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       return (
         <div className="flex justify-center">
           <div
-            className={`w-[91px] h-[20px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold`}
+            className={`w-[100px] h-[24px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}
           >
             {rating || "N/A"}
           </div>
@@ -160,7 +160,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       return (
         <div className="flex justify-center">
           <div
-            className={`w-[91px] h-[20px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold`}
+            className={`w-[100px] h-[24px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}
           >
             {rating}
           </div>

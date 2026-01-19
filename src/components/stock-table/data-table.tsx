@@ -247,7 +247,7 @@ export function DataTable({ columns, filters }: DataTableProps) {
                     return (
                       <TableHead
                         key={header.id}
-                        className={`text-[#F8FAFC] text-xs cursor-pointer hover:bg-[#1E2530] bg-[#0F151F] font-semibold ${alignClass}`}
+                        className={`text-[#F8FAFC] text-sm cursor-pointer hover:bg-[#1E2530] bg-[#0F151F] font-semibold ${alignClass}`}
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <div className={`flex items-center gap-1 ${alignClass.split(' ')[1]}`}>

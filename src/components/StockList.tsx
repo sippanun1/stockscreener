@@ -96,34 +96,34 @@ export default function StockTable({ stocks }: StockTableProps) {
       <Table className="table-fixed w-full">
         <TableHead className="bg-[#0F151F]">
           <TableRow>
-            <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
+            <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
               Symbol
             </TableHeadCell>
-            <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
+            <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
               Exchange
             </TableHeadCell>
-            <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
+            <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
               Price
             </TableHeadCell>
-            <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
+            <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
               Change
             </TableHeadCell>
-            <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
+            <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
               Change%
             </TableHeadCell>
-            <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
+            <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
               Previous Rating
             </TableHeadCell>
             <TableHeadCell className="p-0 w-[40px]">
               <img src="/src/assets/arrow.svg" alt="arrow" className="pl-1.5"/>
             </TableHeadCell>
-            <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
+            <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
                Current Rating
             </TableHeadCell>
-            <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
+            <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
               Date
             </TableHeadCell>
-            <TableHeadCell className="text-[#F8FAFC] uppercase text-xs text-center">
+            <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
               Backtest Accuracy (5D)
             </TableHeadCell>
           </TableRow>
@@ -174,9 +174,9 @@ export default function StockTable({ stocks }: StockTableProps) {
                 <TableCell>
                   <div className="flex justify-center">
                     <div
-                      className={`w-[91px] h-[20px] mt-1 mb-1 ${getRatingColor(
+                      className={`w-[100px] h-[24px] mt-1 mb-1 ${getRatingColor(
                         previousRatingInfo.previous_rating
-                      )} rounded-[16px] flex items-center justify-center text-xs font-semibold`}
+                      )} rounded-[16px] flex items-center justify-center text-sm font-semibold`}
                     >
                       {previousRatingInfo.previous_rating}
                     </div>
@@ -190,9 +190,9 @@ export default function StockTable({ stocks }: StockTableProps) {
                 <TableCell>
                   <div className="flex justify-center">
                     <div
-                      className={`w-[91px] h-[20px] mt-1 mb-1 ${getRatingColor(
+                      className={`w-[100px] h-[24px] mt-1 mb-1 ${getRatingColor(
                         s.Technical_Rating
-                      )} rounded-[16px] flex items-center justify-center text-xs font-semibold`}
+                      )} rounded-[16px] flex items-center justify-center text-sm font-semibold`}
                     >
                       {s.Technical_Rating}
                     </div>

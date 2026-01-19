@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { StockLogo } from "./StockLogo";
-import { ArrowRight, Calendar, Star } from "lucide-react";
+import { ArrowRight, Calendar } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getCurrencySymbol } from "./stock-table/columns";
 
@@ -226,7 +226,7 @@ export default function StockDetail() {
 
           {/* Right Side: Badge */}
           <div className="flex flex-col items-end justify-start py-0.5">
-              <div className={`px-3 h-[24px] ${getHeaderBadgeStyles(data.current_rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold whitespace-nowrap`}>
+              <div className={`px-4 h-[28px] ${getHeaderBadgeStyles(data.current_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold whitespace-nowrap`}>
                   {data.current_rating}
               </div>
           </div>
@@ -249,7 +249,7 @@ export default function StockDetail() {
                         <button
                         key={filter}
                         onClick={() => setSelectedRating(isActive ? null : filter)}
-                        className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all duration-200 whitespace-nowrap ${
+                        className={`px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                             isActive
                             ? `bg-[#1E293B] ${activeBorderColor} ${textColor}`
                             : `border-[#2D3748] ${textColor} hover:bg-[#1E293B]/50`
@@ -332,11 +332,11 @@ export default function StockDetail() {
 
                           {/* Signal Transition */}
                           <div className="flex items-center justify-center gap-3">
-                              <div className={`w-[91px] h-[20px] ${getRatingStyles(item.from_rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold`}>
+                              <div className={`w-[100px] h-[24px] ${getRatingStyles(item.from_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
                                   {item.from_rating}
                               </div>
                               <ArrowRight className="w-4 h-4 text-[#7588A3]" />
-                              <div className={`w-[91px] h-[20px] ${getRatingStyles(item.to_rating)} rounded-[16px] flex items-center justify-center text-xs font-semibold`}>
+                              <div className={`w-[100px] h-[24px] ${getRatingStyles(item.to_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
                                   {item.to_rating}
                               </div>
                           </div>
