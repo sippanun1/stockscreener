@@ -563,6 +563,7 @@ def get_today_summary():
         FROM stock_ratings today
         WHERE DATE(today.fetched_date) = ?
         AND today.technical_rating IN ('Buy', 'Strong Buy')
+        AND today.current_price >= 0.1
         """
         cursor.execute(query_best, (yesterday_date, latest_date))
         candidates = []
