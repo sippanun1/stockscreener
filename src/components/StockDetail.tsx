@@ -355,7 +355,7 @@ export default function StockDetail() {
         {/* Table Headers - Card Style */}
         <div className="flex items-center mb-4">
             <div className="w-36 flex-shrink-0"></div>
-            <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1.2fr] text-[#7588A3] text-sm font-semibold uppercase tracking-wide">
+            <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
                 <div>Date</div>
                 <div className="text-center">Signal</div>
                 <div className="text-center">Prev Close</div>
