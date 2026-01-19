@@ -1,5 +1,5 @@
 "use client"
-import { format, parseISO } from "date-fns"
+import { format, isToday, isYesterday, parseISO } from "date-fns"
 import { Link } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { Stock } from "@/types/stock"
@@ -125,7 +125,32 @@ export const stockColumns: ColumnDef<Stock>[] = [
       )
     },
   },
-
+  {
+    accessorKey: "Previous_Rating",
+    header: "Previous Rating",
+    enableSorting: false,
+    cell: ({ row }) => {
+      const rating = row.getValue("Previous_Rating") as string
+      return (
+        <div className="flex justify-center">
+          <div
+            className={`w-[100px] h-[24px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}
+          >
+            {rating || "N/A"}
+          </div>
+        </div>
+      )
+    },
+  },
+  {
+    id: "arrow",
+    enableSorting: false,
+    cell: () => (
+      <div className="flex justify-center">
+        <LongArrowRight className="text-[#F8FAFC]" />
+      </div>
+    ),
+  },
   {
     accessorKey: "Technical_Rating",
     header: "Current Rating",
@@ -158,8 +183,13 @@ export const stockColumns: ColumnDef<Stock>[] = [
         const date = parseISO(dateString)
         
         if (!isNaN(date.getTime())) {
-          // Always show actual date format
-          displayDate = format(date, "MMM dd")
+          if (isToday(date)) {
+            displayDate = "Today"
+          } else if (isYesterday(date)) {
+            displayDate = "Yesterday"
+          } else {
+            displayDate = format(date, "MMM dd")
+          }
         }
       } catch (e) {
         // Fallback to original string if parse fails
