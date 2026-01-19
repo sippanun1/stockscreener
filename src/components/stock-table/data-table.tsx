@@ -10,6 +10,7 @@ import {
   getFilteredRowModel,
   useReactTable,
 } from "@tanstack/react-table"
+import { useQuery } from "@tanstack/react-query"
 
 import {
   Table,
@@ -19,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useState, useRef, useCallback, useEffect, useMemo } from "react"
+import { useState, useRef, useCallback, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import type { Stock } from "@/types/stock"
 import { SortArrows } from "@/components/SortArrows"
@@ -40,10 +41,27 @@ interface DataTableProps {
 
 const BATCH_SIZE = 100
 
+// Fetch function for React Query
+const fetchStocks = async (): Promise<Stock[]> => {
+  const response = await fetch(`http://localhost:8000/api/stocks?limit=25000`)
+  const result = await response.json()
+  
+  return result.data.map((s: any) => ({
+    market: s.market,
+    symbol: s.symbol,
+    name: s.name,
+    current_price: Number(s.current_price),
+    previous_price: s.previous_price ? Number(s.previous_price) : undefined,
+    Technical_Rating: s.Technical_Rating,
+    Previous_Rating: s.Previous_Rating,
+    previous_rating_date: s.previous_rating_date,
+    rating_change_date: s.rating_change_date,
+    fetched_date: s.fetched_date,
+  }))
+}
+
 export function DataTable({ columns, filters }: DataTableProps) {
-  const [allData, setAllData] = useState<Stock[]>([])
   const [displayCount, setDisplayCount] = useState(BATCH_SIZE)
-  const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   // Default sort by Date (fetched_date key) descending
   const [sorting, setSorting] = useState<SortingState>([{ id: "fetched_date", desc: true }])
@@ -52,39 +70,12 @@ export function DataTable({ columns, filters }: DataTableProps) {
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Load all data once
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        
-        // Fetch stocks without date filter to show all markets
-        const response = await fetch(`http://localhost:8000/api/stocks?limit=25000`)
-        const result = await response.json()
-        
-        const stocks: Stock[] = result.data.map((s: any) => ({
-          market: s.market,
-          symbol: s.symbol,
-          name: s.name,
-          current_price: Number(s.current_price),
-          previous_price: s.previous_price ? Number(s.previous_price) : undefined,
-          Technical_Rating: s.Technical_Rating,
-          Previous_Rating: s.Previous_Rating,
-          previous_rating_date: s.previous_rating_date,
-          rating_change_date: s.rating_change_date,
-          fetched_date: s.fetched_date,
-        }))
-        
-        setAllData(stocks)
-      } catch (error) {
-        console.error("Error loading stock data:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    loadData()
-  }, [])
+  // Fetch stocks with React Query (5 minute cache)
+  const { data: allData = [], isLoading: loading } = useQuery({
+    queryKey: ['stocks'],
+    queryFn: fetchStocks,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  })
 
   // Apply external filters and internal search using useMemo
   // This prevents double-rendering by calculating state during render instead of in an effect

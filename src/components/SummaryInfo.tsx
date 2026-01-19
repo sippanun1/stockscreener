@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { Stock } from "../types/stock";
 
 type SummaryInfoProps = {
@@ -20,25 +20,19 @@ type SummaryData = {
   };
 };
 
+// Fetch function for React Query
+const fetchSummary = async (): Promise<SummaryData> => {
+  const response = await fetch("http://localhost:8000/api/summary");
+  return response.json();
+};
+
 export default function SummaryInfo({ }: SummaryInfoProps) {
-  const [summary, setSummary] = useState<SummaryData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchSummary = async () => {
-      try {
-        const response = await fetch("http://localhost:8000/api/summary");
-        const data = await response.json();
-        setSummary(data);
-      } catch (error) {
-        console.error("Error fetching summary:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSummary();
-  }, []);
+  // Fetch summary with React Query (5 minute cache)
+  const { data: summary, isLoading: loading } = useQuery({
+    queryKey: ['summary'],
+    queryFn: fetchSummary,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  });
 
   if (loading || !summary) {
     return (

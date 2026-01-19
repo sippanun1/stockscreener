@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { StockLogo } from "./StockLogo";
 import { ArrowRight, Calendar } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -96,44 +97,103 @@ const formatDateToDisplay = (dateStr: string) => {
 export default function StockDetail() {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
-  const [data, setData] = useState<StockDetailData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedRating, setSelectedRating] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchStockDetail = async () => {
-      if (!symbol) return;
-      
-      const apiSymbol = symbol.replace('-', ':');
-      
-      try {
-        setLoading(true);
-        const response = await fetch(`http://localhost:8000/api/stock/${encodeURIComponent(apiSymbol)}/detail`);
-        
-        if (!response.ok) {
-          navigate('/404', { replace: true });
-          return;
-        }
-        
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        console.error("Error fetching stock detail:", error);
-        navigate('/404', { replace: true });
-      } finally {
-        setLoading(false);
+  // Fetch stock detail with React Query (1 minute cache)
+  const apiSymbol = symbol?.replace('-', ':') || '';
+  
+  const { data, isLoading: loading, isError } = useQuery({
+    queryKey: ['stockDetail', apiSymbol],
+    queryFn: async () => {
+      const response = await fetch(`http://localhost:8000/api/stock/${encodeURIComponent(apiSymbol)}/detail`);
+      if (!response.ok) {
+        throw new Error('Stock not found');
       }
-    };
+      return response.json() as Promise<StockDetailData>;
+    },
+    enabled: !!symbol,
+    staleTime: 1 * 60 * 1000, // 1 minute cache for detail pages
+  });
 
-    fetchStockDetail();
-  }, [symbol, navigate]);
+  // Handle error by navigating to 404
+  useEffect(() => {
+    if (isError) {
+      navigate('/404', { replace: true });
+    }
+  }, [isError, navigate]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin"></div>
-          <div className="text-[#7588A3] text-sm">Loading stock details...</div>
+      <div className="p-8 mx-[53px] animate-pulse">
+        {/* Back Button Skeleton */}
+        <div className="h-6 w-32 bg-[#1E2530] rounded mb-8"></div>
+        
+        {/* Header Cards Row */}
+        <div className="flex gap-6 mb-8">
+          {/* Card 1 Skeleton */}
+          <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] w-[350px]">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-[#1E2530]"></div>
+              <div className="flex-1">
+                <div className="h-6 w-24 bg-[#1E2530] rounded mb-2"></div>
+                <div className="h-4 w-40 bg-[#1E2530] rounded"></div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-8 w-32 bg-[#1E2530] rounded"></div>
+              <div className="h-6 w-20 bg-[#1E2530] rounded"></div>
+            </div>
+          </div>
+          
+          {/* Card 2 Skeleton */}
+          <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex-1">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-3">
+                <div className="h-8 w-24 bg-[#1E2530] rounded-full"></div>
+                <div className="h-8 w-16 bg-[#1E2530] rounded-full"></div>
+                <div className="h-8 w-16 bg-[#1E2530] rounded-full"></div>
+                <div className="h-8 w-24 bg-[#1E2530] rounded-full"></div>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <div className="h-12 w-20 bg-[#1E2530] rounded mb-2"></div>
+                  <div className="h-4 w-16 bg-[#1E2530] rounded"></div>
+                </div>
+                <div className="h-16 w-px bg-[#1E2530]"></div>
+                <div className="space-y-2">
+                  <div className="h-4 w-24 bg-[#1E2530] rounded"></div>
+                  <div className="h-4 w-24 bg-[#1E2530] rounded"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Signal History Title */}
+        <div className="h-7 w-40 bg-[#1E2530] rounded mb-6"></div>
+        
+        {/* Signal History Table Skeleton */}
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-4">
+              <div className="w-36 flex justify-center">
+                <div className="w-5 h-5 rounded-full bg-[#1E2530]"></div>
+              </div>
+              <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530]">
+                <div className="grid grid-cols-5 items-center gap-4">
+                  <div className="h-5 w-28 bg-[#1E2530] rounded"></div>
+                  <div className="flex justify-center gap-3">
+                    <div className="h-6 w-24 bg-[#1E2530] rounded-full"></div>
+                    <div className="h-4 w-4 bg-[#1E2530] rounded"></div>
+                    <div className="h-6 w-24 bg-[#1E2530] rounded-full"></div>
+                  </div>
+                  <div className="h-5 w-20 bg-[#1E2530] rounded ml-auto"></div>
+                  <div className="h-4 w-4 bg-[#1E2530] rounded"></div>
+                  <div className="h-8 w-24 bg-[#1E2530] rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
