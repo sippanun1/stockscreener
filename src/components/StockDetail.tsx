@@ -358,7 +358,7 @@ export default function StockDetail() {
             <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
                 <div>Date</div>
                 <div className="text-center">Signal</div>
-                <div className="text-center">Prev Close</div>
+                <div>Previous Close</div>
                 <div className="text-center">Result</div>
             </div>
         </div>
@@ -400,8 +400,8 @@ export default function StockDetail() {
                               </div>
                           </div>
 
-                          {/* Previous Close - Centered */}
-                          <div className="text-center">
+                          {/* Previous Close - Left aligned */}
+                          <div>
                               <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
                               <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
                           </div>
