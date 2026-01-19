@@ -538,34 +538,41 @@ def get_today_summary():
     if yesterday_upgrades > 0:
         upgrades_change_from_yesterday = ((upgrades - yesterday_upgrades) / yesterday_upgrades) * 100
 
-    # Best Signal: Top gainer compared to yesterday
+    # Best Signal: Top gainer compared to previous trading day
     best_signal = None
     if latest_date:
-        # Calculate yesterday's date
-        from datetime import datetime, timedelta
-        latest_dt = datetime.strptime(latest_date, "%Y-%m-%d")
-        yesterday_dt = latest_dt - timedelta(days=1)
-        yesterday_date = yesterday_dt.strftime("%Y-%m-%d")
+        # Find the actual previous trading day from database (not calendar yesterday)
+        cursor.execute("""
+            SELECT DISTINCT DATE(fetched_date) as date 
+            FROM stock_ratings 
+            WHERE DATE(fetched_date) < ?
+            ORDER BY DATE(fetched_date) DESC
+            LIMIT 1
+        """, (latest_date,))
+        prev_row = cursor.fetchone()
         
-        query_best = """
-        SELECT 
-            today.symbol,
-            today.name,
-            today.current_price,
-            today.technical_rating,
-            (
-                SELECT prev.current_price 
-                FROM stock_ratings prev 
-                WHERE prev.symbol = today.symbol 
-                AND DATE(prev.fetched_date) = ?
-                LIMIT 1
-            ) as yesterday_price
-        FROM stock_ratings today
-        WHERE DATE(today.fetched_date) = ?
-        AND today.technical_rating IN ('Buy', 'Strong Buy')
-        AND today.current_price >= 0.1
-        """
-        cursor.execute(query_best, (yesterday_date, latest_date))
+        if prev_row:
+            previous_trading_date = prev_row["date"]
+            
+            query_best = """
+            SELECT 
+                today.symbol,
+                today.name,
+                today.current_price,
+                today.technical_rating,
+                (
+                    SELECT prev.current_price 
+                    FROM stock_ratings prev 
+                    WHERE prev.symbol = today.symbol 
+                    AND DATE(prev.fetched_date) = ?
+                    LIMIT 1
+                ) as yesterday_price
+            FROM stock_ratings today
+            WHERE DATE(today.fetched_date) = ?
+            AND today.technical_rating IN ('Buy', 'Strong Buy')
+            AND today.current_price >= 0.1
+            """
+            cursor.execute(query_best, (previous_trading_date, latest_date))
         candidates = []
         for row in cursor.fetchall():
             curr = row["current_price"]
