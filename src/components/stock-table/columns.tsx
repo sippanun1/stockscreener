@@ -183,8 +183,8 @@ export const stockColumns: ColumnDef<Stock>[] = [
         const date = parseISO(dateString)
         
         if (!isNaN(date.getTime())) {
-          // Always show actual date format (MMM dd)
-          displayDate = format(date, "MMM dd")
+          // Always show actual date format (MMM dd, yyyy)
+          displayDate = format(date, "MMM dd, yyyy")
         }
       } catch (e) {
         // Fallback to original string if parse fails
