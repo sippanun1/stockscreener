@@ -19,7 +19,7 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
   const [technicalRating, setTechnicalRating] = useState<string>("");
   const [search, setSearch] = useState<string>("");
 
-  const ratingOptions = ["Strong Buy", "Buy", "Neutral", "Sell", "Strong Sell"];
+  const ratingOptions = ["Strong Buy", "Buy", "Sell", "Strong Sell"];
   const marketOptions = ["US", "HK", "TH", "JP"];
   const technicalRatingOptions = ["Positive", "Negative"];
 

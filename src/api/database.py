@@ -142,14 +142,20 @@ def get_stocks_with_previous_rating(
     cursor = conn.cursor()
     
     if date is None:
-        # Get latest entry for each stock (across all dates)
+        # Get latest NON-NEUTRAL entry for each stock (across all dates)
         query = """
-            WITH latest_stocks AS (
+            WITH latest_non_neutral AS (
                 SELECT 
                     symbol,
-                    MAX(fetched_date) as max_date
+                    market,
+                    name,
+                    current_price,
+                    technical_score,
+                    technical_rating,
+                    fetched_date,
+                    ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY fetched_date DESC) as rn
                 FROM stock_ratings
-                GROUP BY symbol
+                WHERE technical_rating != 'Neutral'
             )
             SELECT 
                 today.symbol,
@@ -165,6 +171,7 @@ def get_stocks_with_previous_rating(
                     WHERE prev.symbol = today.symbol 
                         AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                         AND prev.technical_rating != today.technical_rating
+                        AND prev.technical_rating != 'Neutral'
                     ORDER BY prev.fetched_date DESC 
                     LIMIT 1
                 ) AS previous_rating,
@@ -174,6 +181,7 @@ def get_stocks_with_previous_rating(
                     WHERE prev.symbol = today.symbol 
                         AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                         AND prev.technical_rating != today.technical_rating
+                        AND prev.technical_rating != 'Neutral'
                     ORDER BY prev.fetched_date DESC 
                     LIMIT 1
                 ) AS previous_rating_date,
@@ -183,6 +191,7 @@ def get_stocks_with_previous_rating(
                     WHERE prev.symbol = today.symbol 
                         AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                         AND prev.technical_rating != today.technical_rating
+                        AND prev.technical_rating != 'Neutral'
                     ORDER BY prev.fetched_date DESC 
                     LIMIT 1
                 ) AS previous_price,
@@ -196,19 +205,18 @@ def get_stocks_with_previous_rating(
                         WHERE prev.symbol = today.symbol 
                             AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                             AND prev.technical_rating != today.technical_rating
+                            AND prev.technical_rating != 'Neutral'
                         ORDER BY prev.fetched_date DESC 
                         LIMIT 1
                     ), '1970-01-01')
                 ) AS rating_change_date
-            FROM stock_ratings today
-            INNER JOIN latest_stocks ls 
-                ON today.symbol = ls.symbol 
-                AND today.fetched_date = ls.max_date
+            FROM latest_non_neutral today
+            WHERE today.rn = 1
         """
         params = []
         
         # Always filter out stocks with price below 0.1
-        query += " WHERE today.current_price >= 0.1"
+        query += " AND today.current_price >= 0.1"
         
         if market:
             query += " AND today.market = ?"
