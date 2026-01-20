@@ -355,11 +355,12 @@ export default function StockDetail() {
         {/* Table Headers - Card Style */}
         <div className="flex items-center mb-4">
             <div className="w-36 flex-shrink-0"></div>
-            <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
+            <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.3fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
                 <div>Date</div>
                 <div className="text-center">Signal</div>
                 <div>Previous Close</div>
-                <div className="text-center">Result</div>
+                <div></div>
+                <div className="text-center">Result (1d)</div>
             </div>
         </div>
 
@@ -382,7 +383,7 @@ export default function StockDetail() {
                     </div>
 
                     {/* Card */}
-                    <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
+                    <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.3fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
                           {/* Date */}
                           <div className="flex items-center gap-3 text-[#F8FAFC]">
                               <Calendar className="w-4 h-4 text-[#F8FAFC]" />
@@ -404,6 +405,11 @@ export default function StockDetail() {
                           <div>
                               <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
                               <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
+                          </div>
+
+                          {/* Arrow Column */}
+                          <div className="flex justify-center">
+                              <ArrowRight className="w-4 h-4 text-[#7588A3]" />
                           </div>
 
                           {/* Result - Centered */}
