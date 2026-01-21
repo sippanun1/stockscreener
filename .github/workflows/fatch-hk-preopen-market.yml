@@ -1,0 +1,92 @@
+name: Fetch Hong Kong Pre Open Market Data
+
+on:
+  # Run at 17:15 ICT (10:15 UTC) - 15 min after Hong Kong market closes
+  schedule:
+    - cron: '0 1 * * 1-5'  # Monday-Friday only
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  fetch-hk-market:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          cd src/api
+          pip install -r requirements.txt
+      
+      - name: Fetch Hong Kong market data
+        id: fetch
+        run: |
+          cd src/api
+          python main.py --market HK --once
+        env:
+          TZ: Asia/Hong_Kong
+        continue-on-error: true
+      
+      - name: Validate data
+        if: steps.fetch.outcome == 'success'
+        run: |
+          cd src/api
+          python -c "
+          import json
+          import sys
+          from pathlib import Path
+          from datetime import datetime
+          
+          today = datetime.now().strftime('%Y-%m-%d')
+          file_path = Path('data') / f'HK_{today}.json'
+          
+          if file_path.exists():
+              with open(file_path) as f:
+                  data = json.load(f)
+                  print(f'✅ Hong Kong: {len(data)} stocks fetched')
+                  if len(data) < 100:
+                      print(f'⚠️  Warning: Only {len(data)} stocks (expected >100)')
+                      sys.exit(1)
+          else:
+              print('❌ Hong Kong data file not found')
+              sys.exit(1)
+          "
+      
+
+      
+      - name: Commit and push database
+        if: steps.fetch.outcome == 'success'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add src/api/data/stocks.db
+          
+          if git diff --staged --quiet; then
+            echo "No database changes"
+            exit 0
+          fi
+          
+          git commit -m "chore: update database with Hong Kong market data $(date +'%Y-%m-%d')"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## 🇭🇰 Hong Kong Market Fetch" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.fetch.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
