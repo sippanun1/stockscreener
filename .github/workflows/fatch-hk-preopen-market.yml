@@ -35,7 +35,7 @@ jobs:
         id: fetch
         run: |
           cd src/api
-          python main.py --market HK --once
+          python main.py --market HK --once --preopen
         env:
           TZ: Asia/Hong_Kong
         continue-on-error: true

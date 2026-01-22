@@ -442,6 +442,168 @@ def get_stocks_by_rating(
         raise HTTPException(status_code=500, detail="Failed to fetch stocks by rating")
 
 
+@app.get("/api/intraday")
+async def get_intraday_changes(
+    request: Request,
+    date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
+    market: Optional[str] = Query(None, description="Market filter (US, HK, TH, JP)"),
+    api_key: bool = Depends(verify_api_key)
+):
+    """
+    Get stocks with intraday changes (pre-open vs regular market).
+    Returns stocks where rating changed between sessions.
+    """
+    if not rate_limiter.is_allowed(request.client.host):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    try:
+        conn = database.get_connection()
+        cursor = conn.cursor()
+        
+        # Use today if no date specified
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+        
+        # Build query
+        query = """
+            SELECT 
+                p.symbol,
+                p.market,
+                p.name,
+                p.technical_rating as preopen_rating,
+                p.current_price as preopen_price,
+                p.fetched_time as preopen_time,
+                r.technical_rating as regular_rating,
+                r.current_price as regular_price,
+                r.fetched_time as regular_time,
+                r.current_price - p.current_price as price_change,
+                CASE 
+                    WHEN p.technical_rating != r.technical_rating THEN 1
+                    ELSE 0
+                END as rating_changed
+            FROM stock_ratings p
+            JOIN stock_ratings r 
+                ON p.symbol = r.symbol 
+                AND p.fetched_date = r.fetched_date
+            WHERE p.session_type = 'pre_market'
+              AND r.session_type = 'post_market'
+              AND p.fetched_date = ?
+        """
+        
+        params = [date]
+        
+        if market:
+            query += " AND p.market = ?"
+            params.append(market.upper())
+        
+        query += " ORDER BY rating_changed DESC, ABS(r.current_price - p.current_price) DESC"
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        results = []
+        for row in rows:
+            results.append({
+                "symbol": row[0],
+                "market": row[1],
+                "name": row[2],
+                "pre_market": {
+                    "rating": row[3],
+                    "price": row[4],
+                    "time": row[5]
+                },
+                "post_market": {
+                    "rating": row[6],
+                    "price": row[7],
+                    "time": row[8]
+                },
+                "price_change": row[9],
+                "rating_changed": bool(row[10])
+            })
+        
+        return {
+            "date": date,
+            "market": market,
+            "total": len(results),
+            "stocks": results
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching intraday changes: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch intraday changes")
+
+
+@app.get("/api/stock/{symbol}/intraday")
+async def get_stock_intraday(
+    symbol: str,
+    request: Request,
+    date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
+    api_key: bool = Depends(verify_api_key)
+):
+    """
+    Get intraday data for a specific stock (pre-open vs regular).
+    """
+    if not rate_limiter.is_allowed(request.client.host):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    
+    try:
+        conn = database.get_connection()
+        cursor = conn.cursor()
+        
+        # Use today if no date specified
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+        
+        cursor.execute("""
+            SELECT 
+                symbol,
+                market,
+                name,
+                session_type,
+                technical_rating,
+                current_price,
+                technical_score,
+                fetched_time
+            FROM stock_ratings
+            WHERE symbol = ?
+              AND fetched_date = ?
+            ORDER BY session_type
+        """, (symbol, date))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        if not rows:
+            raise HTTPException(status_code=404, detail=f"No data found for {symbol} on {date}")
+        
+        result = {
+            "symbol": rows[0][0],
+            "market": rows[0][1],
+            "name": rows[0][2],
+            "date": date,
+            "sessions": []
+        }
+        
+        for row in rows:
+            result["sessions"].append({
+                "type": row[3],
+                "rating": row[4],
+                "price": row[5],
+                "score": row[6],
+                "time": row[7]
+            })
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching stock intraday data: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch stock intraday data")
+
+
+
 if __name__ == "__main__":
 
     import uvicorn

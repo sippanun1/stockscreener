@@ -23,14 +23,25 @@ dist-ssr
 *.sln
 *.sw?
 
+
+# Python Virtual Environments
 .venv
+venv/
+src/api/venv/
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-package-lock.json
+
+# Databases
+*.db
+*.sqlite3
+stocks_backup_*.db
+
+# Data dumps (optional, but good for clean repos)
+src/api/data/*_*.json
 
 # Environment variables (contains secrets)
 .env

@@ -35,7 +35,7 @@ jobs:
         id: fetch
         run: |
           cd src/api
-          python main.py --market US --once
+          python main.py --market US --once --preopen
         env:
           TZ: America/New_York
         continue-on-error: true

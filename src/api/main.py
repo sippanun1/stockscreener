@@ -158,7 +158,7 @@ def fetch_all_markets():
         try:
             import database
             stocks_list = combined.to_dict('records')
-            database.save_daily_stocks(stocks_list, today)
+            database.save_daily_stocks(stocks_list, today, session_type='post_market')
             print(">> Saved to SQLite database")
         except Exception as e:
             print(f">> Error saving to SQLite: {e}")
@@ -193,6 +193,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Fetch stock market data')
     parser.add_argument('--market', type=str, help='Specific market to fetch (US, HK, TH, JP)', default=None)
     parser.add_argument('--once', action='store_true', help='Run once and exit (for GitHub Actions)')
+    parser.add_argument('--preopen', action='store_true', help='Mark this as pre-market data (before market opens)')
     args = parser.parse_args()
     
     if args.once or args.market:
@@ -217,9 +218,10 @@ if __name__ == "__main__":
                             stocks_list = df.to_dict('records')
                             # Add fetched_at timestamp
                             for stock in stocks_list:
-                                stock['fetched_at'] = datetime.now().isoformat()
-                            database.save_daily_stocks(stocks_list, today)
-                            print(">> Saved to SQLite database")
+                                stock['fetched_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            session_type = 'pre_market' if args.preopen else 'post_market'
+                            database.save_daily_stocks(stocks_list, today, session_type=session_type)
+                            print(f">> Saved to SQLite database ({session_type} session)")
                         except Exception as e:
                             print(f">> Error saving to SQLite: {e}")
                         

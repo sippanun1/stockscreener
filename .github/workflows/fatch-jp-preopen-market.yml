@@ -35,7 +35,7 @@ jobs:
         id: fetch
         run: |
           cd src/api
-          python main.py --market JP --once
+          python main.py --market JP --once --preopen
         env:
           TZ: Asia/Tokyo
         continue-on-error: true

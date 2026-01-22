@@ -41,8 +41,10 @@ def init_db():
             technical_score REAL,
             technical_rating TEXT,
             fetched_date DATE NOT NULL,
+            fetched_time TIME,
+            session_type TEXT DEFAULT 'post_market',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(symbol, fetched_date)
+            UNIQUE(symbol, fetched_date, session_type)
         )
     """)
     
@@ -57,7 +59,7 @@ def init_db():
     print(f">> Database initialized at {DB_PATH}")
 
 
-def save_daily_stocks(stocks_list: list, date: Optional[str] = None):
+def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_type: str = 'post_market'):
     """
     Save daily stock data to the database.
     
@@ -66,6 +68,7 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None):
             - symbol, market, name, current_price, Technical_Score, Technical_Rating
             - fetched_at (optional): timestamp like "2026-01-05 16:04:25" - date extracted from this
         date: Default date if fetched_at not present in record. Defaults to today.
+        session_type: 'pre_market' or 'post_market' (default: 'post_market')
     """
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
@@ -80,18 +83,24 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None):
         try:
             # Use fetched_at from record if available, otherwise use default date
             record_date = date
+            record_time = datetime.now().strftime("%H:%M:%S")
+            
             if stock.get("fetched_at"):
-                # Extract date part from "2026-01-05 16:04:25"
-                record_date = stock["fetched_at"].split(" ")[0]
+                # Extract date and time from "2026-01-05 16:04:25"
+                parts = stock["fetched_at"].split(" ")
+                record_date = parts[0]
+                if len(parts) > 1:
+                    record_time = parts[1]
             
             cursor.execute("""
                 INSERT INTO stock_ratings 
-                (symbol, market, name, current_price, technical_score, technical_rating, fetched_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(symbol, fetched_date) DO UPDATE SET
+                (symbol, market, name, current_price, technical_score, technical_rating, fetched_date, fetched_time, session_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(symbol, fetched_date, session_type) DO UPDATE SET
                     current_price = excluded.current_price,
                     technical_score = excluded.technical_score,
-                    technical_rating = excluded.technical_rating
+                    technical_rating = excluded.technical_rating,
+                    fetched_time = excluded.fetched_time
             """, (
                 stock.get("symbol"),
                 stock.get("market"),
@@ -99,7 +108,9 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None):
                 stock.get("current_price"),
                 stock.get("Technical_Score"),
                 stock.get("Technical_Rating"),
-                record_date
+                record_date,
+                record_time,
+                session_type
             ))
             
             if cursor.rowcount == 1:
@@ -113,7 +124,7 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None):
     conn.commit()
     conn.close()
     
-    print(f">> Saved {inserted} new, {updated} updated stocks")
+    print(f">> Saved {inserted} new, {updated} updated stocks ({session_type} session)")
     return {"inserted": inserted, "updated": updated}
 
 
