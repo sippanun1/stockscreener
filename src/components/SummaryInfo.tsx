@@ -44,6 +44,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const fetchSummary = async (): Promise<SummaryData> => {
   const response = await fetch(`${API_URL}/api/summary`);
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
+  }
   return response.json();
 };
 
@@ -75,7 +78,7 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 pl-[53px] pr-[53px]">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-[#0F151F] rounded-lg p-4 border border-[#7588A3]/20 h-[120px] animate-pulse">
+          <div key={i} className="bg-[#0F151F] rounded-lg p-4 border border-[#7588A3]/20 h-[140px] animate-pulse">
             <div className="h-4 bg-[#7588A3]/20 rounded w-32 mb-4"></div>
             <div className="h-12 bg-[#7588A3]/20 rounded w-20 mb-4"></div>
             <div className="h-2 bg-[#7588A3]/20 rounded w-full"></div>
@@ -90,22 +93,25 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pl-[53px] pr-[53px]">
       {/* Card 1: POSITIVE / BULLISH */}
-      <div className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col h-[120px]">
+      <div className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col justify-between min-h-[120px] h-auto">
         <div className="flex items-start justify-between mb-2">
-          <div className="text-[#F8FAFC] text-base font-semibold">
+          <div className="text-[#F8FAFC] text-base font-semibold pt-0.5">
             Positive Signals
           </div>
-          <div className="text-right">
-            <div className="text-[#F8FAFC] text-4xl font-bold tracking-tight">
+          <div className="text-right flex flex-col items-end">
+            <div className="text-[#F8FAFC] text-4xl font-bold tracking-tight leading-none tabular-nums">
               {summary.upgrades.toLocaleString()}
+            </div>
+            <div className="text-[#7588A3] text-[10px] font-medium mt-1">
+              total signal
             </div>
           </div>
         </div>
 
         {/* Progress Bar Group */}
-        <div className="mt-auto">
+        <div>
           {/* Split Bar */}
-          <div className="h-2 w-full bg-[#1E293B] rounded-full overflow-hidden flex border border-[#1E293B]">
+          <div className="h-3 w-full bg-[#1E293B] rounded-full overflow-hidden flex border border-[#1E293B]">
             {/* Strong Buy Segment */}
             <div 
               className="h-full bg-[#00FFB7] transition-all duration-300"
@@ -118,7 +124,7 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
             ></div>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] mt-1 font-medium">
+          <div className="flex items-center justify-between text-xs mt-2 font-medium">
           <Popover>
             <PopoverTrigger asChild>
               <button 
@@ -198,22 +204,25 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
       </div>
 
       {/* Card 2: NEGATIVE / BEARISH */}
-      <div className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col h-[120px]">
+      <div className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col justify-between min-h-[120px] h-auto">
         <div className="flex items-start justify-between mb-2">
-          <div className="text-[#F8FAFC] text-base font-semibold">
+          <div className="text-[#F8FAFC] text-base font-semibold pt-0.5">
             Negative Signals
           </div>
-          <div className="text-right">
-            <div className="text-[#F8FAFC] text-4xl font-bold tracking-tight">
-              {summary.downgrades?.toLocaleString() || 0}
+          <div className="text-right flex flex-col items-end">
+            <div className="text-[#F8FAFC] text-4xl font-bold tracking-tight leading-none tabular-nums">
+              {(summary.downgrades || 0).toLocaleString()}
+            </div>
+            <div className="text-[#7588A3] text-[10px] font-medium mt-1">
+              total signal
             </div>
           </div>
         </div>
 
         {/* Progress Bar Group */}
-        <div className="mt-auto">
+        <div>
           {/* Split Bar */}
-          <div className="h-2 w-full bg-[#1E293B] rounded-full overflow-hidden flex border border-[#1E293B]">
+          <div className="h-3 w-full bg-[#1E293B] rounded-full overflow-hidden flex border border-[#1E293B]">
              {/* Strong Sell Segment */}
             <div 
               className="h-full bg-[#FF3069] transition-all duration-300"
@@ -226,7 +235,7 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
             ></div>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] mt-1 font-medium">
+          <div className="flex items-center justify-between text-xs mt-2 font-medium">
           <Popover>
             <PopoverTrigger asChild>
               <button 
@@ -298,9 +307,9 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
       </div>
 
       {/* Card 3: TOP GAINERS */}
-      <div className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex gap-3 h-[120px]">
+      <div className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex gap-3 min-h-[120px] h-auto overflow-hidden">
         {/* Trophy Icon Section */}
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center min-w-[60px]">
           <div className="w-10 h-10 flex items-center justify-center">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 9C6 10.5913 6.63214 12.1174 7.75736 13.2426C8.88258 14.3679 10.4087 15 12 15C13.5913 15 15.1174 14.3679 16.2426 13.2426C17.3679 12.1174 18 10.5913 18 9V3H6V9Z" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -316,7 +325,7 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
         </div>
 
         {/* Stocks Table */}
-        <div className="flex-1 flex flex-col justify-center space-y-0 py-1">
+        <div className="flex-1 flex flex-col h-full justify-center overflow-y-auto scrollbar-hide">
           {summary.top_opportunities && summary.top_opportunities.length > 0 ? (
             summary.top_opportunities.slice(0, 3).map((stock, index) => (
               <div 

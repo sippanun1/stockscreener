@@ -27,6 +27,12 @@ def migrate_database():
     try:
         # Get existing data
         print(">> Fetching existing data...")
+        # Check if table exists first
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='stock_ratings'")
+        if not cursor.fetchone():
+            print("❌ Table stock_ratings not found!")
+            return
+
         cursor.execute("SELECT * FROM stock_ratings")
         existing_data = cursor.fetchall()
         print(f"✅ Found {len(existing_data)} existing records")
@@ -49,23 +55,27 @@ def migrate_database():
                 technical_rating TEXT,
                 fetched_date DATE NOT NULL,
                 fetched_time TIME,
-                session_type TEXT DEFAULT 'regular',
+                session_type TEXT DEFAULT 'post_market',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(symbol, fetched_date, session_type)
             )
         """)
         print("✅ New table created")
         
-        # Migrate existing data (mark all as 'regular' session)
+        # Migrate existing data (mark all as 'regular' or 'post_market' session)
         print(">> Migrating existing data...")
         migrated = 0
         for row in existing_data:
             try:
-                # row structure: id, symbol, market, name, price, score, rating, date, created_at, [fetched_time], [session_type]
+                # row structure in OLD table: 
+                # id(0), symbol(1), market(2), name(3), price(4), score(5), rating(6), date(7), created_at(8)
+                # We need to map these to new columns. 
+                # Note: fetchall() returns tuples.
+                
                 cursor.execute("""
                     INSERT INTO stock_ratings 
                     (symbol, market, name, current_price, technical_score, technical_rating, fetched_date, session_type, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'post_market', ?)
                 """, (row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]))
                 migrated += 1
             except Exception as e:

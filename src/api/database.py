@@ -465,7 +465,7 @@ def get_today_summary():
     # Get the latest date in database
     cursor.execute("SELECT MAX(DATE(fetched_date)) as latest_date FROM stock_ratings")
     latest_result = cursor.fetchone()
-    latest_date = latest_result["latest_date"] if latest_result else datetime.now().strftime("%Y-%m-%d")
+    latest_date = latest_result["latest_date"] if latest_result and latest_result["latest_date"] else datetime.now().strftime("%Y-%m-%d")
     
     # Get all stocks that changed rating today (fetched_date = today)
     query = """
