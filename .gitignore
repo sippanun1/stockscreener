@@ -45,3 +45,6 @@ src/api/data/*_*.json
 
 # Environment variables (contains secrets)
 .env
+
+# Migration scripts
+src/api/migrate_db.py
