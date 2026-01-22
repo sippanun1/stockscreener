@@ -36,8 +36,8 @@ __pycache__/
 *.pyd
 
 # Databases
-*.db
-*.sqlite3
+# *.db (Commented out to allow tracking for GitHub Actions storage)
+# *.sqlite3
 stocks_backup_*.db
 
 # Data dumps (optional, but good for clean repos)

@@ -79,7 +79,7 @@ jobs:
             exit 0
           fi
           
-          git commit -m "chore: update database with Japan market data $(date +'%Y-%m-%d')"
+          git commit -m "chore: update database with Japan Regular market data $(date +'%Y-%m-%d')"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
