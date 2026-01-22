@@ -4,7 +4,7 @@ import './App.css'
 import MenuHeader from "./components/MenuHeader";
 import { DataTable } from "./components/stock-table/data-table";
 import { stockColumns } from "./components/stock-table/columns";
-import SummaryInfo from './components/SummaryInfo'; 
+import SummaryInfo from "./components/SummaryInfo";
 import StockListFilter from "./components/StockListFilter";
 import StockDetail from "./components/StockDetail";
 import NotFound from "./components/NotFound";

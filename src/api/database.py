@@ -488,26 +488,34 @@ def get_today_summary():
     
     total_signals = 0
     upgrades = 0
+    downgrades = 0
     strong_buy_count = 0
+    buy_count = 0
+    strong_sell_count = 0
+    sell_count = 0
     
     for row in results:
         current = row["current_rating"]
         previous = row["previous_rating"]
         
-        # Only count if there was a previous rating (i.e., rating changed)
-        if previous:
+        # Only count if there was a previous rating AND current is not Neutral
+        if previous and current != "Neutral" and previous != "Neutral":
             total_signals += 1
             
-            # Check if it's an upgrade
-            current_val = rating_values.get(current, 0)
-            previous_val = rating_values.get(previous, 0)
-            
-            if current_val > previous_val:
+            # Count upgrades: Only count if current is Buy or Strong Buy
+            if current == "Strong Buy":
                 upgrades += 1
-                
-                # Count Strong Buy upgrades
-                if current == "Strong Buy":
-                    strong_buy_count += 1
+                strong_buy_count += 1
+            elif current == "Buy":
+                upgrades += 1
+                buy_count += 1
+            # Count downgrades: Only count if current is Sell or Strong Sell
+            elif current == "Strong Sell":
+                downgrades += 1
+                strong_sell_count += 1
+            elif current == "Sell":
+                downgrades += 1
+                sell_count += 1
     
     # Get yesterday's data for comparison
     from datetime import datetime, timedelta
@@ -521,7 +529,7 @@ def get_today_summary():
     yesterday_upgrades = 0
     
     # Get yesterday's signals
-    cursor.execute(query, [yesterday_date])
+    cursor.execute(query, [latest_date])
     yesterday_results = cursor.fetchall()
     
     for row in yesterday_results:
@@ -546,8 +554,8 @@ def get_today_summary():
     if yesterday_upgrades > 0:
         upgrades_change_from_yesterday = ((upgrades - yesterday_upgrades) / yesterday_upgrades) * 100
 
-    # Best Signal: Top gainer compared to previous trading day
-    best_signal = None
+    # Top 3 Opportunities: Top gainers compared to previous trading day
+    top_opportunities = []
     if latest_date:
         # Find the actual previous trading day from database (not calendar yesterday)
         cursor.execute("""
@@ -562,7 +570,7 @@ def get_today_summary():
         if prev_row:
             previous_trading_date = prev_row["date"]
             
-            query_best = """
+            query_top = """
             SELECT 
                 today.symbol,
                 today.name,
@@ -580,7 +588,8 @@ def get_today_summary():
             AND today.technical_rating IN ('Buy', 'Strong Buy')
             AND today.current_price >= 0.1
             """
-            cursor.execute(query_best, (previous_trading_date, latest_date))
+            cursor.execute(query_top, (previous_trading_date, latest_date))
+        
         candidates = []
         for row in cursor.fetchall():
             curr = row["current_price"]
@@ -588,28 +597,97 @@ def get_today_summary():
             if curr and yesterday and yesterday > 0:
                 change_pct = ((curr - yesterday) / yesterday) * 100
                 candidates.append({
-                    "symbol": row["symbol"].split(":")[1] if ":" in row["symbol"] else row["symbol"],
+                    "symbol": row["symbol"],
                     "market": row["symbol"].split(":")[0] if ":" in row["symbol"] else "",
                     "name": row["name"],
                     "change_percent": change_pct
                 })
         
         if candidates:
-            # Sort by change percent descending
+            # Sort by change percent descending and get top 3
             candidates.sort(key=lambda x: x["change_percent"], reverse=True)
-            best_signal = candidates[0]
+            top_opportunities = candidates[:3]
 
     conn.close()
     
     return {
         "total_signals_today": total_signals,
         "upgrades": upgrades,
+        "downgrades": downgrades,
         "strong_buy_count": strong_buy_count,
+        "buy_count": buy_count,
+        "strong_sell_count": strong_sell_count,
+        "sell_count": sell_count,
         "date": latest_date,
         "change_from_yesterday": round(change_from_yesterday, 1),
         "upgrades_change_from_yesterday": round(upgrades_change_from_yesterday, 1),
-        "best_signal": best_signal
+        "top_opportunities": top_opportunities
     }
+
+
+def get_stocks_by_rating(rating: str, date: Optional[str] = None, limit: int = 1000):
+    """
+    Get all stocks with a specific current rating (that have changed to this rating).
+    
+    Args:
+        rating: Technical rating to filter by (Strong Buy, Buy, Strong Sell, Sell)
+        date: Date to query. If None, gets latest date.
+        limit: Maximum number of results
+    
+    Returns:
+        List of stock dictionaries with the specified current rating
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Get latest date if not specified
+    if date is None:
+        cursor.execute("SELECT MAX(DATE(fetched_date)) as latest_date FROM stock_ratings")
+        latest_result = cursor.fetchone()
+        date = latest_result["latest_date"] if latest_result else datetime.now().strftime("%Y-%m-%d")
+    
+    # Get all stocks with the specified rating that changed to it (have a previous different rating)
+    query = """
+        SELECT 
+            today.symbol,
+            today.market,
+            today.name,
+            today.current_price,
+            today.technical_rating AS current_rating,
+            (
+                SELECT prev.technical_rating 
+                FROM stock_ratings prev 
+                WHERE prev.symbol = today.symbol 
+                    AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                    AND prev.technical_rating != today.technical_rating
+                ORDER BY prev.fetched_date DESC 
+                LIMIT 1
+            ) AS previous_rating
+        FROM stock_ratings today
+        WHERE DATE(today.fetched_date) = ?
+            AND today.technical_rating = ?
+            AND today.current_price >= 0.1
+        ORDER BY today.current_price DESC
+        LIMIT ?
+    """
+    
+    cursor.execute(query, [date, rating, limit])
+    
+    results = []
+    for row in cursor.fetchall():
+        # Only include stocks that have actually changed to this rating
+        if row["previous_rating"]:
+            results.append({
+                "symbol": row["symbol"],
+                "market": row["market"],
+                "name": row["name"],
+                "current_price": row["current_price"],
+                "current_rating": row["current_rating"],
+                "previous_rating": row["previous_rating"]
+            })
+    
+    conn.close()
+    return results
 
 
 # Initialize database on import

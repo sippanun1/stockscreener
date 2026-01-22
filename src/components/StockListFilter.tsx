@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { HiOutlineSearch } from "react-icons/hi";
+import { useQuery } from "@tanstack/react-query";
 import {
   Select,
   SelectContent,
@@ -13,11 +14,26 @@ type StockFiltersProps = {
   onChange?: (filters: any) => void;
 };
 
+// Fetch summary for signal count
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+const fetchSummary = async () => {
+  const response = await fetch(`${API_URL}/api/summary`);
+  return response.json();
+};
+
 export default function StockListFilter({ onChange }: StockFiltersProps) {
   const [market, setMarket] = useState<string>("");
   const [currentRating, setCurrentRating] = useState<string>("");
   const [technicalRating, setTechnicalRating] = useState<string>("");
   const [search, setSearch] = useState<string>("");
+
+  // Fetch summary data for signal count
+  const { data: summary } = useQuery({
+    queryKey: ['summary'],
+    queryFn: fetchSummary,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  });
 
   const ratingOptions = ["Strong Buy", "Buy", "Sell", "Strong Sell"];
   const marketOptions = ["US", "HK", "TH", "JP"];
@@ -150,6 +166,15 @@ export default function StockListFilter({ onChange }: StockFiltersProps) {
             <img src="/src/assets/SVG.svg" alt="reset" />
           </button>
         </div>
+      </div>
+
+      {/* Signal Change Count */}
+      <div className="mt-4 text-[#F8FAFC]">
+        <span className="text-sm">Total Signal: </span>
+        <span className="text-lg font-bold text-[#00FFB7]">
+          {summary?.total_signals_today?.toLocaleString() || 0}
+        </span>
+        <span className="text-sm text-[#7588A3] ml-2">stocks changed today</span>
       </div>
     </div>
   );

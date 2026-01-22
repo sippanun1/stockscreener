@@ -5,6 +5,7 @@ import { StockLogo } from "./StockLogo";
 import { ArrowRight, Calendar } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getCurrencySymbol } from "./stock-table/columns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type RatingHistory = {
   date: string;
@@ -99,13 +100,16 @@ export default function StockDetail() {
   const navigate = useNavigate();
   const [selectedRating, setSelectedRating] = useState<string | null>(null);
 
+  // API base URL from environment variable
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
   // Fetch stock detail with React Query (1 minute cache)
   const apiSymbol = symbol?.replace('-', ':') || '';
   
   const { data, isLoading: loading, isError } = useQuery({
     queryKey: ['stockDetail', apiSymbol],
     queryFn: async () => {
-      const response = await fetch(`http://localhost:8000/api/stock/${encodeURIComponent(apiSymbol)}/detail`);
+      const response = await fetch(`${API_URL}/api/stock/${encodeURIComponent(apiSymbol)}/detail`);
       if (!response.ok) {
         throw new Error('Stock not found');
       }
@@ -228,8 +232,8 @@ export default function StockDetail() {
       };
     }
     // No filter selected - show overall stats
-    const wins = data.history.filter(h => h.result !== undefined && h.result > 0).length;
-    const losses = data.history.filter(h => h.result !== undefined && h.result < 0).length;
+    const wins = data.history.filter(h => h.result !== undefined && h.result > 0.2).length;
+    const losses = data.history.filter(h => h.result !== undefined && h.result < -0.2).length;
     return {
       wins,
       losses,
@@ -349,98 +353,140 @@ export default function StockDetail() {
       {/* Signal History Title */}
       <h2 className="text-[#F8FAFC] text-xl font-bold mb-6">Signal History</h2>
 
-      {/* Signal History Table Container */}
-      {/* Signal History Table Container */}
-      <div>
-        {/* Table Headers - Card Style */}
-        <div className="flex items-center mb-4">
-            <div className="w-36 flex-shrink-0"></div>
-            <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.3fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
-                <div>Date</div>
-                <div className="text-center">Signal</div>
-                <div>Previous Close</div>
-                <div></div>
-                <div className="text-center">Result (1d)</div>
+      {/* Tabs for Daily and Intraday */}
+      <Tabs defaultValue="daily" className="w-full">
+        <TabsList className="mb-6 bg-[#0F151F] border border-[#1E2530] p-1.5 h-12">
+          <TabsTrigger 
+            value="daily" 
+            className="data-[state=active]:bg-[#1E293B] data-[state=active]:text-[#00FFB7] text-[#7588A3] font-medium text-base px-8 h-full"
+          >
+            Daily
+          </TabsTrigger>
+          <TabsTrigger 
+            value="intraday"
+            className="data-[state=active]:bg-[#1E293B] data-[state=active]:text-[#00FFB7] text-[#7588A3] font-medium text-base px-8 h-full"
+          >
+            Intraday
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Daily Tab Content */}
+        <TabsContent value="daily">
+          <div>
+            {/* Table Headers - Card Style */}
+            <div className="flex items-center mb-4">
+                <div className="w-36 flex-shrink-0"></div>
+                <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.3fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
+                    <div>Date</div>
+                    <div className="text-center">Signal</div>
+                    <div>Previous Close</div>
+                    <div></div>
+                    <div className="text-center">Result (1d)</div>
+                </div>
             </div>
-        </div>
 
-        {/* History Rows */}
-        <div className="space-y-4">
-          {data.history.length > 0 ? (
-            data.history.map((item, index) => {
-              const isProfit = item.result !== undefined && item.result > 0;
-              const isLoss = item.result !== undefined && item.result < 0;
-              // Determine dot color: Green for profit, Red for loss, Grey for Neutral/Pending
-              const dotColor = isProfit ? "bg-[#00FFB7]" : isLoss ? "bg-[#FF3069]" : "bg-[#7588A3]";
-              // Add shadow to dot
-              const dotShadow = isProfit ? "shadow-[0_0_8px_rgba(0,255,183,0.6)]" : isLoss ? "shadow-[0_0_8px_rgba(255,48,105,0.6)]" : "";
+            {/* History Rows */}
+            <div className="space-y-4">
+              {data.history.length > 0 ? (
+                data.history.map((item, index) => {
+                  const isProfit = item.result !== undefined && item.result > 0.2;
+                  const isLoss = item.result !== undefined && item.result < -0.2;
+                  // Determine dot color: Green for profit, Red for loss, Grey for Neutral/Pending
+                  const dotColor = isProfit ? "bg-[#00FFB7]" : isLoss ? "bg-[#FF3069]" : "bg-[#7588A3]";
+                  // Add shadow to dot
+                  const dotShadow = isProfit ? "shadow-[0_0_8px_rgba(0,255,183,0.6)]" : isLoss ? "shadow-[0_0_8px_rgba(255,48,105,0.6)]" : "";
 
-              return (
-                <div key={index} className="flex items-center group">
-                    {/* Centered Dot Column */}
-                    <div className="w-36 flex-shrink-0 flex justify-center">
-                        <div className={`w-5 h-5 rounded-full ${dotColor} ${dotShadow}`}></div>
-                    </div>
+                  return (
+                    <div key={index} className="flex items-center group">
+                        {/* Centered Dot Column */}
+                        <div className="w-36 flex-shrink-0 flex justify-center">
+                            <div className={`w-5 h-5 rounded-full ${dotColor} ${dotShadow}`}></div>
+                        </div>
 
-                    {/* Card */}
-                    <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.3fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
-                          {/* Date */}
-                          <div className="flex items-center gap-3 text-[#F8FAFC]">
-                              <Calendar className="w-4 h-4 text-[#F8FAFC]" />
-                              <span className="font-medium text-sm">{formatDateToDisplay(item.date)}</span>
-                          </div>
-
-                          {/* Signal Transition */}
-                          <div className="flex items-center justify-center gap-3">
-                              <div className={`w-[100px] h-[24px] ${getRatingStyles(item.from_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
-                                  {item.from_rating}
+                        {/* Card */}
+                        <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.3fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
+                              {/* Date */}
+                              <div className="flex items-center gap-3 text-[#F8FAFC]">
+                                  <Calendar className="w-4 h-4 text-[#F8FAFC]" />
+                                  <span className="font-medium text-sm">{formatDateToDisplay(item.date)}</span>
                               </div>
-                              <ArrowRight className="w-4 h-4 text-[#7588A3]" />
-                              <div className={`w-[100px] h-[24px] ${getRatingStyles(item.to_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
-                                  {item.to_rating}
-                              </div>
-                          </div>
 
-                          {/* Previous Close - Left aligned */}
-                          <div>
-                              <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
-                              <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
-                          </div>
-
-                          {/* Arrow Column */}
-                          <div className="flex justify-center">
-                              <ArrowRight className="w-4 h-4 text-[#7588A3]" />
-                          </div>
-
-                          {/* Result - Centered */}
-                          <div className="text-center">
-                              {item.exit_price && item.result !== undefined && item.result !== null ? (
-                                  <div className="flex items-center justify-center gap-2">
-                                      <span className="text-[#F8FAFC] font-bold">{item.exit_price}</span>
-                                      <span className="text-[#7588A3] text-[0.65rem]">{getCurrencySymbol(data.market)}</span>
-                                      <span className={`font-bold text-lg ${getResultColor(item.result)}`}>
-                                          ({item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%)
-                                      </span>
+                              {/* Signal Transition */}
+                              <div className="flex items-center justify-center gap-3">
+                                  <div className={`w-[100px] h-[24px] ${getRatingStyles(item.from_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
+                                      {item.from_rating}
                                   </div>
-                              ) : (
-                                  <div className="inline-flex">
-                                      <div className="bg-[#1E40AF] text-white px-4 py-1.5 rounded-full text-sm font-semibold">
-                                          Pending
+                                  <ArrowRight className="w-4 h-4 text-[#7588A3]" />
+                                  <div className={`w-[100px] h-[24px] ${getRatingStyles(item.to_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
+                                      {item.to_rating}
+                                  </div>
+                              </div>
+
+                              {/* Previous Close - Left aligned */}
+                              <div>
+                                  <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
+                                  <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
+                              </div>
+
+                              {/* Arrow Column */}
+                              <div className="flex justify-center">
+                                  <ArrowRight className="w-4 h-4 text-[#7588A3]" />
+                              </div>
+
+                              {/* Result - Centered */}
+                              <div className="text-center">
+                                  {item.exit_price && item.result !== undefined && item.result !== null ? (
+                                      <div className="flex items-baseline justify-center gap-2">
+                                          <span className="text-[#F8FAFC] font-bold">{item.exit_price}</span>
+                                          <span className="text-[#7588A3] text-[0.65rem]">{getCurrencySymbol(data.market)}</span>
+                                          <span className={`font-bold text-lg ${getResultColor(item.result)}`}>
+                                              ({item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%)
+                                          </span>
                                       </div>
-                                  </div>
-                              )}
-                          </div>
-                    </div>
-                </div> 
-              );
-            })
-          ) : (
-            <div className="bg-[#0F151F] rounded-xl p-12 text-center border border-[#1E2530]">
-              <div className="text-[#7588A3] text-lg mb-2">No signals found</div>
+                                  ) : (
+                                      <div className="inline-flex">
+                                          <div className="bg-[#1E40AF] text-white px-4 py-1.5 rounded-full text-sm font-semibold">
+                                              Pending
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                        </div>
+                    </div> 
+                  );
+                })
+              ) : (
+                <div className="bg-[#0F151F] rounded-xl p-12 text-center border border-[#1E2530]">
+                  <div className="text-[#7588A3] text-lg mb-2">No signals found</div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </TabsContent>
+
+        {/* Intraday Tab Content */}
+        <TabsContent value="intraday">
+          <div>
+            {/* Table Headers - Card Style */}
+            <div className="flex items-center mb-4">
+                <div className="w-36 flex-shrink-0"></div>
+                <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.3fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
+                    <div>Date</div>
+                    <div className="text-center">Signal</div>
+                    <div>Previous Close</div>
+                    <div></div>
+                    <div className="text-center">Result (1d)</div>
+                </div>
+            </div>
+
+            {/* Empty State for Intraday */}
+            <div className="bg-[#0F151F] rounded-xl p-12 text-center border border-[#1E2530]">
+              <div className="text-[#7588A3] text-lg mb-2">No intraday signals found</div>
+              <div className="text-[#7588A3] text-sm">Intraday signal tracking will be available in a future update</div>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
