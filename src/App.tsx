@@ -20,17 +20,30 @@ function ScreenerPage() {
     date: "",
     search: "",
   });
+  const [filteredCount, setFilteredCount] = useState(0);
 
   const handleFilterChange = (newFilters: typeof filters) => {
     setFilters(newFilters);
   };
 
+  const handleFilteredCountChange = (count: number) => {
+    setFilteredCount(count);
+  };
+
+  const handleSummaryFilterChange = (filterType: string) => {
+    if (filterType === "Positive" || filterType === "Negative") {
+      setFilters(prev => ({ ...prev, technicalRating: filterType, currentRating: "" }));
+    } else {
+      setFilters(prev => ({ ...prev, currentRating: filterType, technicalRating: "" }));
+    }
+  };
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <SummaryInfo stocks={[]} />
-      <StockListFilter onChange={handleFilterChange} />
+      <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
+      <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
       <div className="flex-1 overflow-hidden">
-        <DataTable columns={stockColumns} filters={filters} />
+        <DataTable columns={stockColumns} filters={filters} onFilteredCountChange={handleFilteredCountChange} />
       </div>
     </div>
   );

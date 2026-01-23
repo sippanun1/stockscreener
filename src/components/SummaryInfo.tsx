@@ -1,14 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+
 import type { Stock } from "../types/stock";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "./ui/popover";
+
 
 type SummaryInfoProps = {
   stocks: Stock[];
+  onFilterChange?: (technicalRating: string) => void;
 };
 
 type SummaryData = {
@@ -30,14 +27,7 @@ type SummaryData = {
   }>;
 };
 
-type StockByRating = {
-  symbol: string;
-  market: string;
-  name: string;
-  current_price: number;
-  current_rating: string;
-  previous_rating: string;
-};
+
 
 // Fetch function for React Query
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -50,27 +40,11 @@ const fetchSummary = async (): Promise<SummaryData> => {
   return response.json();
 };
 
-const fetchStocksByRating = async (rating: string): Promise<StockByRating[]> => {
-  const response = await fetch(`${API_URL}/api/stocks/by-rating?rating=${encodeURIComponent(rating)}`);
-  const data = await response.json();
-  return data.data || [];
-};
-
-export default function SummaryInfo({ }: SummaryInfoProps) {
-  const [selectedRating, setSelectedRating] = useState<string | null>(null);
-
+export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
   // Fetch summary with React Query (5 minute cache)
   const { data: summary, isLoading: loading } = useQuery({
     queryKey: ['summary'],
     queryFn: fetchSummary,
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-  });
-
-  // Fetch stocks by rating when a rating is selected
-  const { data: stocksByRating, isLoading: loadingStocks } = useQuery({
-    queryKey: ['stocksByRating', selectedRating],
-    queryFn: () => fetchStocksByRating(selectedRating!),
-    enabled: !!selectedRating,
     staleTime: 5 * 60 * 1000, // 5 minutes cache
   });
 
@@ -93,7 +67,10 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pl-[53px] pr-[53px]">
       {/* Card 1: POSITIVE / BULLISH */}
-      <div className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col justify-between min-h-[120px] h-auto">
+      <div 
+        onClick={() => onFilterChange?.('Positive')}
+        className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col justify-between min-h-[120px] h-auto cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
+      >
         <div className="flex items-start justify-between mb-2">
           <div className="text-[#F8FAFC] text-base font-semibold pt-0.5">
             Positive Signals
@@ -125,86 +102,35 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
           </div>
 
           <div className="flex items-center justify-between text-xs mt-2 font-medium">
-          <Popover>
-            <PopoverTrigger asChild>
               <button 
-                onClick={() => setSelectedRating("Strong Buy")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFilterChange?.("Strong Buy");
+                }}
                 className="text-[#00FFB7] hover:text-[#00FFB7]/80 transition-colors cursor-pointer hover:underline"
               >
                 Strong Buy ({summary.strong_buy_count})
               </button>
-            </PopoverTrigger>
-            <PopoverContent 
-              align="center" 
-              side="bottom"
-              className="w-80 max-h-96 overflow-y-auto bg-[#0F151F] border-[#7588A3]/20 z-[100]"
-            >
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm text-[#F8FAFC]">Strong Buy Signals ({summary.strong_buy_count})</h3>
-                {loadingStocks ? (
-                  <div className="text-[#7588A3] text-xs">Loading...</div>
-                ) : stocksByRating && stocksByRating.length > 0 ? (
-                  <div className="space-y-1.5 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-[#7588A3]/30 scrollbar-track-transparent">
-                    {stocksByRating.map((stock) => (
-                      <div key={stock.symbol} className="flex items-center justify-between text-xs border-b border-[#7588A3]/10 pb-1.5">
-                        <div>
-                          <div className="text-[#F8FAFC] font-medium">{stock.symbol.split(':')[1] || stock.symbol}</div>
-                          <div className="text-[#7588A3] text-[10px]">{stock.market}</div>
-                        </div>
-                        <div className="text-[#00FFB7] font-medium">${stock.current_price.toFixed(2)}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-[#7588A3] text-xs">No stocks found</div>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
           
-          <Popover>
-            <PopoverTrigger asChild>
               <button 
-                onClick={() => setSelectedRating("Buy")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFilterChange?.("Buy");
+                }}
                 className="text-[#10B981] hover:text-[#10B981]/80 transition-colors cursor-pointer hover:underline"
               >
                 Buy ({summary.buy_count || 0})
               </button>
-            </PopoverTrigger>
-            <PopoverContent 
-              align="center" 
-              side="bottom"
-              className="w-80 max-h-96 overflow-y-auto bg-[#0F151F] border-[#7588A3]/20 z-[100]"
-            >
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm text-[#F8FAFC]">Buy Signals ({summary.buy_count || 0})</h3>
-                {loadingStocks ? (
-                  <div className="text-[#7588A3] text-xs">Loading...</div>
-                ) : stocksByRating && stocksByRating.length > 0 ? (
-                  <div className="space-y-1.5 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-[#7588A3]/30 scrollbar-track-transparent">
-                    {stocksByRating.map((stock) => (
-                      <div key={stock.symbol} className="flex items-center justify-between text-xs border-b border-[#7588A3]/10 pb-1.5">
-                        <div>
-                          <div className="text-[#F8FAFC] font-medium">{stock.symbol.split(':')[1] || stock.symbol}</div>
-                          <div className="text-[#7588A3] text-[10px]">{stock.market}</div>
-                        </div>
-                        <div className="text-[#10B981] font-medium">${stock.current_price.toFixed(2)}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-[#7588A3] text-xs">No stocks found</div>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
           </div>
 
         </div>
       </div>
 
       {/* Card 2: NEGATIVE / BEARISH */}
-      <div className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col justify-between min-h-[120px] h-auto">
+      <div 
+        onClick={() => onFilterChange?.('Negative')}
+        className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col justify-between min-h-[120px] h-auto cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
+      >
         <div className="flex items-start justify-between mb-2">
           <div className="text-[#F8FAFC] text-base font-semibold pt-0.5">
             Negative Signals
@@ -236,71 +162,25 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
           </div>
 
           <div className="flex items-center justify-between text-xs mt-2 font-medium">
-          <Popover>
-            <PopoverTrigger asChild>
               <button 
-                onClick={() => setSelectedRating("Strong Sell")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFilterChange?.("Strong Sell");
+                }}
                 className="text-[#FF3069] hover:text-[#FF3069]/80 transition-colors cursor-pointer hover:underline"
               >
                 Strong Sell ({summary.strong_sell_count || 0})
               </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 max-h-96 overflow-y-auto bg-[#0F151F] border-[#7588A3]/20">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm text-[#F8FAFC]">Strong Sell Signals ({summary.strong_sell_count || 0})</h3>
-                {loadingStocks ? (
-                  <div className="text-[#7588A3] text-xs">Loading...</div>
-                ) : stocksByRating && stocksByRating.length > 0 ? (
-                  <div className="space-y-1.5 max-h-80 overflow-y-auto">
-                    {stocksByRating.map((stock) => (
-                      <div key={stock.symbol} className="flex items-center justify-between text-xs border-b border-[#7588A3]/10 pb-1.5">
-                        <div>
-                          <div className="text-[#F8FAFC] font-medium">{stock.symbol.split(':')[1] || stock.symbol}</div>
-                          <div className="text-[#7588A3] text-[10px]">{stock.market}</div>
-                        </div>
-                        <div className="text-[#FF3069] font-medium">${stock.current_price.toFixed(2)}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-[#7588A3] text-xs">No stocks found</div>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
           
-          <Popover>
-            <PopoverTrigger asChild>
               <button 
-                onClick={() => setSelectedRating("Sell")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFilterChange?.("Sell");
+                }}
                 className="text-[#DC2626] hover:text-[#DC2626]/80 transition-colors cursor-pointer hover:underline"
               >
                 Sell ({summary.sell_count || 0})
               </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 max-h-96 overflow-y-auto bg-[#0F151F] border-[#7588A3]/20">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm text-[#F8FAFC]">Sell Signals ({summary.sell_count || 0})</h3>
-                {loadingStocks ? (
-                  <div className="text-[#7588A3] text-xs">Loading...</div>
-                ) : stocksByRating && stocksByRating.length > 0 ? (
-                  <div className="space-y-1.5 max-h-80 overflow-y-auto">
-                    {stocksByRating.map((stock) => (
-                      <div key={stock.symbol} className="flex items-center justify-between text-xs border-b border-[#7588A3]/10 pb-1.5">
-                        <div>
-                          <div className="text-[#F8FAFC] font-medium">{stock.symbol.split(':')[1] || stock.symbol}</div>
-                          <div className="text-[#7588A3] text-[10px]">{stock.market}</div>
-                        </div>
-                        <div className="text-[#DC2626] font-medium">${stock.current_price.toFixed(2)}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-[#7588A3] text-xs">No stocks found</div>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
           </div>
 
         </div>
@@ -330,31 +210,31 @@ export default function SummaryInfo({ }: SummaryInfoProps) {
             summary.top_opportunities.slice(0, 3).map((stock, index) => (
               <div 
                 key={stock.symbol} 
-                className="flex items-center gap-2 py-1.5 border-b border-[#7588A3]/10 last:border-b-0"
+                className="grid grid-cols-[20px_1fr_48px_85px] gap-2 items-center py-1.5 border-b border-[#7588A3]/10 last:border-b-0"
               >
                 {/* Rank */}
-                <div className="w-5 text-center">
+                <div className="text-center">
                   <span className="text-[#F8FAFC] text-xs font-semibold">
                     {index + 1}
                   </span>
                 </div>
                 
                 {/* Symbol */}
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0">
                   <div className="text-[#F8FAFC] text-sm font-bold truncate">
                     {stock.symbol.split(':')[1] || stock.symbol}
                   </div>
                 </div>
                 
                 {/* Market */}
-                <div className="w-16 text-right">
+                <div className="text-right">
                   <div className="text-[#F8FAFC] text-xs">
                     {stock.market}
                   </div>
                 </div>
                 
                 {/* Percentage */}
-                <div className="w-14 text-right">
+                <div className="text-right">
                   <div className="text-[#10B981] text-xs font-semibold">
                     +{stock.change_percent.toFixed(2)}%
                   </div>

@@ -131,6 +131,7 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
 def get_stocks_with_previous_rating(
     market: Optional[str] = None,
     date: Optional[str] = None,
+    search: Optional[str] = None,
     limit: int = 100,
     offset: int = 0
 ):
@@ -143,6 +144,7 @@ def get_stocks_with_previous_rating(
     Args:
         market: Filter by market (US, TH, HK, JP) or None for all
         date: Date to query. If None, gets latest entry per stock.
+        search: Search term for symbol or name
         limit: Maximum number of results
         offset: Pagination offset
     
@@ -167,6 +169,7 @@ def get_stocks_with_previous_rating(
                     ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY fetched_date DESC) as rn
                 FROM stock_ratings
                 WHERE technical_rating != 'Neutral'
+                    AND session_type = 'post_market'
             )
             SELECT 
                 today.symbol,
@@ -183,6 +186,7 @@ def get_stocks_with_previous_rating(
                         AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                         AND prev.technical_rating != today.technical_rating
                         AND prev.technical_rating != 'Neutral'
+                        AND prev.session_type = 'post_market'
                     ORDER BY prev.fetched_date DESC 
                     LIMIT 1
                 ) AS previous_rating,
@@ -193,23 +197,37 @@ def get_stocks_with_previous_rating(
                         AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                         AND prev.technical_rating != today.technical_rating
                         AND prev.technical_rating != 'Neutral'
+                        AND prev.session_type = 'post_market'
                     ORDER BY prev.fetched_date DESC 
                     LIMIT 1
                 ) AS previous_rating_date,
-                (
-                    SELECT prev.current_price 
-                    FROM stock_ratings prev 
-                    WHERE prev.symbol = today.symbol 
-                        AND DATE(prev.fetched_date) < DATE(today.fetched_date)
-                        AND prev.technical_rating != today.technical_rating
-                        AND prev.technical_rating != 'Neutral'
-                    ORDER BY prev.fetched_date DESC 
-                    LIMIT 1
+                COALESCE(
+                    (
+                        SELECT prev.current_price 
+                        FROM stock_ratings prev 
+                        WHERE prev.symbol = today.symbol 
+                            AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+                            AND prev.technical_rating != today.technical_rating
+                            AND prev.technical_rating != 'Neutral'
+                            AND prev.session_type = 'post_market'
+                        ORDER BY prev.fetched_date DESC 
+                        LIMIT 1
+                    ),
+                    (
+                        SELECT day_prev.current_price 
+                        FROM stock_ratings day_prev 
+                        WHERE day_prev.symbol = today.symbol 
+                            AND DATE(day_prev.fetched_date) < DATE(today.fetched_date)
+                        ORDER BY day_prev.fetched_date DESC 
+                        LIMIT 1
+                    )
                 ) AS previous_price,
                 (
                     SELECT MIN(rcd.fetched_date)
                     FROM stock_ratings rcd
                     WHERE rcd.symbol = today.symbol
+                    AND rcd.session_type = 'post_market'
+                    AND rcd.technical_rating = today.technical_rating
                     AND DATE(rcd.fetched_date) > IFNULL((
                         SELECT DATE(prev.fetched_date) 
                         FROM stock_ratings prev 
@@ -217,6 +235,7 @@ def get_stocks_with_previous_rating(
                             AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                             AND prev.technical_rating != today.technical_rating
                             AND prev.technical_rating != 'Neutral'
+                            AND prev.session_type = 'post_market'
                         ORDER BY prev.fetched_date DESC 
                         LIMIT 1
                     ), '1970-01-01')
@@ -228,6 +247,10 @@ def get_stocks_with_previous_rating(
         
         # Always filter out stocks with price below 0.1
         query += " AND today.current_price >= 0.1"
+        
+        if search:
+            query += " AND (today.symbol LIKE ? OR today.name LIKE ?)"
+            params.extend([f"%{search}%", f"%{search}%"])
         
         if market:
             query += " AND today.market = ?"
@@ -290,9 +313,14 @@ def get_stocks_with_previous_rating(
                 ) AS rating_change_date
             FROM stock_ratings today
             WHERE DATE(today.fetched_date) = ?
+                AND today.session_type = 'post_market'
         """
         
         params = [date]
+        
+        if search:
+            query += " AND (today.symbol LIKE ? OR today.name LIKE ?)"
+            params.extend([f"%{search}%", f"%{search}%"])
         
         if market:
             query += " AND today.market = ?"
@@ -386,13 +414,98 @@ def get_available_dates():
     
     cursor.execute("""
         SELECT DISTINCT DATE(fetched_date) as fetched_date
-        FROM stock_ratings 
+        FROM stock_ratings
+        WHERE session_type = 'post_market'
         ORDER BY fetched_date DESC
     """)
     
     dates = [row["fetched_date"] for row in cursor.fetchall()]
     conn.close()
     return dates
+
+
+def get_stock_pre_market_history(symbol: str, limit: int = 2):
+    """Get historical pre-market data for a specific stock."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT 
+            fetched_date,
+            fetched_time,
+            current_price,
+            technical_rating
+        FROM stock_ratings
+        WHERE symbol = ?
+            AND session_type = 'pre_market'
+        ORDER BY fetched_date DESC
+        LIMIT ?
+    """, (symbol, limit))
+    
+    history = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return history
+
+
+def get_latest_intraday_records(symbol: str):
+    """
+    Get all records for the latest available date for a specific stock.
+    Also fetches the last record from the previous day to calculate the first move.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # 1. Find the latest date
+    cursor.execute("""
+        SELECT MAX(fetched_date) FROM stock_ratings WHERE symbol = ?
+    """, (symbol,))
+    latest_date_row = cursor.fetchone()
+    
+    if not latest_date_row or not latest_date_row[0]:
+        conn.close()
+        return []
+        
+    latest_date = latest_date_row[0]
+    
+    # 2. Get all records for this date
+    cursor.execute("""
+        SELECT 
+            fetched_date,
+            fetched_time,
+            current_price,
+            technical_rating,
+            session_type
+        FROM stock_ratings
+        WHERE symbol = ? AND fetched_date = ?
+        ORDER BY fetched_time ASC
+    """, (symbol, latest_date))
+    
+    today_records = [dict(row) for row in cursor.fetchall()]
+    
+    # 3. Get the last record BEFORE this date (Previous Close/CONTEXT)
+    cursor.execute("""
+        SELECT 
+            fetched_date,
+            fetched_time,
+            current_price,
+            technical_rating,
+            session_type
+        FROM stock_ratings
+        WHERE symbol = ? AND fetched_date < ?
+        ORDER BY fetched_date DESC, fetched_time DESC
+        LIMIT 1
+    """, (symbol, latest_date))
+    
+    prev_record_row = cursor.fetchone()
+    prev_record = dict(prev_record_row) if prev_record_row else None
+    
+    conn.close()
+    
+    return {
+        "date": latest_date,
+        "today_records": today_records,
+        "prev_record": prev_record
+    }
 
 
 def get_stock_history(symbol: str, days: int = 30):
@@ -403,12 +516,14 @@ def get_stock_history(symbol: str, days: int = 30):
     cursor.execute("""
         SELECT 
             fetched_date,
+            fetched_time,
             current_price,
             technical_rating,
             name,
             market
         FROM stock_ratings
         WHERE symbol = ?
+            AND session_type = 'post_market'
         ORDER BY fetched_date DESC
         LIMIT ?
     """, (symbol, days))
@@ -462,8 +577,8 @@ def get_today_summary():
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Get the latest date in database
-    cursor.execute("SELECT MAX(DATE(fetched_date)) as latest_date FROM stock_ratings")
+    # Get the latest date in database (post_market only)
+    cursor.execute("SELECT MAX(DATE(fetched_date)) as latest_date FROM stock_ratings WHERE session_type = 'post_market'")
     latest_result = cursor.fetchone()
     latest_date = latest_result["latest_date"] if latest_result and latest_result["latest_date"] else datetime.now().strftime("%Y-%m-%d")
     
@@ -478,11 +593,13 @@ def get_today_summary():
                 WHERE prev.symbol = today.symbol 
                     AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                     AND prev.technical_rating != today.technical_rating
+                    AND prev.session_type = 'post_market'
                 ORDER BY prev.fetched_date DESC 
                 LIMIT 1
             ) AS previous_rating
         FROM stock_ratings today
         WHERE DATE(today.fetched_date) = ?
+            AND today.session_type = 'post_market'
     """
     
     cursor.execute(query, [latest_date])
@@ -565,7 +682,6 @@ def get_today_summary():
     if yesterday_upgrades > 0:
         upgrades_change_from_yesterday = ((upgrades - yesterday_upgrades) / yesterday_upgrades) * 100
 
-    # Top 3 Opportunities: Top gainers compared to previous trading day
     top_opportunities = []
     if latest_date:
         # Find the actual previous trading day from database (not calendar yesterday)
@@ -573,6 +689,7 @@ def get_today_summary():
             SELECT DISTINCT DATE(fetched_date) as date 
             FROM stock_ratings 
             WHERE DATE(fetched_date) < ?
+                AND session_type = 'post_market'
             ORDER BY DATE(fetched_date) DESC
             LIMIT 1
         """, (latest_date,))
@@ -592,12 +709,14 @@ def get_today_summary():
                     FROM stock_ratings prev 
                     WHERE prev.symbol = today.symbol 
                     AND DATE(prev.fetched_date) = ?
+                    AND prev.session_type = 'post_market'
                     LIMIT 1
                 ) as yesterday_price
             FROM stock_ratings today
             WHERE DATE(today.fetched_date) = ?
             AND today.technical_rating IN ('Buy', 'Strong Buy')
             AND today.current_price >= 0.1
+            AND today.session_type = 'post_market'
             """
             cursor.execute(query_top, (previous_trading_date, latest_date))
         
@@ -651,9 +770,9 @@ def get_stocks_by_rating(rating: str, date: Optional[str] = None, limit: int = 1
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Get latest date if not specified
+    # Get latest date if not specified (post_market only)
     if date is None:
-        cursor.execute("SELECT MAX(DATE(fetched_date)) as latest_date FROM stock_ratings")
+        cursor.execute("SELECT MAX(DATE(fetched_date)) as latest_date FROM stock_ratings WHERE session_type = 'post_market'")
         latest_result = cursor.fetchone()
         date = latest_result["latest_date"] if latest_result else datetime.now().strftime("%Y-%m-%d")
     
@@ -671,6 +790,7 @@ def get_stocks_by_rating(rating: str, date: Optional[str] = None, limit: int = 1
                 WHERE prev.symbol = today.symbol 
                     AND DATE(prev.fetched_date) < DATE(today.fetched_date)
                     AND prev.technical_rating != today.technical_rating
+                    AND prev.session_type = 'post_market'
                 ORDER BY prev.fetched_date DESC 
                 LIMIT 1
             ) AS previous_rating
@@ -678,6 +798,7 @@ def get_stocks_by_rating(rating: str, date: Optional[str] = None, limit: int = 1
         WHERE DATE(today.fetched_date) = ?
             AND today.technical_rating = ?
             AND today.current_price >= 0.1
+            AND today.session_type = 'post_market'
         ORDER BY today.current_price DESC
         LIMIT ?
     """

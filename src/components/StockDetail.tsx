@@ -2,13 +2,16 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { StockLogo } from "./StockLogo";
-import { ArrowRight, Calendar } from "lucide-react";
+import { ArrowRight, Calendar, Timer } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getCurrencySymbol } from "./stock-table/columns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type RatingHistory = {
   date: string;
+  start_date?: string;
+  start_time?: string;
+  end_time?: string;
   from_rating: string;
   to_rating: string;
   entry_price: number;
@@ -38,6 +41,12 @@ type StockDetailData = {
     };
   };
   history: RatingHistory[];
+  pre_market_history?: {
+    fetched_date: string;
+    current_price: number;
+    technical_rating: string;
+  }[];
+  intraday_moves?: RatingHistory[];
 };
 
 
@@ -89,9 +98,20 @@ const getResultColor = (result: number | undefined) => {
 const formatDateToDisplay = (dateStr: string) => {
   try {
     const date = parseISO(dateStr);
-    return format(date, "MMM dd, yyyy");
+    return format(date, "MMM dd");
   } catch {
     return dateStr;
+  }
+};
+
+const formatDateRange = (start: string | undefined, end: string) => {
+  if (!start) return formatDateToDisplay(end);
+  try {
+    const s = parseISO(start);
+    const e = parseISO(end);
+    return `${format(s, "MMM dd")} - ${format(e, "MMM dd")}`;
+  } catch {
+    return `${start} - ${end}`;
   }
 };
 
@@ -354,19 +374,21 @@ export default function StockDetail() {
       <h2 className="text-[#F8FAFC] text-xl font-bold mb-6">Signal History</h2>
 
       {/* Tabs for Daily and Intraday */}
-      <Tabs defaultValue="daily" className="w-full">
-        <TabsList className="mb-6 bg-[#0F151F] border border-[#1E2530] p-1.5 h-12">
-          <TabsTrigger 
-            value="daily" 
-            className="data-[state=active]:bg-[#1E293B] data-[state=active]:text-[#00FFB7] text-[#7588A3] font-medium text-base px-8 h-full"
-          >
-            Daily
-          </TabsTrigger>
+      <Tabs defaultValue="intraday" className="w-full">
+        <TabsList className="mb-6 bg-[#0F151F] border border-[#1E2530] p-1.5 h-14 w-fit rounded-lg gap-2">
           <TabsTrigger 
             value="intraday"
-            className="data-[state=active]:bg-[#1E293B] data-[state=active]:text-[#00FFB7] text-[#7588A3] font-medium text-base px-8 h-full"
+            className="data-[state=active]:bg-[#1E293B] data-[state=active]:text-white text-[#7588A3] font-medium text-base px-6 h-full flex items-center gap-2 rounded-md transition-all"
           >
-            Intraday
+            <Timer className="w-5 h-5" />
+            Intraday (Time)
+          </TabsTrigger>
+          <TabsTrigger 
+            value="daily" 
+            className="data-[state=active]:bg-[#1E293B] data-[state=active]:text-white text-[#7588A3] font-medium text-base px-6 h-full flex items-center gap-2 rounded-md transition-all"
+          >
+            <Calendar className="w-5 h-5" />
+            Daily (Open-to-Open)
           </TabsTrigger>
         </TabsList>
 
@@ -376,12 +398,12 @@ export default function StockDetail() {
             {/* Table Headers - Card Style */}
             <div className="flex items-center mb-4">
                 <div className="w-36 flex-shrink-0"></div>
-                <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.3fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
+                <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
                     <div>Date</div>
                     <div className="text-center">Signal</div>
-                    <div>Previous Close</div>
-                    <div></div>
-                    <div className="text-center">Result (1d)</div>
+                    <div>Open Price (Day 1)</div>
+                    <div>Open Price (Day 2)</div>
+                    <div className="text-center">Result %</div>
                 </div>
             </div>
 
@@ -404,11 +426,11 @@ export default function StockDetail() {
                         </div>
 
                         {/* Card */}
-                        <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.3fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
+                        <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
                               {/* Date */}
                               <div className="flex items-center gap-3 text-[#F8FAFC]">
                                   <Calendar className="w-4 h-4 text-[#F8FAFC]" />
-                                  <span className="font-medium text-sm">{formatDateToDisplay(item.date)}</span>
+                                  <span className="font-medium text-sm">{formatDateRange(item.start_date, item.date)}</span>
                               </div>
 
                               {/* Signal Transition */}
@@ -422,25 +444,31 @@ export default function StockDetail() {
                                   </div>
                               </div>
 
-                              {/* Previous Close - Left aligned */}
+                              {/* Open Price (Day 1) */}
                               <div>
                                   <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
                                   <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
                               </div>
 
-                              {/* Arrow Column */}
-                              <div className="flex justify-center">
-                                  <ArrowRight className="w-4 h-4 text-[#7588A3]" />
+                              {/* Open Price (Day 2) */}
+                              <div>
+                                  <span className="text-[#F8FAFC] font-bold">{item.exit_price || data.current_price}</span>
+                                  <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
                               </div>
 
                               {/* Result - Centered */}
                               <div className="text-center">
-                                  {item.exit_price && item.result !== undefined && item.result !== null ? (
+                                  {item.exit_price !== undefined && item.result !== undefined && item.result !== null ? (
                                       <div className="flex items-baseline justify-center gap-2">
-                                          <span className="text-[#F8FAFC] font-bold">{item.exit_price}</span>
-                                          <span className="text-[#7588A3] text-[0.65rem]">{getCurrencySymbol(data.market)}</span>
                                           <span className={`font-bold text-lg ${getResultColor(item.result)}`}>
-                                              ({item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%)
+                                              {item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%
+                                          </span>
+                                      </div>
+                                  ) : item.result !== undefined && item.result !== null ? (
+                                       // Open Signal Result
+                                      <div className="flex items-baseline justify-center gap-2">
+                                          <span className={`font-bold text-lg ${getResultColor(item.result)}`}>
+                                              {item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%
                                           </span>
                                       </div>
                                   ) : (
@@ -467,22 +495,99 @@ export default function StockDetail() {
         {/* Intraday Tab Content */}
         <TabsContent value="intraday">
           <div>
-            {/* Table Headers - Card Style */}
+            {/* Intraday Table Headers */}
             <div className="flex items-center mb-4">
                 <div className="w-36 flex-shrink-0"></div>
-                <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_0.3fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
-                    <div>Date</div>
+                <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
+                    <div>Time</div>
                     <div className="text-center">Signal</div>
-                    <div>Previous Close</div>
-                    <div></div>
-                    <div className="text-center">Result (1d)</div>
+                    <div>Entry Price (Start)</div>
+                    <div>Exit Price (End)</div>
+                    <div className="text-center">Result %</div>
                 </div>
             </div>
 
-            {/* Empty State for Intraday */}
-            <div className="bg-[#0F151F] rounded-xl p-12 text-center border border-[#1E2530]">
-              <div className="text-[#7588A3] text-lg mb-2">No intraday signals found</div>
-              <div className="text-[#7588A3] text-sm">Intraday signal tracking will be available in a future update</div>
+            {/* History Rows */}
+            <div className="space-y-4">
+              {data.intraday_moves && data.intraday_moves.length > 0 ? (
+                data.intraday_moves.map((item, index) => {
+                  const isProfit = item.result !== undefined && item.result > 0.0;
+                  const isLoss = item.result !== undefined && item.result < -0.0;
+                  const dotColor = isProfit ? "bg-[#00FFB7]" : isLoss ? "bg-[#FF3069]" : "bg-[#7588A3]";
+                  const dotShadow = isProfit ? "shadow-[0_0_8px_rgba(0,255,183,0.6)]" : isLoss ? "shadow-[0_0_8px_rgba(255,48,105,0.6)]" : "";
+
+                  // Format Time Range
+                  const formatTime = (t?: string) => {
+                      if (!t) return "--:--";
+                      if (t === "Prev Close") return "Prev Close";
+                      return t.length > 5 ? t.substring(0, 5) : t;
+                  };
+                  const timeRange = `${formatTime(item.start_time)} - ${formatTime(item.end_time)}`;
+
+                  return (
+                    <div key={index} className="flex items-center group">
+                        {/* Centered Dot Column */}
+                        <div className="w-36 flex-shrink-0 flex justify-center">
+                            <div className={`w-5 h-5 rounded-full ${dotColor} ${dotShadow}`}></div>
+                        </div>
+
+                        {/* Card */}
+                        <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
+                              {/* Date/Time */}
+                              <div className="flex items-center gap-3 text-[#F8FAFC]">
+                                  <Timer className="w-4 h-4 text-[#F8FAFC]" />
+                                  <span className="font-medium text-sm">{timeRange}</span>
+                              </div>
+
+                              {/* Signal Transition */}
+                              <div className="flex items-center justify-center gap-3">
+                                  <div className={`w-[100px] h-[24px] ${getRatingStyles(item.from_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
+                                      {item.from_rating}
+                                  </div>
+                                  <ArrowRight className="w-4 h-4 text-[#7588A3]" />
+                                  <div className={`w-[100px] h-[24px] ${getRatingStyles(item.to_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
+                                      {item.to_rating}
+                                  </div>
+                              </div>
+
+                              {/* Entry Price (Start) */}
+                              <div>
+                                  <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
+                                  <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
+                              </div>
+
+                              {/* Exit Price (End) */}
+                              <div>
+                                  <span className="text-[#F8FAFC] font-bold">{item.exit_price || "--"}</span>
+                                  <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
+                              </div>
+
+                              {/* Result - Centered */}
+                              <div className="text-center">
+                                  {item.exit_price !== undefined && item.result !== undefined && item.result !== null ? (
+                                      <div className="flex items-baseline justify-center gap-2">
+                                          <span className={`font-bold text-lg ${getResultColor(item.result)}`}>
+                                              {item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%
+                                          </span>
+                                      </div>
+                                  ) : (
+                                      <div className="inline-flex">
+                                          <div className="bg-[#1E40AF] text-white px-4 py-1.5 rounded-full text-sm font-semibold">
+                                              Pending
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                        </div>
+                    </div> 
+                  );
+                })
+              ) : (
+                <div className="bg-[#0F151F] rounded-xl p-12 text-center border border-[#1E2530]">
+                  <div className="text-[#7588A3] text-lg mb-2">No intraday moves found today</div>
+                  <div className="text-[#7588A3] text-sm">Showing daily history instead...</div>
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>

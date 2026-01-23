@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useState, useRef, useCallback, useMemo } from "react"
+import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import type { Stock } from "@/types/stock"
 import { SortArrows } from "@/components/SortArrows"
@@ -35,6 +35,7 @@ interface Filters {
 interface DataTableProps {
   columns: ColumnDef<Stock, unknown>[]
   filters?: Filters
+  onFilteredCountChange?: (count: number) => void
 }
 
 const BATCH_SIZE = 100
@@ -61,7 +62,7 @@ const fetchStocks = async (): Promise<Stock[]> => {
   }))
 }
 
-export function DataTable({ columns, filters }: DataTableProps) {
+export function DataTable({ columns, filters, onFilteredCountChange }: DataTableProps) {
   const [displayCount, setDisplayCount] = useState(BATCH_SIZE)
   const [loadingMore, setLoadingMore] = useState(false)
   // Default sort by Date (fetched_date key) descending
@@ -151,6 +152,11 @@ export function DataTable({ columns, filters }: DataTableProps) {
 
     return filtered
   }, [filters, allData, sorting])
+
+  // Notify parent of filtered count changes
+  useEffect(() => {
+    onFilteredCountChange?.(filteredData.length)
+  }, [filteredData.length, onFilteredCountChange])
 
   // Slice data for display
   const currentData = useMemo(() => {

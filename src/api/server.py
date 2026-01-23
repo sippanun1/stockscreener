@@ -155,6 +155,7 @@ def root():
 def get_stocks(
     market: Optional[str] = Query(None, description="Filter by market: US, TH, HK, JP"),
     date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
+    search: Optional[str] = Query(None, description="Search term for symbol or name"),
     limit: int = Query(100, ge=1, le=50000, description="Number of results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     _auth: bool = Depends(verify_api_key)
@@ -172,6 +173,7 @@ def get_stocks(
         stocks = database.get_stocks_with_previous_rating(
             market=market,
             date=date,
+            search=search,
             limit=limit,
             offset=offset
         )
@@ -280,8 +282,12 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
     Returns data for the Stock Detail page.
     """
     try:
-        # Get all history for this stock
-        history = database.get_stock_history(symbol, days=365)
+        # Get all history for this stock (Using Pre-Market for Open-to-Open logic)
+        history = database.get_stock_pre_market_history(symbol, limit=365)
+        
+        # Fallback to Post-Market if Pre-Market data is insufficient (need at least 2 for signals)
+        if len(history) < 2:
+            history = database.get_stock_history(symbol, days=365)
         
         if not history:
             raise HTTPException(
@@ -293,21 +299,27 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
         current = history[0] if history else {}
         
         # Process history Chronologically (Oldest -> Newest) to find signals
-        chronological_history = history[::-1]
+        # Filter out Neutral ratings to skip them (bridge signals)
+        raw_history = history[::-1]
+        chronological_history = [entry for entry in raw_history if entry.get("technical_rating") != "Neutral"]
         
         signals = []
         
         if chronological_history:
+            raw_rating = chronological_history[0].get("technical_rating", "Neutral")
             current_signal = {
-                "rating": chronological_history[0].get("technical_rating", "Neutral"),
+                "rating": "N/A" if raw_rating == "Neutral" else raw_rating,
                 "start_date": chronological_history[0].get("fetched_date"),
+                "start_time": chronological_history[0].get("fetched_time"),
                 "entry_price": chronological_history[0].get("current_price", 0),
                 "status": "OPEN"
             }
             
             for entry in chronological_history[1:]:
-                entry_rating = entry.get("technical_rating", "Neutral")
+                raw_rating = entry.get("technical_rating", "Neutral")
+                entry_rating = "N/A" if raw_rating == "Neutral" else raw_rating
                 entry_date = entry.get("fetched_date")
+                entry_time = entry.get("fetched_time")
                 entry_price = entry.get("current_price", 0)
                 
                 if entry_rating != current_signal["rating"]:
@@ -326,6 +338,9 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                         
                     signals.append({
                         "date": entry_date,
+                        "start_date": current_signal["start_date"],
+                        "start_time": current_signal.get("start_time"),
+                        "end_time": entry_time,
                         "from_rating": current_signal["rating"],
                         "to_rating": entry_rating,
                         "entry_price": current_signal["entry_price"],
@@ -339,10 +354,35 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                     current_signal = {
                         "rating": entry_rating,
                         "start_date": entry_date,
+                        "start_time": entry_time,
                         "entry_price": entry_price,
                         "status": "OPEN"
                     }
         
+        # Append the current active signal
+        if current_signal["status"] == "OPEN":
+            current_closing_price = history[0].get("current_price", 0)
+            current_closing_time = history[0].get("fetched_time")
+            
+            # Calculate open profit
+            profit_percent = 0.0
+            if current_signal["entry_price"] > 0:
+                profit_percent = ((current_closing_price - current_signal["entry_price"]) / current_signal["entry_price"]) * 100
+            
+            signals.append({
+                "date": history[0].get("fetched_date"),
+                "start_date": current_signal["start_date"],
+                "start_time": current_signal.get("start_time"),
+                "end_time": current_closing_time,
+                "from_rating": current_signal["rating"],
+                "to_rating": current_signal["rating"], # Indicates continuation
+                "entry_price": current_signal["entry_price"],
+                "exit_price": current_closing_price,
+                "days_held": 0, # Simplify for now
+                "result": profit_percent,
+                "status": "OPEN"
+            })
+
         # Reverse signals back to Newest -> Oldest for display
         rating_changes = signals[::-1]
         
@@ -390,6 +430,80 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                 change = current.get("current_price", 0) - prev_price
                 change_percent = (change / prev_price) * 100
 
+        # --- NEW INTRADAY LOGIC ---
+        # Get Real Intraday Moves (Today's activity)
+        # Note: We need symbol from somewhere. It's passed as arg.
+        intraday_data = database.get_latest_intraday_records(symbol)
+        intraday_moves = []
+        
+        if intraday_data and intraday_data.get("today_records"):
+            today_recs = intraday_data["today_records"]
+            prev_rec = intraday_data["prev_record"]
+            
+            # 1. Overnight Move (Prev Close -> First Today)
+            if prev_rec:
+                first_rec = today_recs[0]
+                
+                # Calculate overnight return
+                try:
+                    start_price = prev_rec["current_price"]
+                    end_price = first_rec["current_price"]
+                    res_pct = ((end_price - start_price) / start_price * 100) if start_price > 0 else 0
+                    
+                    intraday_moves.append({
+                        "date": first_rec["fetched_date"],
+                        "start_time": "Prev Close", # Indicate context
+                        "end_time": first_rec["fetched_time"], 
+                        "from_rating": prev_rec["technical_rating"],
+                        "to_rating": first_rec["technical_rating"],
+                        "entry_price": start_price,
+                        "exit_price": end_price, # Current price at that moment
+                        "result": res_pct,
+                        "status": "COMPLETED"
+                    })
+                except Exception:
+                    pass
+            
+            # 2. Intraday Moves (Record A -> Record B)
+            for i in range(len(today_recs) - 1):
+                rec_a = today_recs[i]
+                rec_b = today_recs[i+1]
+                
+                try:
+                    start_price = rec_a["current_price"]
+                    end_price = rec_b["current_price"]
+                    res_pct = ((end_price - start_price) / start_price * 100) if start_price > 0 else 0
+                    
+                    intraday_moves.append({
+                        "date": rec_b["fetched_date"],
+                        "start_time": rec_a["fetched_time"], 
+                        "end_time": rec_b["fetched_time"],
+                        "from_rating": rec_a["technical_rating"],
+                        "to_rating": rec_b["technical_rating"],
+                        "entry_price": start_price,
+                        "exit_price": end_price,
+                        "result": res_pct,
+                        "status": "COMPLETED"
+                    })
+                except Exception:
+                    pass
+            
+            # If only 1 record today and NO previous record (unlikely), show 1 static row?
+            if not intraday_moves and len(today_recs) == 1:
+                 # Just show the snapshot
+                 rec = today_recs[0]
+                 intraday_moves.append({
+                    "date": rec["fetched_date"],
+                    "start_time": rec["fetched_time"],
+                    "end_time": None,
+                    "from_rating": rec["technical_rating"],
+                    "to_rating": rec["technical_rating"],
+                    "entry_price": rec["current_price"],
+                    "exit_price": None,
+                    "result": None,
+                    "status": "OPEN"
+                })
+
         logger.debug(f"Fetched detail for {symbol}: {total_signals} signals")
 
         return {
@@ -397,12 +511,14 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
             "name": current.get("name") or (symbol.split(":")[1] if ":" in symbol else symbol),
             "market": current.get("market") or (symbol.split(":")[0] if ":" in symbol else ""),
             "current_price": current.get("current_price", 0),
-            "current_rating": current.get("technical_rating", "N/A"),
+            "current_rating": "N/A" if current.get("technical_rating", "N/A") == "Neutral" else current.get("technical_rating", "N/A"),
             "change": change,
             "change_percent": change_percent,
             "stats": stats,
             "accuracy_stats": accuracy_stats,
-            "history": rating_changes
+            "intraday_moves": intraday_moves[::-1], # New Intraday Data (Newest First)
+            "history": rating_changes,
+            "pre_market_history": database.get_stock_pre_market_history(symbol, limit=2)
         }
     except HTTPException:
         raise
@@ -509,12 +625,12 @@ async def get_intraday_changes(
                 "market": row[1],
                 "name": row[2],
                 "pre_market": {
-                    "rating": row[3],
+                    "rating": "N/A" if row[3] == "Neutral" else row[3],
                     "price": row[4],
                     "time": row[5]
                 },
                 "post_market": {
-                    "rating": row[6],
+                    "rating": "N/A" if row[6] == "Neutral" else row[6],
                     "price": row[7],
                     "time": row[8]
                 },
@@ -588,7 +704,7 @@ async def get_stock_intraday(
         for row in rows:
             result["sessions"].append({
                 "type": row[3],
-                "rating": row[4],
+                "rating": "N/A" if row[4] == "Neutral" else row[4],
                 "price": row[5],
                 "score": row[6],
                 "time": row[7]
