@@ -84,13 +84,13 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   };
 
   return (
-    <div className="ml-[53px] mr-[53px]">
-      <div className="flex items-center justify-between">
+    <div className="px-4 sm:px-6 lg:px-[53px]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         {/* Left side - Filters */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {/* Markets All */}
           <Select value={market || "all"} onValueChange={handleMarketSelect}>
-            <SelectTrigger className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px] lg:w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
               <SelectValue>{market ? market : "Markets All"}</SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0">
@@ -109,7 +109,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
 
           {/* Current Rating */}
           <Select value={currentRating || "all"} onValueChange={handleCurrentRatingSelect}>
-            <SelectTrigger className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px] lg:w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
               <SelectValue>{currentRating ? currentRating : "Current Rating"}</SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0">
@@ -125,7 +125,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
 
           {/* Rating Change */}
           <Select value={technicalRating || "all"} onValueChange={handleTechnicalRatingSelect}>
-            <SelectTrigger className="w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px] lg:w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
               <SelectValue>{technicalRating ? technicalRating : "Rating Change"}</SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0">
@@ -144,20 +144,20 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
         </div>
 
         {/* Right side - Search & Clear */}
-        <div className="flex items-center gap-4">
-          <div className="relative">
+        <div className="flex items-center gap-2 sm:gap-4 w-full lg:w-auto">
+          <div className="relative flex-1 lg:flex-none">
             <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#F8FAFC] text-lg" />
             <input
               type="text"
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="search"
-              className="w-[200px] bg-[#0F151F] border border-[#7588A3]/30 text-[#F8FAFC] pl-10 pr-3 py-2 rounded-xl text-sm placeholder-[#F8FAFC] focus:outline-none focus:border-[#7588A3]"
+              className="w-full lg:w-[200px] bg-[#0F151F] border border-[#7588A3]/30 text-[#F8FAFC] pl-10 pr-3 py-2 rounded-xl text-sm placeholder-[#F8FAFC] focus:outline-none focus:border-[#7588A3]"
             />
           </div>
           <button
             onClick={handleClearFilters}
-            className="w-[54px] h-[40px] bg-[#0F151F] rounded-xl hover:bg-[#354052] transition flex items-center justify-center"
+            className="w-[54px] h-[40px] bg-[#0F151F] rounded-xl hover:bg-[#354052] transition flex items-center justify-center flex-shrink-0"
           >
             <img src="/src/assets/SVG.svg" alt="reset" />
           </button>
@@ -165,12 +165,12 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
       </div>
 
       {/* Signal Change Count */}
-      <div className="mt-4 text-[#F8FAFC]">
-        <span className="text-sm">Total Signal: </span>
-        <span className="text-lg font-bold text-[#00FFB7]">
+      <div className="mt-3 sm:mt-4 text-[#F8FAFC]">
+        <span className="text-xs sm:text-sm">Total Signal: </span>
+        <span className="text-base sm:text-lg font-bold text-[#00FFB7]">
           {filteredCount?.toLocaleString() || 0}
         </span>
-        <span className="text-sm text-[#7588A3] ml-2">stocks in table</span>
+        <span className="text-xs sm:text-sm text-[#7588A3] ml-2">stocks in table</span>
       </div>
     </div>
   );

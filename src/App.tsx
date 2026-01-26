@@ -19,6 +19,7 @@ function ScreenerPage() {
     technicalRating: "",
     date: "",
     search: "",
+    sortBy: undefined as string | undefined,
   });
   const [filteredCount, setFilteredCount] = useState(0);
 
@@ -32,17 +33,24 @@ function ScreenerPage() {
 
   const handleSummaryFilterChange = (filterType: string) => {
     if (filterType === "Positive" || filterType === "Negative") {
-      setFilters(prev => ({ ...prev, technicalRating: filterType, currentRating: "" }));
+      setFilters(prev => ({ ...prev, technicalRating: filterType, currentRating: "", sortBy: undefined }));
+    } else if (filterType === "Top Gainers") {
+      setFilters(prev => ({ 
+        ...prev, 
+        technicalRating: "", 
+        currentRating: "", 
+        sortBy: "top_gainers" 
+      }));
     } else {
-      setFilters(prev => ({ ...prev, currentRating: filterType, technicalRating: "" }));
+      setFilters(prev => ({ ...prev, currentRating: filterType, technicalRating: "", sortBy: undefined }));
     }
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="flex flex-col h-auto lg:h-full lg:overflow-hidden">
       <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
       <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
-      <div className="flex-1 overflow-hidden">
+      <div className="h-[500px] sm:h-[600px] lg:h-auto lg:flex-1 lg:overflow-hidden">
         <DataTable columns={stockColumns} filters={filters} onFilteredCountChange={handleFilteredCountChange} />
       </div>
     </div>
@@ -51,7 +59,7 @@ function ScreenerPage() {
 
 function App() {
   return (
-    <div className="App bg-[#000000] h-screen flex flex-col overflow-x-hidden overflow-y-auto">
+    <div className="App bg-[#000000] h-[100dvh] flex flex-col overflow-hidden">
       <MenuHeader />
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
         <Routes>

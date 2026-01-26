@@ -18,14 +18,14 @@ const getNavLinkClass = (isActive: boolean): string => {
 
 export default function MenuHeader() {
   return (
-    <Navbar className="pl-[53px] pr-[53px] !bg-[#000000]">
+    <Navbar className="px-4 sm:px-6 lg:px-[53px] !bg-[#000000]">
       <NavbarBrand href="/">
         <img
           src={goodtradeLogo}
-          className="w-[97px] h-[97px]pl-[53px]"
+          className="w-16 h-16 sm:w-20 sm:h-20 lg:w-[97px] lg:h-[97px]"
         />
       </NavbarBrand>
-      <div className="flex justify-end gap-8 px-6">
+      <div className="flex justify-end gap-4 sm:gap-8 px-2 sm:px-6">
         <NavLink 
           to="/" 
           className={({ isActive }) => getNavLinkClass(isActive)}

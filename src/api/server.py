@@ -306,88 +306,96 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
         signals = []
         
         if chronological_history:
-            raw_rating = chronological_history[0].get("technical_rating", "Neutral")
-            current_signal = {
-                "rating": "N/A" if raw_rating == "Neutral" else raw_rating,
-                "start_date": chronological_history[0].get("fetched_date"),
-                "start_time": chronological_history[0].get("fetched_time"),
-                "entry_price": chronological_history[0].get("current_price", 0),
-                "status": "OPEN"
-            }
+            # We need to treat every signal change as a potential 1-day trade
+            # D1 = The day the rating changed (or started)
+            # D2 = The NEXT available trading day
             
-            for entry in chronological_history[1:]:
-                raw_rating = entry.get("technical_rating", "Neutral")
-                entry_rating = "N/A" if raw_rating == "Neutral" else raw_rating
-                entry_date = entry.get("fetched_date")
-                entry_time = entry.get("fetched_time")
-                entry_price = entry.get("current_price", 0)
+            # Start from the first available record
+            for i in range(len(chronological_history)):
+                entry = chronological_history[i]
+                current_rating = entry.get("technical_rating", "Neutral")
                 
-                if entry_rating != current_signal["rating"]:
-                    # Calculate days held
-                    try:
-                        start = datetime.strptime(current_signal["start_date"].split(" ")[0], "%Y-%m-%d")
-                        end = datetime.strptime(entry_date.split(" ")[0], "%Y-%m-%d")
-                        days_held = (end - start).days
-                    except Exception:
-                        days_held = 0
+                # We need to determine if this is a "Signal Change"
+                # For the very first record, we assume it's a start
+                is_signal_change = False
+                prev_rating = "Neutral"
+                
+                if i == 0:
+                    is_signal_change = True
+                    # If it's the first record, previous is explicitly unknown/neutral, so we take it.
+                else:
+                    prev_entry = chronological_history[i-1]
+                    prev_rating = prev_entry.get("technical_rating", "Neutral")
+                    if current_rating != prev_rating:
+                        is_signal_change = True
+                
+                # If this is a new signal (Entry Day / D1)
+                if is_signal_change and current_rating != "Neutral":
+                    raw_entry_date = entry.get("fetched_date")
+                    entry_date = raw_entry_date[:10]  # Normalize to YYYY-MM-DD (handle ISO timestamps in DB)
+                    entry_time = entry.get("fetched_time")
+                    entry_price = entry.get("current_price", 0)
                     
-                    # Calculate profit
-                    profit_percent = 0.0
-                    if current_signal["entry_price"] > 0:
-                        profit_percent = ((entry_price - current_signal["entry_price"]) / current_signal["entry_price"]) * 100
+                    # Look for D2 (The next record representing a NEW CALENDAR DAY)
+                    exit_entry = None
+                    for k in range(i + 1, len(chronological_history)):
+                        candidate = chronological_history[k]
+                        candidate_raw_date = candidate.get("fetched_date")
+                        candidate_date = candidate_raw_date[:10] # Normalize
                         
-                    signals.append({
-                        "date": entry_date,
-                        "start_date": current_signal["start_date"],
-                        "start_time": current_signal.get("start_time"),
-                        "end_time": entry_time,
-                        "from_rating": current_signal["rating"],
-                        "to_rating": entry_rating,
-                        "entry_price": current_signal["entry_price"],
-                        "exit_price": entry_price,
-                        "days_held": days_held,
-                        "result": profit_percent,
-                        "status": "COMPLETED"
-                    })
+                        # Ensure strictly different CALENDAR date for "Daily" logic
+                        if candidate_date > entry_date:
+                            exit_entry = candidate
+                            break
                     
-                    # Start new signal
-                    current_signal = {
-                        "rating": entry_rating,
-                        "start_date": entry_date,
-                        "start_time": entry_time,
-                        "entry_price": entry_price,
-                        "status": "OPEN"
-                    }
-        
-        # Append the current active signal
-        if current_signal["status"] == "OPEN":
-            current_closing_price = history[0].get("current_price", 0)
-            current_closing_time = history[0].get("fetched_time")
-            
-            # Calculate open profit
-            profit_percent = 0.0
-            if current_signal["entry_price"] > 0:
-                profit_percent = ((current_closing_price - current_signal["entry_price"]) / current_signal["entry_price"]) * 100
-            
-            signals.append({
-                "date": history[0].get("fetched_date"),
-                "start_date": current_signal["start_date"],
-                "start_time": current_signal.get("start_time"),
-                "end_time": current_closing_time,
-                "from_rating": current_signal["rating"],
-                "to_rating": current_signal["rating"], # Indicates continuation
-                "entry_price": current_signal["entry_price"],
-                "exit_price": current_closing_price,
-                "days_held": 0, # Simplify for now
-                "result": profit_percent,
-                "status": "OPEN"
-            })
+                    if exit_entry:
+                        exit_date = exit_entry.get("fetched_date") # Keep original for frontend parsing
+                        exit_price = exit_entry.get("current_price", 0)
+                        
+                        # Calculate Result (D1 -> D2)
+                        profit_percent = 0.0
+                        if entry_price > 0:
+                            profit_percent = ((exit_price - entry_price) / entry_price) * 100
+                            
+                        signals.append({
+                            "date": exit_date, 
+                            "start_date": raw_entry_date,
+                            "start_time": entry_time,
+                            "end_time": exit_entry.get("fetched_time"),
+                            "from_rating": prev_rating if i > 0 else "N/A",
+                            "to_rating": current_rating,
+                            "entry_price": entry_price,
+                            "exit_price": exit_price,
+                            "days_held": 1,
+                            "result": profit_percent,
+                            "status": "COMPLETED"
+                        })
+                    else:
+                        # This is the LATEST record (Open trade, waiting for tomorrow)
+                        signals.append({
+                            "date": raw_entry_date,
+                            "start_date": raw_entry_date,
+                            "start_time": entry_time,
+                            "end_time": None,
+                            "from_rating": prev_rating if i > 0 else "N/A",
+                            "to_rating": current_rating,
+                            "entry_price": entry_price,
+                            "exit_price": None,
+                            "days_held": 0,
+                            "result": None,
+                            "status": "OPEN"
+                        })
 
-        # Reverse signals back to Newest -> Oldest for display
-        rating_changes = signals[::-1]
+        # Reverse signals back to Newest -> Oldest for display and LIMIT to 10
+        rating_changes = signals[::-1][:10]
         
-        # Calculate Real Stats from these signals
-        completed_signals = [s for s in rating_changes if s["status"] == "COMPLETED"]
+        # Calculate Real Stats from these signals (use ALL signals for stats? User said "limit history", ambiguous if stats should reflect all time or just displayed)
+        # Usually stats reflect "All Time" but history list is paginated. 
+        # But if the user wants "limit to 10", maybe they just want to see the last 10.
+        # Let's keep stats based on the *fetched* signals (which is all history) to be accurate.
+        stats_signals = signals
+        
+        completed_signals = [s for s in stats_signals if s["status"] == "COMPLETED"]
         total_signals = len(completed_signals)
         
         win_rate = 0
@@ -444,30 +452,36 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
             if prev_rec:
                 first_rec = today_recs[0]
                 
-                # Calculate overnight return
-                try:
-                    start_price = prev_rec["current_price"]
-                    end_price = first_rec["current_price"]
-                    res_pct = ((end_price - start_price) / start_price * 100) if start_price > 0 else 0
-                    
-                    intraday_moves.append({
-                        "date": first_rec["fetched_date"],
-                        "start_time": "Prev Close", # Indicate context
-                        "end_time": first_rec["fetched_time"], 
-                        "from_rating": prev_rec["technical_rating"],
-                        "to_rating": first_rec["technical_rating"],
-                        "entry_price": start_price,
-                        "exit_price": end_price, # Current price at that moment
-                        "result": res_pct,
-                        "status": "COMPLETED"
-                    })
-                except Exception:
-                    pass
+                # Check for Neutral ratings and skip if present
+                if prev_rec["technical_rating"] != "Neutral" and first_rec["technical_rating"] != "Neutral":
+                    # Calculate overnight return
+                    try:
+                        start_price = prev_rec["current_price"]
+                        end_price = first_rec["current_price"]
+                        res_pct = ((end_price - start_price) / start_price * 100) if start_price > 0 else 0
+                        
+                        intraday_moves.append({
+                            "date": first_rec["fetched_date"],
+                            "start_time": "Prev Close", # Indicate context
+                            "end_time": first_rec["fetched_time"], 
+                            "from_rating": prev_rec["technical_rating"],
+                            "to_rating": first_rec["technical_rating"],
+                            "entry_price": start_price,
+                            "exit_price": end_price, # Current price at that moment
+                            "result": res_pct,
+                            "status": "COMPLETED"
+                        })
+                    except Exception:
+                        pass
             
             # 2. Intraday Moves (Record A -> Record B)
             for i in range(len(today_recs) - 1):
                 rec_a = today_recs[i]
                 rec_b = today_recs[i+1]
+                
+                # Skip if either rating is Neutral
+                if rec_a["technical_rating"] == "Neutral" or rec_b["technical_rating"] == "Neutral":
+                    continue
                 
                 try:
                     start_price = rec_a["current_price"]
@@ -492,17 +506,18 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
             if not intraday_moves and len(today_recs) == 1:
                  # Just show the snapshot
                  rec = today_recs[0]
-                 intraday_moves.append({
-                    "date": rec["fetched_date"],
-                    "start_time": rec["fetched_time"],
-                    "end_time": None,
-                    "from_rating": rec["technical_rating"],
-                    "to_rating": rec["technical_rating"],
-                    "entry_price": rec["current_price"],
-                    "exit_price": None,
-                    "result": None,
-                    "status": "OPEN"
-                })
+                 if rec["technical_rating"] != "Neutral":
+                     intraday_moves.append({
+                        "date": rec["fetched_date"],
+                        "start_time": rec["fetched_time"],
+                        "end_time": None,
+                        "from_rating": rec["technical_rating"],
+                        "to_rating": rec["technical_rating"],
+                        "entry_price": rec["current_price"],
+                        "exit_price": None,
+                        "result": None,
+                        "status": "OPEN"
+                    })
 
         logger.debug(f"Fetched detail for {symbol}: {total_signals} signals")
 

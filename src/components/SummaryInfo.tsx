@@ -50,11 +50,11 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
 
   if (loading || !summary) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 pl-[53px] pr-[53px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 px-4 sm:px-6 lg:px-[53px]">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-[#0F151F] rounded-lg p-4 border border-[#7588A3]/20 h-[140px] animate-pulse">
-            <div className="h-4 bg-[#7588A3]/20 rounded w-32 mb-4"></div>
-            <div className="h-12 bg-[#7588A3]/20 rounded w-20 mb-4"></div>
+          <div key={i} className="bg-[#0F151F] rounded-lg p-4 border border-[#7588A3]/20 h-[120px] sm:h-[140px] animate-pulse">
+            <div className="h-4 bg-[#7588A3]/20 rounded w-24 sm:w-32 mb-4"></div>
+            <div className="h-8 sm:h-12 bg-[#7588A3]/20 rounded w-16 sm:w-20 mb-4"></div>
             <div className="h-2 bg-[#7588A3]/20 rounded w-full"></div>
           </div>
         ))}
@@ -65,18 +65,18 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
 
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pl-[53px] pr-[53px]">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6 px-4 sm:px-6 lg:px-[53px]">
       {/* Card 1: POSITIVE / BULLISH */}
       <div 
         onClick={() => onFilterChange?.('Positive')}
         className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col justify-between min-h-[120px] h-auto cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
       >
         <div className="flex items-start justify-between mb-2">
-          <div className="text-[#F8FAFC] text-base font-semibold pt-0.5">
+          <div className="text-[#F8FAFC] text-sm sm:text-base font-semibold pt-0.5">
             Positive Signals
           </div>
           <div className="text-right flex flex-col items-end">
-            <div className="text-[#F8FAFC] text-4xl font-bold tracking-tight leading-none tabular-nums">
+            <div className="text-[#F8FAFC] text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-none tabular-nums">
               {summary.upgrades.toLocaleString()}
             </div>
             <div className="text-[#7588A3] text-[10px] font-medium mt-1">
@@ -132,11 +132,11 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
         className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col justify-between min-h-[120px] h-auto cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
       >
         <div className="flex items-start justify-between mb-2">
-          <div className="text-[#F8FAFC] text-base font-semibold pt-0.5">
+          <div className="text-[#F8FAFC] text-sm sm:text-base font-semibold pt-0.5">
             Negative Signals
           </div>
           <div className="text-right flex flex-col items-end">
-            <div className="text-[#F8FAFC] text-4xl font-bold tracking-tight leading-none tabular-nums">
+            <div className="text-[#F8FAFC] text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-none tabular-nums">
               {(summary.downgrades || 0).toLocaleString()}
             </div>
             <div className="text-[#7588A3] text-[10px] font-medium mt-1">
@@ -187,7 +187,10 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
       </div>
 
       {/* Card 3: TOP GAINERS */}
-      <div className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex gap-3 min-h-[120px] h-auto overflow-hidden">
+      <div 
+        onClick={() => onFilterChange?.('Top Gainers')}
+        className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex gap-3 min-h-[120px] h-auto overflow-hidden cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
+      >
         {/* Trophy Icon Section */}
         <div className="flex flex-col items-center justify-center min-w-[60px]">
           <div className="w-10 h-10 flex items-center justify-center">

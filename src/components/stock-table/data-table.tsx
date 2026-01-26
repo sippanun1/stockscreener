@@ -30,6 +30,7 @@ interface Filters {
   currentRating?: string
   technicalRating?: string
   search?: string
+  sortBy?: string
 }
 
 interface DataTableProps {
@@ -153,6 +154,13 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     return filtered
   }, [filters, allData, sorting])
 
+  // React to sortBy filter changes
+  useEffect(() => {
+    if (filters?.sortBy === "top_gainers") {
+      setSorting([{ id: "changePercent", desc: true }])
+    }
+  }, [filters?.sortBy])
+
   // Notify parent of filtered count changes
   useEffect(() => {
     onFilteredCountChange?.(filteredData.length)
@@ -198,14 +206,14 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
 
   if (loading) {
     return (
-      <div className="mx-[53px] mt-[17px] flex items-center justify-center h-[400px]">
+      <div className="px-4 sm:px-6 lg:px-[53px] mt-4 flex items-center justify-center h-[400px]">
         <div className="text-[#7588A3]">Loading stocks...</div>
       </div>
     )
   }
 
   return (
-    <div className="mx-[53px] mt-[17px] h-full flex flex-col">
+    <div className="px-4 sm:px-6 lg:px-[53px] mt-3 sm:mt-4 h-full flex flex-col">
 
 
       {/* Table with scroll */}
@@ -215,7 +223,9 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
           className="h-full overflow-auto"
           onScroll={handleScroll}
         >
-          <Table>
+          {/* Horizontal scroll wrapper for mobile */}
+          <div className="min-w-full w-max lg:w-full">
+            <Table>
             <TableHeader className="bg-[#0F151F] sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-[#1E2530] hover:bg-[#1E2530]">
@@ -282,6 +292,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
               )}
             </TableBody>
           </Table>
+          </div>
           
           {/* Loading more indicator */}
           {loadingMore && (

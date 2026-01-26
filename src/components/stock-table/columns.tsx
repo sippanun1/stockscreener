@@ -55,9 +55,9 @@ export const stockColumns: ColumnDef<Stock>[] = [
       // Extract clean symbol for display (e.g. "NVDA")
       const displaySymbol = symbol.split(":")[1] || symbol
       return (
-        <div className="flex items-center gap-3">
-          <StockLogo symbol={symbol} name={row.original.name} />
-          <div className="text-[#F8FAFC] font-semibold text-sm">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <StockLogo symbol={symbol} name={row.original.name} className="w-6 h-6 sm:w-8 sm:h-8 text-[10px] sm:text-xs" />
+          <div className="text-[#F8FAFC] font-semibold text-xs sm:text-sm truncate max-w-[80px] sm:max-w-none">
             {displaySymbol}
           </div>
         </div>
@@ -71,7 +71,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
     cell: ({ row }) => {
       const symbol = row.original.symbol
       return (
-        <div className="text-[#F8FAFC] text-left text-sm">
+        <div className="text-[#F8FAFC] text-left text-xs sm:text-sm">
           {symbol.split(":")[0]}
         </div>
       )
@@ -84,9 +84,9 @@ export const stockColumns: ColumnDef<Stock>[] = [
       const price = parseFloat(row.getValue("current_price"))
       const market = row.original.market
       return (
-        <div className="text-right text-sm">
+        <div className="text-right text-xs sm:text-sm">
           <span className="text-[#F8FAFC]">{price}</span>
-          <span className="text-[#F8FAFC] text-[0.65rem] ml-1">{getCurrencySymbol(market)}</span>
+          <span className="text-[#F8FAFC] text-[0.5rem] sm:text-[0.65rem] ml-1 hidden sm:inline">{getCurrencySymbol(market)}</span>
         </div>
       )
     },
@@ -134,7 +134,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       return (
         <div className="flex justify-center">
           <div
-            className={`w-[100px] h-[24px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}
+            className={`w-[80px] sm:w-[100px] h-[22px] sm:h-[24px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-xs sm:text-sm font-semibold`}
           >
             {rating || "N/A"}
           </div>
@@ -160,7 +160,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       return (
         <div className="flex justify-center">
           <div
-            className={`w-[100px] h-[24px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}
+            className={`w-[80px] sm:w-[100px] h-[22px] sm:h-[24px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-xs sm:text-sm font-semibold`}
           >
             {rating}
           </div>

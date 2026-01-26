@@ -1,11 +1,30 @@
 @import "tailwindcss";
 
+/* Responsive CSS Custom Properties */
+:root {
+  --app-padding-x: 1rem;     /* Mobile: 16px */
+  --app-padding-y: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --app-padding-x: 1.5rem;   /* Tablet: 24px */
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --app-padding-x: 53px;     /* Desktop: original 53px */
+  }
+}
+
 /* Prevent page from scrolling outside content boundaries */
 html, body {
   height: 100%;
   overflow: hidden;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
 }
 
 /* App container - full height, no overflow */
@@ -19,7 +38,8 @@ html, body {
 /* Prevent rubber-band/bounce effect on scroll containers */
 .overflow-auto,
 .overflow-y-auto,
-.overflow-x-auto {
+.overflow-x-auto,
+[class*="overflow-"] {
   overscroll-behavior: contain;
 }
 
@@ -84,4 +104,38 @@ html, body {
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: rgba(117, 136, 163, 0.3) transparent;
+}
+
+/* Responsive Container Utility */
+.app-container {
+  padding-left: var(--app-padding-x);
+  padding-right: var(--app-padding-x);
+}
+
+/* Touch-friendly button sizes */
+@media (max-width: 640px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Exception for inline/text buttons */
+  .inline-btn, [class*="text-xs"] button, [class*="text-sm"] button {
+    min-height: unset;
+    min-width: unset;
+  }
+}
+
+/* Safe area for mobile devices with notches */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Hide horizontal overflow on mobile body */
+@media (max-width: 640px) {
+  body {
+    overflow-x: hidden;
+  }
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { StockLogo } from "./StockLogo";
-import { ArrowRight, Calendar, Timer } from "lucide-react";
+import { ArrowRight, Calendar, Timer, TrendingUp, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getCurrencySymbol } from "./stock-table/columns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +18,7 @@ type RatingHistory = {
   exit_price?: number;
   days_held?: number;
   result?: number;
+  status?: string;
 };
 
 type StockDetailData = {
@@ -119,6 +120,7 @@ export default function StockDetail() {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
   const [selectedRating, setSelectedRating] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"daily" | "intraday">("daily");
 
   // API base URL from environment variable
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -148,73 +150,56 @@ export default function StockDetail() {
 
   if (loading) {
     return (
-      <div className="p-8 mx-[53px] animate-pulse">
+      <div className="p-4 sm:p-6 lg:p-8 px-4 sm:px-6 lg:px-[53px] animate-pulse">
         {/* Back Button Skeleton */}
-        <div className="h-6 w-32 bg-[#1E2530] rounded mb-8"></div>
+        <div className="h-6 w-32 bg-[#1E2530] rounded mb-6 sm:mb-8"></div>
         
         {/* Header Cards Row */}
-        <div className="flex gap-6 mb-8">
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8">
           {/* Card 1 Skeleton */}
-          <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] w-[350px]">
+          <div className="bg-[#0F151F] rounded-2xl p-4 sm:p-6 border border-[#1E2530] w-full lg:w-[350px]">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-[#1E2530]"></div>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#1E2530]"></div>
               <div className="flex-1">
-                <div className="h-6 w-24 bg-[#1E2530] rounded mb-2"></div>
-                <div className="h-4 w-40 bg-[#1E2530] rounded"></div>
+                <div className="h-5 sm:h-6 w-20 sm:w-24 bg-[#1E2530] rounded mb-2"></div>
+                <div className="h-4 w-32 sm:w-40 bg-[#1E2530] rounded"></div>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="h-8 w-32 bg-[#1E2530] rounded"></div>
-              <div className="h-6 w-20 bg-[#1E2530] rounded"></div>
+              <div className="h-6 sm:h-8 w-24 sm:w-32 bg-[#1E2530] rounded"></div>
+              <div className="h-5 sm:h-6 w-16 sm:w-20 bg-[#1E2530] rounded"></div>
             </div>
           </div>
           
           {/* Card 2 Skeleton */}
-          <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex-1">
-            <div className="flex items-center justify-between">
-              <div className="flex gap-3">
-                <div className="h-8 w-24 bg-[#1E2530] rounded-full"></div>
-                <div className="h-8 w-16 bg-[#1E2530] rounded-full"></div>
-                <div className="h-8 w-16 bg-[#1E2530] rounded-full"></div>
-                <div className="h-8 w-24 bg-[#1E2530] rounded-full"></div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-center">
-                  <div className="h-12 w-20 bg-[#1E2530] rounded mb-2"></div>
-                  <div className="h-4 w-16 bg-[#1E2530] rounded"></div>
-                </div>
-                <div className="h-16 w-px bg-[#1E2530]"></div>
-                <div className="space-y-2">
-                  <div className="h-4 w-24 bg-[#1E2530] rounded"></div>
-                  <div className="h-4 w-24 bg-[#1E2530] rounded"></div>
-                </div>
+          <div className="bg-[#0F151F] rounded-2xl p-4 sm:p-6 border border-[#1E2530] flex-1">
+            <div className="flex flex-wrap gap-2 sm:gap-3 mb-4">
+              <div className="h-8 w-20 sm:w-24 bg-[#1E2530] rounded-full"></div>
+              <div className="h-8 w-14 sm:w-16 bg-[#1E2530] rounded-full"></div>
+              <div className="h-8 w-14 sm:w-16 bg-[#1E2530] rounded-full"></div>
+              <div className="h-8 w-20 sm:w-24 bg-[#1E2530] rounded-full"></div>
+            </div>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div className="text-center">
+                <div className="h-10 sm:h-12 w-16 sm:w-20 bg-[#1E2530] rounded mb-2"></div>
+                <div className="h-4 w-14 sm:w-16 bg-[#1E2530] rounded"></div>
               </div>
             </div>
           </div>
         </div>
         
         {/* Signal History Title */}
-        <div className="h-7 w-40 bg-[#1E2530] rounded mb-6"></div>
+        <div className="h-6 sm:h-7 w-32 sm:w-40 bg-[#1E2530] rounded mb-4 sm:mb-6"></div>
         
         {/* Signal History Table Skeleton */}
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-center gap-4">
-              <div className="w-36 flex justify-center">
-                <div className="w-5 h-5 rounded-full bg-[#1E2530]"></div>
+        <div className="space-y-3 sm:space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-2 sm:gap-4">
+              <div className="w-12 sm:w-24 lg:w-36 flex justify-center flex-shrink-0">
+                <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-[#1E2530]"></div>
               </div>
-              <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530]">
-                <div className="grid grid-cols-5 items-center gap-4">
-                  <div className="h-5 w-28 bg-[#1E2530] rounded"></div>
-                  <div className="flex justify-center gap-3">
-                    <div className="h-6 w-24 bg-[#1E2530] rounded-full"></div>
-                    <div className="h-4 w-4 bg-[#1E2530] rounded"></div>
-                    <div className="h-6 w-24 bg-[#1E2530] rounded-full"></div>
-                  </div>
-                  <div className="h-5 w-20 bg-[#1E2530] rounded ml-auto"></div>
-                  <div className="h-4 w-4 bg-[#1E2530] rounded"></div>
-                  <div className="h-8 w-24 bg-[#1E2530] rounded-full"></div>
-                </div>
+              <div className="flex-1 bg-[#0F151F] rounded-xl px-4 sm:px-8 py-4 sm:py-6 border border-[#1E2530]">
+                <div className="h-5 w-full bg-[#1E2530] rounded"></div>
               </div>
             </div>
           ))}
@@ -230,368 +215,325 @@ export default function StockDetail() {
   const filterButtons = ["Strong Sell", "Sell", "Buy", "Strong Buy"];
   const isPositiveChange = data.change_percent >= 0;
 
-  // Get stats for selected rating or overall
-  const getDisplayStats = () => {
-    if (selectedRating) {
-      // When a rating is selected, show only that rating's stats
-      const stats = data.accuracy_stats[selectedRating];
-      if (stats) {
-        const total = stats.wins + stats.losses;
-        const winRate = total > 0 ? (stats.wins / total) * 100 : 0;
-        return {
-          wins: stats.wins,
-          losses: stats.losses,
-          winRate: winRate
-        };
-      }
-      // Rating selected but no signals exist for it - show 0
-      return {
-        wins: 0,
-        losses: 0,
-        winRate: 0
-      };
-    }
-    // No filter selected - show overall stats
-    const wins = data.history.filter(h => h.result !== undefined && h.result > 0.2).length;
-    const losses = data.history.filter(h => h.result !== undefined && h.result < -0.2).length;
-    return {
-      wins,
-      losses,
-      winRate: data.stats.win_rate
-    };
-  };
+  // Filter history based on active tab
+  const historyItems = activeTab === "daily" 
+    ? data.history 
+    : (data.intraday_moves || []);
 
-  const displayStats = getDisplayStats();
+  const hasHistory = historyItems.length > 0;
+
+  // Calculate stats dynamically based on the CURRENT view (historyItems)
+  // This ensures Intraday tab shows Intraday stats, and Daily shows Daily stats.
+  const currentStats = (() => {
+      // If a rating filter is active, further filter the historyItems
+      const itemsToCalc = selectedRating 
+        ? historyItems.filter(item => item.to_rating === selectedRating)
+        : historyItems;
+
+      const completed = itemsToCalc.filter(item => item.status === "COMPLETED" && item.result !== undefined);
+      const total = completed.length;
+
+      if (total === 0) {
+          return { wins: 0, losses: 0, winRate: 0, avgReturn: 0 };
+      }
+
+      // Use same threshold as server: > 0.2 is Win, < -0.2 is Loss (or just > 0 for simpler UI matching?)
+      // Server uses > 0.2. Let's stick to that for Consistency with "Accuracy".
+      const wins = completed.filter(item => (item.result || 0) > 0.2).length;
+      const losses = completed.filter(item => (item.result || 0) < -0.2).length;
+      
+      const winRate = (wins / total) * 100;
+      const totalReturnSum = completed.reduce((sum, item) => sum + (item.result || 0), 0);
+      const avgReturn = totalReturnSum / total;
+
+      return { wins, losses, winRate, avgReturn };
+  })();
 
   return (
-    <div className="px-[53px] py-6">
-      <div className="flex justify-between items-center mb-6">
-          <h1 className="text-[#F8FAFC] text-2xl font-bold">Stock Detail</h1>
-          <button
-            onClick={() => navigate("/")}
-            className="text-[#00FFB7] hover:underline text-sm font-medium tracking-wider"
-          >
-            BACK
-          </button>
-      </div>
-
-      {/* Two Cards in Same Row */}
-      <div className="flex gap-4 mb-8">
-        {/* Card 1: Stock Information */}
-        <div className="flex-shrink-0 bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex items-stretch justify-between shadow-sm">
-          {/* Left Side: Logo + Basic Info */}
-          <div className="flex items-center gap-4">
-            <StockLogo 
-              symbol={data.symbol} 
-              name={data.name} 
-              className="w-14 h-14 text-xl" 
-            />
-            
-            <div className="flex flex-col h-full justify-between py-0.5">
-                {/* Symbol + Name */}
-                <div className="flex items-center gap-3">
-                    <span className="text-[#F8FAFC] text-2xl font-bold">{data.symbol.split(":")[1] || data.symbol}</span>
-                    <span className="text-[#7588A3] text-sm">{data.name}</span>
-                </div>
-                
-                {/* Price + Change Value */}
-                <div className="flex items-baseline gap-2">
-                    <span className="text-[#F8FAFC] text-3xl font-bold">{data.current_price}</span>
-                    <span className="text-[#7588A3] text-[0.65rem]">{getCurrencySymbol(data.market)}</span>
-                    <span className={`text-lg font-medium ml-4 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                        {data.change > 0 ? "+" : ""}{data.change}
-                    </span>
-                    <span className={`text-lg font-medium ml-3 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                        ({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)
-                    </span>
-                </div>
-            </div>
+    <div className="min-h-screen bg-[#000000] p-4 sm:p-6 lg:px-[40px] lg:py-[32px] font-sans">
+      {/* HEADER SECTION */}
+      <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col sm:flex-row items-center justify-between mb-6 shadow-sm">
+        {/* Left: Logo & Title */}
+        <div className="flex items-center gap-5 w-full sm:w-auto">
+          <StockLogo 
+            symbol={data.symbol} 
+            name={data.name} 
+            className="w-16 h-16 sm:w-[72px] sm:h-[72px] text-2xl" 
+          />
+          <div>
+            <h1 className="text-white text-3xl sm:text-[40px] font-bold tracking-tight leading-none mb-1">
+              {data.symbol.split(":")[1] || data.symbol}
+            </h1>
+            <p className="text-[#94A3B8] text-lg font-medium tracking-wide">{data.name}</p>
           </div>
+        </div>
 
-          {/* Right Side: Badge */}
-          <div className="flex flex-col items-end justify-start py-0.5">
-              <div className={`px-4 h-[28px] ${getHeaderBadgeStyles(data.current_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold whitespace-nowrap`}>
-                  {data.current_rating}
+        {/* Right: Price & Info */}
+        <div className="text-right mt-6 sm:mt-0 w-full sm:w-auto flex flex-row sm:flex-col justify-between items-end">
+          <div className="flex flex-col items-end">
+             <div className="text-white text-2xl sm:text-[32px] font-medium tracking-tight mb-3 flex items-baseline gap-2">
+                {data.current_price.toFixed(2)} <span className="text-lg text-[#94A3B8] font-normal">USD</span>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                 <div className={`text-base font-medium flex items-center gap-2 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                    <span>{data.change > 0 ? "+" : ""}{Number(data.change).toFixed(2)}</span>
+                    <span>({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)</span>
+                 </div>
+                 
+                 <div className={`px-3 py-1 rounded-[4px] text-[11px] font-bold uppercase tracking-wider ${
+                    data.current_rating === 'Strong Buy' ? 'bg-[#00FFB7]/20 text-[#00FFB7]' :
+                    data.current_rating === 'Buy' ? 'bg-[#00FFB7]/20 text-[#00FFB7]' :
+                    data.current_rating === 'Sell' ? 'bg-[#FF3069]/20 text-[#FF3069]' :
+                    data.current_rating === 'Strong Sell' ? 'bg-[#FF3069]/20 text-[#FF3069]' :
+                    'bg-[#7588A3]/20 text-[#7588A3]'
+                 }`}>
+                   {data.current_rating}
+                 </div>
               </div>
           </div>
         </div>
+      </div>
 
-        {/* Card 2: Filters & Accuracy Stats */}
-        <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] shadow-sm flex-1">
-          <div className="flex items-center justify-between gap-4">
-            {/* Left: Rating Filter Buttons */}
-            <div className="flex gap-3 flex-shrink-0">
-                {filterButtons.map((filter) => {
-                    const isActive = selectedRating === filter;
-                    const isSellRating = filter === "Strong Sell" || filter === "Sell";
-                    
-                    // Determine colors based on rating type
-                    const textColor = isSellRating ? "text-[#FF3069]" : "text-[#00FFB7]";
-                    const activeBorderColor = isSellRating ? "border-[#FF3069]" : "border-[#00FFB7]";
-                    
-                    return (
-                        <button
-                        key={filter}
-                        onClick={() => setSelectedRating(isActive ? null : filter)}
-                        className={`px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                            isActive
-                            ? `bg-[#1E293B] ${activeBorderColor} ${textColor}`
-                            : `border-[#2D3748] ${textColor} hover:bg-[#1E293B]/50`
-                        }`}
-                        >
-                            {filter}
-                        </button>
-                    );
-                })}
-            </div>
+      {/* CONTROLS ROW: Toggles & Filters */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+        
+        {/* Left: Timeframe Toggle */}
+        <div className="bg-[#1E2530] rounded-lg p-1 flex items-center w-full sm:w-auto">
+             <button 
+                onClick={() => setActiveTab('daily')}
+                className={`flex-1 sm:flex-none px-6 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                  activeTab === 'daily' 
+                  ? 'bg-[#2D3748] text-[#E2E8F0] shadow-sm' 
+                  : 'text-[#94A3B8] hover:text-[#E2E8F0]'
+                }`}
+             >
+               Daily
+             </button>
+             <button 
+                onClick={() => setActiveTab('intraday')}
+                className={`flex-1 sm:flex-none px-6 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                  activeTab === 'intraday' 
+                  ? 'bg-[#2D3748] text-[#E2E8F0] shadow-sm' 
+                  : 'text-[#94A3B8] hover:text-[#E2E8F0]'
+                }`}
+             >
+               Intraday
+             </button>
+        </div>
 
-            {/* Right: Accuracy Stats */}
-            <div className="flex items-center gap-6 flex-shrink-0 mr-2">
-                <div className="text-center">
-                    <div className="text-[#00FFB7] text-5xl font-bold">{displayStats.winRate.toFixed(0)}%</div>
-                    <div className="text-[#F8FAFC] text-sm font-medium mt-1">Accuracy</div>
-                </div>
+        {/* Right: Filters */}
+        <div className="flex items-center gap-2 bg-transparent w-full sm:w-auto overflow-x-auto no-scrollbar">
+            <button 
+            onClick={() => setSelectedRating(null)}
+            className={`px-5 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide border transition-all whitespace-nowrap ${
+                !selectedRating ? 'bg-[#2D3748] border-[#2D3748] text-white' : 'border-[#2D3748] text-[#94A3B8] hover:text-white'
+            }`}
+            >
+            All
+            </button>
+            {filterButtons.map(filter => {
+                const isSelected = selectedRating === filter;
+                const isSell = filter.includes("Sell");
+                const colorClass = isSell ? "text-[#FF3069]" : "text-[#00FFB7]";
                 
-                {/* Vertical Divider */}
-                <div className="h-16 w-px bg-[#1E2530]"></div>
-                
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#00FFB7] shadow-[0_0_8px_rgba(0,255,183,0.6)]"></div>
-                        <span className="text-[#F8FAFC] text-sm font-medium">Wins : {displayStats.wins}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#FF3069] shadow-[0_0_8px_rgba(255,48,105,0.6)]"></div>
-                        <span className="text-[#F8FAFC] text-sm font-medium">Losses : {displayStats.losses}</span>
-                    </div>
-                </div>
-            </div>
-          </div>
+                return (
+                <button
+                    key={filter}
+                    onClick={() => setSelectedRating(isSelected ? null : filter)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border transition-all duration-200 whitespace-nowrap shadow-sm ${
+                    isSelected 
+                        ? isSell 
+                            ? "bg-[#FF3069] border-[#FF3069] text-white" 
+                            : "bg-[#10B981] border-[#10B981] text-white"
+                        : `border-[#2D3748] ${colorClass} bg-transparent hover:bg-[#1E293B]`
+                    }`}
+                >
+                    {filter}
+                </button>
+                )
+            })}
         </div>
       </div>
 
-      {/* Signal History Title */}
-      <h2 className="text-[#F8FAFC] text-xl font-bold mb-6">Signal History</h2>
-
-      {/* Tabs for Daily and Intraday */}
-      <Tabs defaultValue="intraday" className="w-full">
-        <TabsList className="mb-6 bg-[#0F151F] border border-[#1E2530] p-1.5 h-14 w-fit rounded-lg gap-2">
-          <TabsTrigger 
-            value="intraday"
-            className="data-[state=active]:bg-[#1E293B] data-[state=active]:text-white text-[#7588A3] font-medium text-base px-6 h-full flex items-center gap-2 rounded-md transition-all"
-          >
-            <Timer className="w-5 h-5" />
-            Intraday (Time)
-          </TabsTrigger>
-          <TabsTrigger 
-            value="daily" 
-            className="data-[state=active]:bg-[#1E293B] data-[state=active]:text-white text-[#7588A3] font-medium text-base px-6 h-full flex items-center gap-2 rounded-md transition-all"
-          >
-            <Calendar className="w-5 h-5" />
-            Daily (Open-to-Open)
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Daily Tab Content */}
-        <TabsContent value="daily">
-          <div>
-            {/* Table Headers - Card Style */}
-            <div className="flex items-center mb-4">
-                <div className="w-36 flex-shrink-0"></div>
-                <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
-                    <div>Date</div>
-                    <div className="text-center">Signal</div>
-                    <div>Open Price (Day 1)</div>
-                    <div>Open Price (Day 2)</div>
-                    <div className="text-center">Result %</div>
-                </div>
-            </div>
-
-            {/* History Rows */}
-            <div className="space-y-4">
-              {data.history.length > 0 ? (
-                data.history.map((item, index) => {
-                  const isProfit = item.result !== undefined && item.result > 0.2;
-                  const isLoss = item.result !== undefined && item.result < -0.2;
-                  // Determine dot color: Green for profit, Red for loss, Grey for Neutral/Pending
-                  const dotColor = isProfit ? "bg-[#00FFB7]" : isLoss ? "bg-[#FF3069]" : "bg-[#7588A3]";
-                  // Add shadow to dot
-                  const dotShadow = isProfit ? "shadow-[0_0_8px_rgba(0,255,183,0.6)]" : isLoss ? "shadow-[0_0_8px_rgba(255,48,105,0.6)]" : "";
-
-                  return (
-                    <div key={index} className="flex items-center group">
-                        {/* Centered Dot Column */}
-                        <div className="w-36 flex-shrink-0 flex justify-center">
-                            <div className={`w-5 h-5 rounded-full ${dotColor} ${dotShadow}`}></div>
-                        </div>
-
-                        {/* Card */}
-                        <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
-                              {/* Date */}
-                              <div className="flex items-center gap-3 text-[#F8FAFC]">
-                                  <Calendar className="w-4 h-4 text-[#F8FAFC]" />
-                                  <span className="font-medium text-sm">{formatDateRange(item.start_date, item.date)}</span>
-                              </div>
-
-                              {/* Signal Transition */}
-                              <div className="flex items-center justify-center gap-3">
-                                  <div className={`w-[100px] h-[24px] ${getRatingStyles(item.from_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
-                                      {item.from_rating}
-                                  </div>
-                                  <ArrowRight className="w-4 h-4 text-[#7588A3]" />
-                                  <div className={`w-[100px] h-[24px] ${getRatingStyles(item.to_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
-                                      {item.to_rating}
-                                  </div>
-                              </div>
-
-                              {/* Open Price (Day 1) */}
-                              <div>
-                                  <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
-                                  <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
-                              </div>
-
-                              {/* Open Price (Day 2) */}
-                              <div>
-                                  <span className="text-[#F8FAFC] font-bold">{item.exit_price || data.current_price}</span>
-                                  <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
-                              </div>
-
-                              {/* Result - Centered */}
-                              <div className="text-center">
-                                  {item.exit_price !== undefined && item.result !== undefined && item.result !== null ? (
-                                      <div className="flex items-baseline justify-center gap-2">
-                                          <span className={`font-bold text-lg ${getResultColor(item.result)}`}>
-                                              {item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%
-                                          </span>
-                                      </div>
-                                  ) : item.result !== undefined && item.result !== null ? (
-                                       // Open Signal Result
-                                      <div className="flex items-baseline justify-center gap-2">
-                                          <span className={`font-bold text-lg ${getResultColor(item.result)}`}>
-                                              {item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%
-                                          </span>
-                                      </div>
-                                  ) : (
-                                      <div className="inline-flex">
-                                          <div className="bg-[#1E40AF] text-white px-4 py-1.5 rounded-full text-sm font-semibold">
-                                              Pending
-                                          </div>
-                                      </div>
-                                  )}
-                              </div>
-                        </div>
-                    </div> 
-                  );
-                })
-              ) : (
-                <div className="bg-[#0F151F] rounded-xl p-12 text-center border border-[#1E2530]">
-                  <div className="text-[#7588A3] text-lg mb-2">No signals found</div>
-                </div>
-              )}
-            </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          {/* Accuracy */}
+          <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col justify-center items-center shadow-lg group hover:border-[#2D3748] transition-colors">
+              <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Accuracy</div>
+              <div className="text-[#00FFB7] text-4xl sm:text-5xl font-bold tracking-tight">{currentStats.winRate.toFixed(0)}%</div>
           </div>
-        </TabsContent>
-
-        {/* Intraday Tab Content */}
-        <TabsContent value="intraday">
-          <div>
-            {/* Intraday Table Headers */}
-            <div className="flex items-center mb-4">
-                <div className="w-36 flex-shrink-0"></div>
-                <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-4 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1fr_1.2fr] text-[#F8FAFC] text-base font-semibold">
-                    <div>Time</div>
-                    <div className="text-center">Signal</div>
-                    <div>Entry Price (Start)</div>
-                    <div>Exit Price (End)</div>
-                    <div className="text-center">Result %</div>
-                </div>
-            </div>
-
-            {/* History Rows */}
-            <div className="space-y-4">
-              {data.intraday_moves && data.intraday_moves.length > 0 ? (
-                data.intraday_moves.map((item, index) => {
-                  const isProfit = item.result !== undefined && item.result > 0.0;
-                  const isLoss = item.result !== undefined && item.result < -0.0;
-                  const dotColor = isProfit ? "bg-[#00FFB7]" : isLoss ? "bg-[#FF3069]" : "bg-[#7588A3]";
-                  const dotShadow = isProfit ? "shadow-[0_0_8px_rgba(0,255,183,0.6)]" : isLoss ? "shadow-[0_0_8px_rgba(255,48,105,0.6)]" : "";
-
-                  // Format Time Range
-                  const formatTime = (t?: string) => {
-                      if (!t) return "--:--";
-                      if (t === "Prev Close") return "Prev Close";
-                      return t.length > 5 ? t.substring(0, 5) : t;
-                  };
-                  const timeRange = `${formatTime(item.start_time)} - ${formatTime(item.end_time)}`;
-
-                  return (
-                    <div key={index} className="flex items-center group">
-                        {/* Centered Dot Column */}
-                        <div className="w-36 flex-shrink-0 flex justify-center">
-                            <div className={`w-5 h-5 rounded-full ${dotColor} ${dotShadow}`}></div>
-                        </div>
-
-                        {/* Card */}
-                        <div className="flex-1 bg-[#0F151F] rounded-xl px-8 py-6 border border-[#1E2530] grid grid-cols-[1.2fr_1.5fr_1fr_1fr_1.2fr] items-center hover:border-[#2D3748] transition-colors">
-                              {/* Date/Time */}
-                              <div className="flex items-center gap-3 text-[#F8FAFC]">
-                                  <Timer className="w-4 h-4 text-[#F8FAFC]" />
-                                  <span className="font-medium text-sm">{timeRange}</span>
-                              </div>
-
-                              {/* Signal Transition */}
-                              <div className="flex items-center justify-center gap-3">
-                                  <div className={`w-[100px] h-[24px] ${getRatingStyles(item.from_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
-                                      {item.from_rating}
-                                  </div>
-                                  <ArrowRight className="w-4 h-4 text-[#7588A3]" />
-                                  <div className={`w-[100px] h-[24px] ${getRatingStyles(item.to_rating)} rounded-[16px] flex items-center justify-center text-sm font-semibold`}>
-                                      {item.to_rating}
-                                  </div>
-                              </div>
-
-                              {/* Entry Price (Start) */}
-                              <div>
-                                  <span className="text-[#F8FAFC] font-bold">{item.entry_price}</span>
-                                  <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
-                              </div>
-
-                              {/* Exit Price (End) */}
-                              <div>
-                                  <span className="text-[#F8FAFC] font-bold">{item.exit_price || "--"}</span>
-                                  <span className="text-[#7588A3] text-[0.65rem] ml-1">{getCurrencySymbol(data.market)}</span>
-                              </div>
-
-                              {/* Result - Centered */}
-                              <div className="text-center">
-                                  {item.exit_price !== undefined && item.result !== undefined && item.result !== null ? (
-                                      <div className="flex items-baseline justify-center gap-2">
-                                          <span className={`font-bold text-lg ${getResultColor(item.result)}`}>
-                                              {item.result > 0 ? "+" : ""}{item.result.toFixed(2)}%
-                                          </span>
-                                      </div>
-                                  ) : (
-                                      <div className="inline-flex">
-                                          <div className="bg-[#1E40AF] text-white px-4 py-1.5 rounded-full text-sm font-semibold">
-                                              Pending
-                                          </div>
-                                      </div>
-                                  )}
-                              </div>
-                        </div>
-                    </div> 
-                  );
-                })
-              ) : (
-                <div className="bg-[#0F151F] rounded-xl p-12 text-center border border-[#1E2530]">
-                  <div className="text-[#7588A3] text-lg mb-2">No intraday moves found today</div>
-                  <div className="text-[#7588A3] text-sm">Showing daily history instead...</div>
-                </div>
-              )}
-            </div>
+          
+          {/* Total Return */}
+          <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col justify-center items-center shadow-lg group hover:border-[#2D3748] transition-colors">
+              <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Total</div>
+              <div className={`text-4xl sm:text-5xl font-bold tracking-tight ${currentStats.avgReturn >= 0 ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>
+                {currentStats.avgReturn > 0 ? "+" : ""}{currentStats.avgReturn.toFixed(2)}%
+              </div>
           </div>
-        </TabsContent>
-      </Tabs>
+
+            {/* Wins */}
+            <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] grid grid-cols-2 items-center shadow-lg group hover:border-[#2D3748] transition-colors">
+              <div className="flex flex-col items-center justify-center">
+                  <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-1">Wins</div>
+                  <div className="text-[#10B981] text-4xl sm:text-5xl font-bold tracking-tight">{currentStats.wins}</div>
+              </div>
+              <div className="flex items-center justify-center">
+                <TrendingUp className="w-16 h-16 text-[#10B981]" />
+              </div>
+          </div>
+
+          {/* Losses */}
+          <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] grid grid-cols-2 items-center shadow-lg group hover:border-[#2D3748] transition-colors">
+              <div className="flex flex-col items-center justify-center">
+                  <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-1">Losses</div>
+                  <div className="text-[#FF3069] text-4xl sm:text-5xl font-bold tracking-tight">{currentStats.losses}</div>
+              </div>
+              <div className="flex items-center justify-center">
+                <TrendingDown className="w-16 h-16 text-[#FF3069]" />
+              </div>
+          </div>
+      </div>
+
+      {/* HISTORY TABLE SECTION */}
+      <div>
+        <h2 className="text-white text-lg font-medium mb-4">Trade History</h2>
+
+        {/* Table Header */}
+        <div className="hidden sm:grid grid-cols-[1.5fr_1.5fr_4fr] bg-[#1E2530] rounded-t-lg px-6 py-3 mb-4 text-[#94A3B8] text-[11px] font-bold uppercase tracking-wider border-b border-[#2D3748]">
+           <div className="text-center">Date</div>
+           <div className="text-center">Signal</div>
+           <div className="grid grid-cols-[1.2fr_0.2fr_1.2fr_1fr] text-right pr-4">
+              <div className="text-center">OpenPrice (D1)</div>
+              <div></div>{/* Arrow placeholder */}
+              <div className="text-center">OpenPrice (D2)</div>
+              <div className="text-right">Result</div>
+           </div>
+        </div>
+
+        {/* List Content */}
+        <div className="space-y-3">
+           {!hasHistory ? (
+              <div className="text-center py-12 text-[#94A3B8] bg-[#0F151F] rounded-lg border border-[#1E2530]">No history available for this view.</div>
+           ) : (
+             historyItems.map((item, idx) => {
+               const isWin = item.result !== undefined && item.result > 0;
+               const isLoss = item.result !== undefined && item.result < 0;
+               const dotColor = isWin ? "bg-[#00FFB7]" : isLoss ? "bg-[#FF3069]" : "bg-[#7588A3]";
+
+                // Format Time/Date
+               let dateDisplay = "";
+               if (activeTab === "daily") {
+                 const isPending = item.exit_price === undefined || item.exit_price === null;
+                 
+                 if (isPending && item.start_date) {
+                    // Pending/Open trade: Show single date, e.g. "Jan 22, 2026"
+                    try {
+                        const d1 = parseISO(item.start_date);
+                        dateDisplay = format(d1, "MMM dd, yyyy");
+                    } catch {
+                        dateDisplay = item.start_date;
+                    }
+                 } else {
+                    // Completed trade: Show range, e.g. "Jan 19-20, 2026"
+                    try {
+                       if (item.start_date) {
+                          const d1 = parseISO(item.start_date);
+                          const d2 = parseISO(item.date);
+                          dateDisplay = `${format(d1, "MMM dd")}-${format(d2, "dd, yyyy")}`;
+                       }
+                    } catch(e) {
+                         dateDisplay = formatDateRange(item.start_date, item.date);
+                    }
+                 }
+               } else {
+                 dateDisplay = item.start_time ? item.start_time.substring(0, 5) : "";
+                 if (item.end_time) dateDisplay += ` - ${item.end_time.substring(0, 5)}`;
+                 // Add date if available
+                 if (item.date) {
+                    try { dateDisplay += `, ${format(parseISO(item.date), "MMM dd")}`; } catch(e){}
+                 }
+               }
+
+               return (
+                 <div key={idx} className="group relative">
+                    {/* Row Container */}
+                    <div className="bg-[#050505] border border-[#1E2530] rounded-xl px-6 py-4 flex flex-col sm:grid sm:grid-cols-[1.5fr_1.5fr_4fr] items-center gap-4 sm:gap-0 hover:border-[#2D3748] transition-colors relative">
+                       
+                       {/* Left Dot Indicator */}
+                       <div className={`absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-sm ${dotColor}`}></div>
+
+                       {/* Date */}
+                       <div className="text-[#E2E8F0] text-sm font-medium w-full sm:w-auto flex justify-between sm:justify-center sm:block sm:text-center pl-8 sm:pl-0">
+                          <span className="sm:hidden text-[#94A3B8] text-xs uppercase">Date</span>
+                          {dateDisplay}
+                       </div>
+
+                       {/* Signal */}
+                       <div className="flex items-center justify-center gap-3 w-full sm:w-auto">
+                          <span className={`text-sm font-medium ${item.from_rating.includes("Buy") ? "text-[#00FFB7]" : item.from_rating.includes("Sell") ? "text-[#FF3069]" : "text-[#94A3B8]"}`}>
+                            {item.from_rating}
+                          </span>
+                          <ArrowRight className="w-3 h-3 text-[#52525B]" />
+                          <div className={`px-3 py-1 rounded-[4px] text-[11px] font-bold uppercase tracking-wider ${
+                             item.to_rating === 'Strong Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7]' :
+                             item.to_rating === 'Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7]' :
+                             item.to_rating === 'Sell' ? 'bg-[#FF3069]/10 text-[#FF3069]' :
+                             item.to_rating === 'Strong Sell' ? 'bg-[#FF3069]/10 text-[#FF3069]' :
+                             'bg-[#2A3441] text-white'
+                          }`}>
+                            {item.to_rating}
+                          </div>
+                       </div>
+
+                       {/* Price & Result Box */}
+                       <div className="w-full sm:w-auto mt-4 sm:mt-0 bg-[#0F151F] border border-[#1E2530] rounded-lg px-6 py-3 grid grid-cols-1 sm:grid-cols-[1.2fr_0.2fr_1.2fr_1fr] items-center gap-2 sm:gap-0">
+                           
+                           {/* Price 1 (Align Center) */}
+                           <div className="flex items-baseline justify-center gap-1">
+                               <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
+                                   {item.entry_price.toFixed(2)}
+                               </span>
+                               <span className="text-[#64748B] text-[9px] font-bold uppercase">USD</span>
+                           </div>
+
+                           {/* Arrow (Center) */}
+                           <div className="flex justify-center text-[#52525B]">
+                               <ArrowRight className="w-4 h-4" />
+                           </div>
+
+                           {/* Price 2 (Align Center) */}
+                             <div className="flex items-baseline justify-center gap-1">
+                               {item.exit_price ? (
+                                   <>
+                                   <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
+                                       {item.exit_price.toFixed(2)}
+                                   </span>
+                                   <span className="text-[#64748B] text-[9px] font-bold uppercase">USD</span>
+                                   </>
+                               ) : (
+                                   <span className="text-[#64748B] font-medium text-base tracking-widest">...</span>
+                               )}
+                           </div>
+
+                           {/* Result */}
+                           <div className="text-right">
+                               {item.result !== undefined && item.result !== null ? (
+                                   <span className={`text-base font-bold ${isWin ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>
+                                       ({item.result > 0 ? "+" : ""}{Number(item.result).toFixed(1)}%)
+                                   </span>
+                               ) : (
+                                   <span className="text-[#64748B] text-sm">Pending</span>
+                               )}
+                           </div>
+                       </div>
+
+                    </div>
+                 </div>
+               )
+             })
+           )}
+        </div>
+      </div>
     </div>
   );
 }
