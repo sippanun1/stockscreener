@@ -35,7 +35,7 @@ jobs:
         id: fetch
         run: |
           cd src/api
-          python main.py --market HK --once --preopen
+          python main.py --market HK --once --preopen 2>&1 | tee fetch_log.txt
         env:
           TZ: Asia/Hong_Kong
         continue-on-error: true
@@ -90,3 +90,8 @@ jobs:
           echo "## 🇭🇰 Hong Kong Market Fetch" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${{ steps.fetch.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "**Time:** $(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Fetch Details" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          grep ">>" src/api/fetch_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs captured" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
