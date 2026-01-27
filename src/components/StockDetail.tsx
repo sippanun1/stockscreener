@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { StockLogo } from "./StockLogo";
-import { ArrowRight, Calendar, Timer, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowRight, ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { getCurrencySymbol } from "./stock-table/columns";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 type RatingHistory = {
   date: string;
@@ -51,50 +50,11 @@ type StockDetailData = {
 };
 
 
-const getRatingStyles = (rating: string | undefined) => {
-  if (!rating) return "text-[#7588A3]";
-  
-  switch (rating) {
-    case "Strong Buy":
-      return "bg-[#07FFB91A] text-[#00FFB7]";
-    case "Buy":
-      return "text-[#00FFB7]";
-    case "Neutral":
-      return "text-[#FFFFFF]";
-    case "Sell":
-      return "text-[#FF3069]";
-    case "Strong Sell":
-      return "bg-[#FF30691A] text-[#FF3069]";
-    default:
-      return "text-[#7588A3]";
-  }
-};
 
-const getHeaderBadgeStyles = (rating: string | undefined) => {
-  if (!rating) return "text-[#7588A3]";
-  
-  switch (rating) {
-    case "Strong Buy":
-      return "bg-[#07FFB91A] text-[#00FFB7]";
-    case "Buy":
-      return "bg-[#07FFB91A] text-[#00FFB7]";
-    case "Neutral":
-      return "bg-[#FFFFFF1A] text-[#FFFFFF]";
-    case "Sell":
-      return "bg-[#FF30691A] text-[#FF3069]";
-    case "Strong Sell":
-      return "bg-[#FF30691A] text-[#FF3069]";
-    default:
-      return "text-[#7588A3]";
-  }
-};
 
-const getResultColor = (result: number | undefined) => {
-  if (result === undefined || result === null) return "text-[#7588A3]";
-  if (result > 0) return "text-[#00FFB7]";
-  if (result < 0) return "text-[#FF3069]";
-  return "text-[#7588A3]";
-};
+
+
+
 
 const formatDateToDisplay = (dateStr: string) => {
   try {
@@ -251,6 +211,17 @@ export default function StockDetail() {
 
   return (
      <div className="min-h-screen bg-[#000000] p-4 sm:p-6 lg:px-[40px] lg:py-[32px] font-sans">
+       {/* Back Button */}
+       <button 
+         onClick={() => navigate('/')}
+         className="flex items-center gap-2 text-[#94A3B8] hover:text-white transition-colors mb-6 group"
+       >
+         <div className="p-2 rounded-full bg-[#1E2530] group-hover:bg-[#2D3748] transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+         </div>
+         <span className="text-sm font-medium">Back to Screener</span>
+       </button>
+
        {/* HEADER SECTION */}
        <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col sm:flex-row items-center justify-between mb-6 shadow-sm">
          {/* Left: Logo & Title */}
@@ -420,10 +391,15 @@ export default function StockDetail() {
                 const isLoss = item.result !== undefined && item.result < 0;
                 const dotColor = isWin ? "bg-[#00FFB7]" : isLoss ? "bg-[#FF3069]" : "bg-[#7588A3]";
  
+               // Normalize Price Access between Daily (open_price_d1/d2) and Intraday (entry_price/exit_price)
+               const itemAny = item as any;
+               const price1 = itemAny.open_price_d1 ?? itemAny.entry_price;
+               const price2 = itemAny.open_price_d2 ?? itemAny.exit_price;
+
                  // Format Time/Date
                 let dateDisplay = "";
                 if (activeTab === "daily") {
-                  const isPending = item.exit_price === undefined || item.exit_price === null;
+                  const isPending = price2 === undefined || price2 === null;
                   
                   if (isPending && item.start_date) {
                      // Pending/Open trade: Show single date, e.g. "Jan 22, 2026"
@@ -436,21 +412,21 @@ export default function StockDetail() {
                   } else {
                      // Completed trade: Show range, e.g. "Jan 19-20, 2026"
                      try {
-                        if (item.start_date) {
+                        if (item.start_date && (item as any).date) {
                            const d1 = parseISO(item.start_date);
-                           const d2 = parseISO(item.date);
+                           const d2 = parseISO((item as any).date);
                            dateDisplay = `${format(d1, "MMM dd")}-${format(d2, "dd, yyyy")}`;
                         }
                      } catch(e) {
-                          dateDisplay = formatDateRange(item.start_date, item.date);
+                          dateDisplay = formatDateRange(item.start_date, (item as any).date);
                      }
                   }
                 } else {
                   dateDisplay = item.start_time ? item.start_time.substring(0, 5) : "";
                   if (item.end_time) dateDisplay += ` - ${item.end_time.substring(0, 5)}`;
                   // Add date if available
-                  if (item.date) {
-                     try { dateDisplay += `, ${format(parseISO(item.date), "MMM dd")}`; } catch(e){}
+                  if ((item as any).date) {
+                     try { dateDisplay += `, ${format(parseISO((item as any).date), "MMM dd")}`; } catch(e){}
                   }
                 }
  
@@ -498,7 +474,7 @@ export default function StockDetail() {
                                {/* Price 1 */}
                                <div className="flex items-baseline gap-1">
                                    <span className="text-[#E2E8F0] font-medium text-sm font-mono tracking-tight">
-                                       {item.entry_price.toFixed(2)}
+                                       {price1?.toFixed(2)}
                                    </span>
                                    <span className="text-[#64748B] text-[8px] font-bold uppercase">USD</span>
                                </div>
@@ -507,10 +483,10 @@ export default function StockDetail() {
  
                                {/* Price 2 */}
                                <div className="flex items-baseline gap-1">
-                                   {item.exit_price ? (
+                                   {price2 ? (
                                        <>
                                        <span className="text-[#E2E8F0] font-medium text-sm font-mono tracking-tight">
-                                           {item.exit_price.toFixed(2)}
+                                           {price2.toFixed(2)}
                                        </span>
                                        <span className="text-[#64748B] text-[8px] font-bold uppercase">USD</span>
                                        </>
@@ -556,7 +532,7 @@ export default function StockDetail() {
                             {/* Price 1 (Align Center) */}
                             <div className="flex items-baseline justify-center gap-1">
                                 <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
-                                    {item.entry_price.toFixed(2)}
+                                    {price1?.toFixed(2)}
                                 </span>
                                 <span className="text-[#64748B] text-[9px] font-bold uppercase">USD</span>
                             </div>
@@ -568,10 +544,10 @@ export default function StockDetail() {
  
                             {/* Price 2 (Align Center) */}
                               <div className="flex items-baseline justify-center gap-1">
-                                {item.exit_price ? (
+                                {price2 ? (
                                     <>
                                     <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
-                                        {item.exit_price.toFixed(2)}
+                                        {price2.toFixed(2)}
                                     </span>
                                     <span className="text-[#64748B] text-[9px] font-bold uppercase">USD</span>
                                     </>

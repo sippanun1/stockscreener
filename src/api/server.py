@@ -372,8 +372,8 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                             "end_time": exit_entry.get("fetched_time"),
                             "from_rating": prev_rating if i > 0 else "N/A",
                             "to_rating": current_rating,
-                            "entry_price": entry_price,
-                            "exit_price": exit_price,
+                            "open_price_d1": entry_price,
+                            "open_price_d2": exit_price,
                             "days_held": 1,
                             "result": profit_percent,
                             "status": "COMPLETED"
@@ -387,8 +387,8 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                             "end_time": None,
                             "from_rating": prev_rating if i > 0 else "N/A",
                             "to_rating": current_rating,
-                            "entry_price": entry_price,
-                            "exit_price": None,
+                            "open_price_d1": entry_price,
+                            "open_price_d2": None,
                             "days_held": 0,
                             "result": None,
                             "status": "OPEN"

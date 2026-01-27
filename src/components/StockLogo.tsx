@@ -62,15 +62,21 @@ export const StockLogo = ({ symbol, name, className }: StockLogoProps) => {
   }, [symbol])
 
   if (error) {
-    const initials = (name || symbol)
-      .substring(0, 2)
-      .toUpperCase()
-      .replace(/[^A-Z]/g, "") || symbol.substring(0, 1).toUpperCase()
+    // Use full ticker symbol (e.g. "AJA") instead of initials
+    const parts = symbol.split(':')
+    const ticker = parts[1] || symbol
+    const initials = ticker.toUpperCase()
+    
+    // Scale font size based on length to prevent overflow
+    let fontSize = "text-[10px]"
+    if (initials.length >= 5) fontSize = "text-[6px]"
+    else if (initials.length === 4) fontSize = "text-[8px]"
+    else if (initials.length === 3) fontSize = "text-[9px]"
 
     return (
       <div 
         className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0",
+          `w-8 h-8 rounded-full flex items-center justify-center ${fontSize} font-bold text-white shadow-sm shrink-0`,
           getFallbackColor(name),
           className
         )}

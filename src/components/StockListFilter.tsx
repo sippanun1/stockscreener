@@ -18,7 +18,7 @@ type StockFiltersProps = {
 export default function StockListFilter({ onChange, filteredCount, currentFilters }: StockFiltersProps) {
   const [market, setMarket] = useState<string>("");
   const [currentRating, setCurrentRating] = useState<string>("");
-  const [technicalRating, setTechnicalRating] = useState<string>("");
+
   const [search, setSearch] = useState<string>("");
 
   // Sync local state with external filters (e.g. from SummaryInfo clicks)
@@ -26,14 +26,13 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
     if (currentFilters) {
       setMarket(currentFilters.market || "");
       setCurrentRating(currentFilters.currentRating || "");
-      setTechnicalRating(currentFilters.technicalRating || "");
       setSearch(currentFilters.search || "");
     }
   }, [currentFilters]);
 
   const ratingOptions = ["Strong Buy", "Buy", "Sell", "Strong Sell"];
   const marketOptions = ["US", "HK", "TH", "JP"];
-  const technicalRatingOptions = ["Positive", "Negative"];
+
 
   const getRatingHoverColor = (rating: string) => {
     switch (rating) {
@@ -55,32 +54,26 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   const handleMarketSelect = (value: string) => {
     const newMarket = value === "all" ? "" : value;
     setMarket(newMarket);
-    onChange?.({ market: newMarket, currentRating, technicalRating, search });
+    onChange?.({ market: newMarket, currentRating, search });
   };
 
   const handleCurrentRatingSelect = (value: string) => {
     const newRating = value === "all" ? "" : value;
     setCurrentRating(newRating);
-    onChange?.({ market, currentRating: newRating, technicalRating, search });
+    onChange?.({ market, currentRating: newRating, search });
   };
 
-  const handleTechnicalRatingSelect = (value: string) => {
-    const newRating = value === "all" ? "" : value;
-    setTechnicalRating(newRating);
-    onChange?.({ market, currentRating, technicalRating: newRating, search });
-  };
+
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    onChange?.({ market, currentRating, technicalRating, search: value });
+    onChange?.({ market, currentRating, search: value });
   };
 
   const handleClearFilters = () => {
     setMarket("");
     setCurrentRating("");
-    setTechnicalRating("");
-    setSearch("");
-    onChange?.({ market: "", currentRating: "", technicalRating: "", search: "" });
+    onChange?.({ market: "", currentRating: "", search: "" });
   };
 
   return (
@@ -123,24 +116,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
             </SelectContent>
           </Select>
 
-          {/* Rating Change */}
-          <Select value={technicalRating || "all"} onValueChange={handleTechnicalRatingSelect}>
-            <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px] lg:w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
-              <SelectValue>{technicalRating ? technicalRating : "Rating Change"}</SelectValue>
-            </SelectTrigger>
-            <SelectContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0">
-              <SelectGroup>
-                {technicalRatingOptions.map((rating) => (
-                  <SelectItem key={rating} value={rating} className="text-white hover:text-white focus:text-white hover:bg-[#354052] focus:bg-[#354052] cursor-pointer px-3 py-2.5 rounded-none">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xl ${rating === "Positive" ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>●</span>
-                      <span>{rating}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+
         </div>
 
         {/* Right side - Search & Clear */}
