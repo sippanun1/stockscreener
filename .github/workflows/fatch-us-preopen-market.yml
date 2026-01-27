@@ -80,7 +80,7 @@ jobs:
           fi
           
           git commit -m "chore: update database with US Pre-open market data $(date +'%Y-%m-%d')"
-          git push
+          git pull --rebase origin main && git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
