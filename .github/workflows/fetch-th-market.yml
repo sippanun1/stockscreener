@@ -19,7 +19,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      
+          lfs: true      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
