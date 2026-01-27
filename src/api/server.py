@@ -337,16 +337,24 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                     entry_price = entry.get("current_price", 0)
                     
                     # Look for D2 (The next record representing a NEW CALENDAR DAY)
+                    # FIX: Use raw_history (includes Neutrals) to just get the very next trading day
                     exit_entry = None
-                    for k in range(i + 1, len(chronological_history)):
-                        candidate = chronological_history[k]
+                    
+                    # We need to find where 'entry' is in raw_history to start searching after it
+                    # (Or just search by date since raw_history is sorted)
+                    # raw_history is Newest -> Oldest. 
+                    # We want the record immediately OLDER than current? No, we processed 'chronological_history' which is Oldest -> Newest (reversed at line 297)
+                    # Wait, let's look at line 303: raw_history = history[::-1]  <-- raw_history is OLDEST -> NEWEST.
+                    # So we can just iterate raw_history.
+                    
+                    for candidate in raw_history:
                         candidate_raw_date = candidate.get("fetched_date")
                         candidate_date = candidate_raw_date[:10] # Normalize
                         
-                        # Ensure strictly different CALENDAR date for "Daily" logic
+                        # Find the first date strictly greater than entry date
                         if candidate_date > entry_date:
                             exit_entry = candidate
-                            break
+                            break # Found the immediate next trading day
                     
                     if exit_entry:
                         exit_date = exit_entry.get("fetched_date") # Keep original for frontend parsing

@@ -250,83 +250,83 @@ export default function StockDetail() {
   })();
 
   return (
-    <div className="min-h-screen bg-[#000000] p-4 sm:p-6 lg:px-[40px] lg:py-[32px] font-sans">
-      {/* HEADER SECTION */}
-      <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col sm:flex-row items-center justify-between mb-6 shadow-sm">
-        {/* Left: Logo & Title */}
-        <div className="flex items-center gap-5 w-full sm:w-auto">
-          <StockLogo 
-            symbol={data.symbol} 
-            name={data.name} 
-            className="w-16 h-16 sm:w-[72px] sm:h-[72px] text-2xl" 
-          />
-          <div>
-            <h1 className="text-white text-3xl sm:text-[40px] font-bold tracking-tight leading-none mb-1">
-              {data.symbol.split(":")[1] || data.symbol}
-            </h1>
-            <p className="text-[#94A3B8] text-lg font-medium tracking-wide">{data.name}</p>
-          </div>
-        </div>
-
-        {/* Right: Price & Info */}
-        <div className="text-right mt-6 sm:mt-0 w-full sm:w-auto flex flex-row sm:flex-col justify-between items-end">
-          <div className="flex flex-col items-end">
-             <div className="text-white text-2xl sm:text-[32px] font-medium tracking-tight mb-3 flex items-baseline gap-2">
-                {data.current_price.toFixed(2)} <span className="text-lg text-[#94A3B8] font-normal">USD</span>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                 <div className={`text-base font-medium flex items-center gap-2 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                    <span>{data.change > 0 ? "+" : ""}{Number(data.change).toFixed(2)}</span>
-                    <span>({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)</span>
-                 </div>
-                 
-                 <div className={`px-3 py-1 rounded-[4px] text-[11px] font-bold uppercase tracking-wider ${
-                    data.current_rating === 'Strong Buy' ? 'bg-[#00FFB7]/20 text-[#00FFB7]' :
-                    data.current_rating === 'Buy' ? 'bg-[#00FFB7]/20 text-[#00FFB7]' :
-                    data.current_rating === 'Sell' ? 'bg-[#FF3069]/20 text-[#FF3069]' :
-                    data.current_rating === 'Strong Sell' ? 'bg-[#FF3069]/20 text-[#FF3069]' :
-                    'bg-[#7588A3]/20 text-[#7588A3]'
-                 }`}>
-                   {data.current_rating}
-                 </div>
-              </div>
-          </div>
-        </div>
-      </div>
-
-      {/* CONTROLS ROW: Toggles & Filters */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-        
-        {/* Left: Timeframe Toggle */}
-        <div className="bg-[#1E2530] rounded-lg p-1 flex items-center w-full sm:w-auto">
-             <button 
-                onClick={() => setActiveTab('daily')}
-                className={`flex-1 sm:flex-none px-6 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'daily' 
-                  ? 'bg-[#2D3748] text-[#E2E8F0] shadow-sm' 
-                  : 'text-[#94A3B8] hover:text-[#E2E8F0]'
-                }`}
-             >
-               Daily
-             </button>
-             <button 
-                onClick={() => setActiveTab('intraday')}
-                className={`flex-1 sm:flex-none px-6 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'intraday' 
-                  ? 'bg-[#2D3748] text-[#E2E8F0] shadow-sm' 
-                  : 'text-[#94A3B8] hover:text-[#E2E8F0]'
-                }`}
-             >
-               Intraday
-             </button>
-        </div>
-
-        {/* Right: Filters */}
-        <div className="flex items-center gap-2 bg-transparent w-full sm:w-auto overflow-x-auto no-scrollbar">
+     <div className="min-h-screen bg-[#000000] p-4 sm:p-6 lg:px-[40px] lg:py-[32px] font-sans">
+       {/* HEADER SECTION */}
+       <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col sm:flex-row items-center justify-between mb-6 shadow-sm">
+         {/* Left: Logo & Title */}
+         <div className="flex items-center gap-5 w-full sm:w-auto">
+           <StockLogo 
+             symbol={data.symbol} 
+             name={data.name} 
+             className="w-16 h-16 sm:w-[72px] sm:h-[72px] text-2xl" 
+           />
+           <div>
+             <h1 className="text-white text-3xl sm:text-[40px] font-bold tracking-tight leading-none mb-1">
+               {data.symbol.split(":")[1] || data.symbol}
+             </h1>
+             <p className="text-[#94A3B8] text-lg font-medium tracking-wide">{data.name}</p>
+           </div>
+         </div>
+ 
+         {/* Right: Price & Info */}
+         <div className="text-left sm:text-right mt-6 sm:mt-0 w-full sm:w-auto flex flex-row sm:flex-col justify-between items-end">
+           <div className="flex flex-col items-start sm:items-end w-full">
+              <div className="text-white text-3xl sm:text-[32px] font-medium tracking-tight mb-3 flex items-baseline gap-2">
+                 {data.current_price.toFixed(2)} <span className="text-lg text-[#94A3B8] font-normal">USD</span>
+               </div>
+               
+               <div className="flex items-center gap-3">
+                  <div className={`text-base font-medium flex items-center gap-2 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                     <span>{data.change > 0 ? "+" : ""}{Number(data.change).toFixed(2)}</span>
+                     <span>({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)</span>
+                  </div>
+                  
+                  <div className={`px-3 py-1 rounded-[4px] text-[11px] font-bold uppercase tracking-wider ${
+                     data.current_rating === 'Strong Buy' ? 'bg-[#00FFB7]/20 text-[#00FFB7]' :
+                     data.current_rating === 'Buy' ? 'bg-[#00FFB7]/20 text-[#00FFB7]' :
+                     data.current_rating === 'Sell' ? 'bg-[#FF3069]/20 text-[#FF3069]' :
+                     data.current_rating === 'Strong Sell' ? 'bg-[#FF3069]/20 text-[#FF3069]' :
+                     'bg-[#7588A3]/20 text-[#7588A3]'
+                  }`}>
+                    {data.current_rating}
+                  </div>
+               </div>
+           </div>
+         </div>
+       </div>
+ 
+       {/* CONTROLS ROW: Toggles & Filters */}
+       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+         
+         {/* Left: Timeframe Toggle */}
+         <div className="bg-[#1E2530] rounded-lg p-1 flex items-center w-full sm:w-auto">
+              <button 
+                 onClick={() => setActiveTab('daily')}
+                 className={`flex-1 sm:flex-none px-6 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                   activeTab === 'daily' 
+                   ? 'bg-[#2D3748] text-[#E2E8F0] shadow-sm' 
+                   : 'text-[#94A3B8] hover:text-[#E2E8F0]'
+                 }`}
+              >
+                Daily
+              </button>
+              <button 
+                 onClick={() => setActiveTab('intraday')}
+                 className={`flex-1 sm:flex-none px-6 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                   activeTab === 'intraday' 
+                   ? 'bg-[#2D3748] text-[#E2E8F0] shadow-sm' 
+                   : 'text-[#94A3B8] hover:text-[#E2E8F0]'
+                 }`}
+              >
+                Intraday
+              </button>
+         </div>
+ 
+         {/* Right: Filters */}
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 bg-transparent w-full sm:w-auto pb-1">
             <button 
             onClick={() => setSelectedRating(null)}
-            className={`px-5 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide border transition-all whitespace-nowrap ${
+            className={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wide border transition-all whitespace-nowrap ${
                 !selectedRating ? 'bg-[#2D3748] border-[#2D3748] text-white' : 'border-[#2D3748] text-[#94A3B8] hover:text-white'
             }`}
             >
@@ -341,7 +341,7 @@ export default function StockDetail() {
                 <button
                     key={filter}
                     onClick={() => setSelectedRating(isSelected ? null : filter)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border transition-all duration-200 whitespace-nowrap shadow-sm ${
+                    className={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wide border transition-all duration-200 whitespace-nowrap shadow-sm ${
                     isSelected 
                         ? isSell 
                             ? "bg-[#FF3069] border-[#FF3069] text-white" 
@@ -354,186 +354,250 @@ export default function StockDetail() {
                 )
             })}
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          {/* Accuracy */}
-          <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col justify-center items-center shadow-lg group hover:border-[#2D3748] transition-colors">
-              <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Accuracy</div>
-              <div className="text-[#00FFB7] text-4xl sm:text-5xl font-bold tracking-tight">{currentStats.winRate.toFixed(0)}%</div>
-          </div>
-          
-          {/* Total Return */}
-          <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col justify-center items-center shadow-lg group hover:border-[#2D3748] transition-colors">
-              <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Total</div>
-              <div className={`text-4xl sm:text-5xl font-bold tracking-tight ${currentStats.avgReturn >= 0 ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>
-                {currentStats.avgReturn > 0 ? "+" : ""}{currentStats.avgReturn.toFixed(2)}%
-              </div>
-          </div>
-
-            {/* Wins */}
-            <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] grid grid-cols-2 items-center shadow-lg group hover:border-[#2D3748] transition-colors">
-              <div className="flex flex-col items-center justify-center">
-                  <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-1">Wins</div>
-                  <div className="text-[#10B981] text-4xl sm:text-5xl font-bold tracking-tight">{currentStats.wins}</div>
-              </div>
-              <div className="flex items-center justify-center">
-                <TrendingUp className="w-16 h-16 text-[#10B981]" />
-              </div>
-          </div>
-
-          {/* Losses */}
-          <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] grid grid-cols-2 items-center shadow-lg group hover:border-[#2D3748] transition-colors">
-              <div className="flex flex-col items-center justify-center">
-                  <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-1">Losses</div>
-                  <div className="text-[#FF3069] text-4xl sm:text-5xl font-bold tracking-tight">{currentStats.losses}</div>
-              </div>
-              <div className="flex items-center justify-center">
-                <TrendingDown className="w-16 h-16 text-[#FF3069]" />
-              </div>
-          </div>
-      </div>
-
-      {/* HISTORY TABLE SECTION */}
-      <div>
-        <h2 className="text-white text-lg font-medium mb-4">Trade History</h2>
-
-        {/* Table Header */}
-        <div className="hidden sm:grid grid-cols-[1.5fr_1.5fr_4fr] bg-[#1E2530] rounded-t-lg px-6 py-3 mb-4 text-[#94A3B8] text-[11px] font-bold uppercase tracking-wider border-b border-[#2D3748]">
-           <div className="text-center">Date</div>
-           <div className="text-center">Signal</div>
-           <div className="grid grid-cols-[1.2fr_0.2fr_1.2fr_1fr] text-right pr-4">
-              <div className="text-center">OpenPrice (D1)</div>
-              <div></div>{/* Arrow placeholder */}
-              <div className="text-center">OpenPrice (D2)</div>
-              <div className="text-right">Result</div>
+       </div>
+ 
+       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+           {/* Accuracy */}
+           <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col justify-center items-center shadow-lg group hover:border-[#2D3748] transition-colors">
+               <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Accuracy</div>
+               <div className="text-[#00FFB7] text-3xl sm:text-5xl font-bold tracking-tight">{currentStats.winRate.toFixed(0)}%</div>
            </div>
-        </div>
-
-        {/* List Content */}
-        <div className="space-y-3">
-           {!hasHistory ? (
-              <div className="text-center py-12 text-[#94A3B8] bg-[#0F151F] rounded-lg border border-[#1E2530]">No history available for this view.</div>
-           ) : (
-             historyItems.map((item, idx) => {
-               const isWin = item.result !== undefined && item.result > 0;
-               const isLoss = item.result !== undefined && item.result < 0;
-               const dotColor = isWin ? "bg-[#00FFB7]" : isLoss ? "bg-[#FF3069]" : "bg-[#7588A3]";
-
-                // Format Time/Date
-               let dateDisplay = "";
-               if (activeTab === "daily") {
-                 const isPending = item.exit_price === undefined || item.exit_price === null;
-                 
-                 if (isPending && item.start_date) {
-                    // Pending/Open trade: Show single date, e.g. "Jan 22, 2026"
-                    try {
-                        const d1 = parseISO(item.start_date);
-                        dateDisplay = format(d1, "MMM dd, yyyy");
-                    } catch {
-                        dateDisplay = item.start_date;
-                    }
-                 } else {
-                    // Completed trade: Show range, e.g. "Jan 19-20, 2026"
-                    try {
-                       if (item.start_date) {
-                          const d1 = parseISO(item.start_date);
-                          const d2 = parseISO(item.date);
-                          dateDisplay = `${format(d1, "MMM dd")}-${format(d2, "dd, yyyy")}`;
-                       }
-                    } catch(e) {
-                         dateDisplay = formatDateRange(item.start_date, item.date);
-                    }
-                 }
-               } else {
-                 dateDisplay = item.start_time ? item.start_time.substring(0, 5) : "";
-                 if (item.end_time) dateDisplay += ` - ${item.end_time.substring(0, 5)}`;
-                 // Add date if available
-                 if (item.date) {
-                    try { dateDisplay += `, ${format(parseISO(item.date), "MMM dd")}`; } catch(e){}
-                 }
-               }
-
-               return (
-                 <div key={idx} className="group relative">
-                    {/* Row Container */}
-                    <div className="bg-[#050505] border border-[#1E2530] rounded-xl px-6 py-4 flex flex-col sm:grid sm:grid-cols-[1.5fr_1.5fr_4fr] items-center gap-4 sm:gap-0 hover:border-[#2D3748] transition-colors relative">
-                       
-                       {/* Left Dot Indicator */}
-                       <div className={`absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-sm ${dotColor}`}></div>
-
-                       {/* Date */}
-                       <div className="text-[#E2E8F0] text-sm font-medium w-full sm:w-auto flex justify-between sm:justify-center sm:block sm:text-center pl-8 sm:pl-0">
-                          <span className="sm:hidden text-[#94A3B8] text-xs uppercase">Date</span>
-                          {dateDisplay}
-                       </div>
-
-                       {/* Signal */}
-                       <div className="flex items-center justify-center gap-3 w-full sm:w-auto">
-                          <span className={`text-sm font-medium ${item.from_rating.includes("Buy") ? "text-[#00FFB7]" : item.from_rating.includes("Sell") ? "text-[#FF3069]" : "text-[#94A3B8]"}`}>
-                            {item.from_rating}
-                          </span>
-                          <ArrowRight className="w-3 h-3 text-[#52525B]" />
-                          <div className={`px-3 py-1 rounded-[4px] text-[11px] font-bold uppercase tracking-wider ${
-                             item.to_rating === 'Strong Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7]' :
-                             item.to_rating === 'Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7]' :
-                             item.to_rating === 'Sell' ? 'bg-[#FF3069]/10 text-[#FF3069]' :
-                             item.to_rating === 'Strong Sell' ? 'bg-[#FF3069]/10 text-[#FF3069]' :
-                             'bg-[#2A3441] text-white'
-                          }`}>
-                            {item.to_rating}
-                          </div>
-                       </div>
-
-                       {/* Price & Result Box */}
-                       <div className="w-full sm:w-auto mt-4 sm:mt-0 bg-[#0F151F] border border-[#1E2530] rounded-lg px-6 py-3 grid grid-cols-1 sm:grid-cols-[1.2fr_0.2fr_1.2fr_1fr] items-center gap-2 sm:gap-0">
-                           
-                           {/* Price 1 (Align Center) */}
-                           <div className="flex items-baseline justify-center gap-1">
-                               <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
-                                   {item.entry_price.toFixed(2)}
-                               </span>
-                               <span className="text-[#64748B] text-[9px] font-bold uppercase">USD</span>
+           
+           {/* Total Return */}
+           <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col justify-center items-center shadow-lg group hover:border-[#2D3748] transition-colors">
+               <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Total</div>
+               <div className={`text-3xl sm:text-5xl font-bold tracking-tight ${currentStats.avgReturn >= 0 ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>
+                 {currentStats.avgReturn > 0 ? "+" : ""}{currentStats.avgReturn.toFixed(2)}%
+               </div>
+           </div>
+ 
+             {/* Wins */}
+             <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] grid grid-cols-2 items-center shadow-lg group hover:border-[#2D3748] transition-colors">
+               <div className="flex flex-col items-center justify-center">
+                   <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-1">Wins</div>
+                   <div className="text-[#10B981] text-3xl sm:text-5xl font-bold tracking-tight">{currentStats.wins}</div>
+               </div>
+               <div className="flex items-center justify-center">
+                 <TrendingUp className="w-12 h-12 sm:w-16 sm:h-16 text-[#10B981]" />
+               </div>
+           </div>
+ 
+           {/* Losses */}
+           <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] grid grid-cols-2 items-center shadow-lg group hover:border-[#2D3748] transition-colors">
+               <div className="flex flex-col items-center justify-center">
+                   <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-1">Losses</div>
+                   <div className="text-[#FF3069] text-3xl sm:text-5xl font-bold tracking-tight">{currentStats.losses}</div>
+               </div>
+               <div className="flex items-center justify-center">
+                 <TrendingDown className="w-12 h-12 sm:w-16 sm:h-16 text-[#FF3069]" />
+               </div>
+           </div>
+       </div>
+ 
+       {/* HISTORY TABLE SECTION */}
+       <div>
+         <h2 className="text-white text-lg font-medium mb-4">Trade History</h2>
+ 
+         {/* Desktop Table Header (Hidden on Mobile) */}
+         <div className="hidden sm:grid grid-cols-[1.5fr_1.5fr_4fr] bg-[#1E2530] rounded-t-lg px-6 py-3 mb-4 text-[#94A3B8] text-[11px] font-bold uppercase tracking-wider border-b border-[#2D3748]">
+            <div className="text-center">Date</div>
+            <div className="text-center">Signal</div>
+            <div className="grid grid-cols-[1.2fr_0.2fr_1.2fr_1fr] text-right pr-4">
+               <div className="text-center">OpenPrice (D1)</div>
+               <div></div>{/* Arrow placeholder */}
+               <div className="text-center">OpenPrice (D2)</div>
+               <div className="text-right">Result</div>
+            </div>
+         </div>
+ 
+         {/* List Content */}
+         <div className="space-y-3">
+            {!hasHistory ? (
+               <div className="text-center py-12 text-[#94A3B8] bg-[#0F151F] rounded-lg border border-[#1E2530]">No history available for this view.</div>
+            ) : (
+              historyItems.map((item, idx) => {
+                const isWin = item.result !== undefined && item.result > 0;
+                const isLoss = item.result !== undefined && item.result < 0;
+                const dotColor = isWin ? "bg-[#00FFB7]" : isLoss ? "bg-[#FF3069]" : "bg-[#7588A3]";
+ 
+                 // Format Time/Date
+                let dateDisplay = "";
+                if (activeTab === "daily") {
+                  const isPending = item.exit_price === undefined || item.exit_price === null;
+                  
+                  if (isPending && item.start_date) {
+                     // Pending/Open trade: Show single date, e.g. "Jan 22, 2026"
+                     try {
+                         const d1 = parseISO(item.start_date);
+                         dateDisplay = format(d1, "MMM dd, yyyy");
+                     } catch {
+                         dateDisplay = item.start_date;
+                     }
+                  } else {
+                     // Completed trade: Show range, e.g. "Jan 19-20, 2026"
+                     try {
+                        if (item.start_date) {
+                           const d1 = parseISO(item.start_date);
+                           const d2 = parseISO(item.date);
+                           dateDisplay = `${format(d1, "MMM dd")}-${format(d2, "dd, yyyy")}`;
+                        }
+                     } catch(e) {
+                          dateDisplay = formatDateRange(item.start_date, item.date);
+                     }
+                  }
+                } else {
+                  dateDisplay = item.start_time ? item.start_time.substring(0, 5) : "";
+                  if (item.end_time) dateDisplay += ` - ${item.end_time.substring(0, 5)}`;
+                  // Add date if available
+                  if (item.date) {
+                     try { dateDisplay += `, ${format(parseISO(item.date), "MMM dd")}`; } catch(e){}
+                  }
+                }
+ 
+                return (
+                  <div key={idx}>
+                     {/* MOBILE CARD VIEW (Block on Mobile, Hidden on Desktop) */}
+                     <div className="block sm:hidden bg-[#050505] border border-[#1E2530] rounded-xl p-4 hover:border-[#2D3748] transition-colors relative">
+                        {/* Status Line Left */}
+                        <div className={`absolute left-0 top-4 bottom-4 w-1 ${dotColor} rounded-r`}></div>
+                        
+                        <div className="pl-3 flex flex-col gap-3">
+                           {/* Row 1: Date & Result */}
+                           <div className="flex justify-between items-start">
+                              <span className="text-[#E2E8F0] text-sm font-medium">{dateDisplay}</span>
+                              <div className="text-right">
+                                {item.result !== undefined && item.result !== null ? (
+                                    <span className={`text-sm font-bold ${isWin ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>
+                                        {item.result > 0 ? "+" : ""}{Number(item.result).toFixed(1)}%
+                                    </span>
+                                ) : (
+                                    <span className="text-[#64748B] text-xs uppercase tracking-wider">Pending</span>
+                                )}
+                              </div>
                            </div>
-
-                           {/* Arrow (Center) */}
-                           <div className="flex justify-center text-[#52525B]">
-                               <ArrowRight className="w-4 h-4" />
+ 
+                           {/* Row 2: Signal Badges */}
+                           <div className="flex items-center gap-2">
+                              <span className={`text-sm font-medium ${item.from_rating.includes("Buy") ? "text-[#00FFB7]" : item.from_rating.includes("Sell") ? "text-[#FF3069]" : "text-[#94A3B8]"}`}>
+                                 {item.from_rating}
+                              </span>
+                              <ArrowRight className="w-3 h-3 text-[#52525B]" />
+                              <div className={`px-2 py-0.5 rounded-[4px] text-[10px] font-bold uppercase tracking-wider ${
+                                 item.to_rating === 'Strong Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7]' :
+                                 item.to_rating === 'Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7]' :
+                                 item.to_rating === 'Sell' ? 'bg-[#FF3069]/10 text-[#FF3069]' :
+                                 item.to_rating === 'Strong Sell' ? 'bg-[#FF3069]/10 text-[#FF3069]' :
+                                 'bg-[#2A3441] text-white'
+                              }`}>
+                                 {item.to_rating}
+                              </div>
                            </div>
-
-                           {/* Price 2 (Align Center) */}
-                             <div className="flex items-baseline justify-center gap-1">
-                               {item.exit_price ? (
-                                   <>
-                                   <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
-                                       {item.exit_price.toFixed(2)}
+ 
+                           {/* Row 3: Price Flow (Centered) */}
+                           <div className="bg-[#0F151F] border border-[#1E2530] rounded-lg p-2 px-3 flex items-center justify-between">
+                               {/* Price 1 */}
+                               <div className="flex items-baseline gap-1">
+                                   <span className="text-[#E2E8F0] font-medium text-sm font-mono tracking-tight">
+                                       {item.entry_price.toFixed(2)}
                                    </span>
-                                   <span className="text-[#64748B] text-[9px] font-bold uppercase">USD</span>
-                                   </>
-                               ) : (
-                                   <span className="text-[#64748B] font-medium text-base tracking-widest">...</span>
-                               )}
+                                   <span className="text-[#64748B] text-[8px] font-bold uppercase">USD</span>
+                               </div>
+ 
+                               <ArrowRight className="w-3 h-3 text-[#52525B]" />
+ 
+                               {/* Price 2 */}
+                               <div className="flex items-baseline gap-1">
+                                   {item.exit_price ? (
+                                       <>
+                                       <span className="text-[#E2E8F0] font-medium text-sm font-mono tracking-tight">
+                                           {item.exit_price.toFixed(2)}
+                                       </span>
+                                       <span className="text-[#64748B] text-[8px] font-bold uppercase">USD</span>
+                                       </>
+                                   ) : (
+                                       <span className="text-[#64748B] font-medium text-sm tracking-widest">...</span>
+                                   )}
+                               </div>
                            </div>
-
-                           {/* Result */}
-                           <div className="text-right">
-                               {item.result !== undefined && item.result !== null ? (
-                                   <span className={`text-base font-bold ${isWin ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>
-                                       ({item.result > 0 ? "+" : ""}{Number(item.result).toFixed(1)}%)
-                                   </span>
-                               ) : (
-                                   <span className="text-[#64748B] text-sm">Pending</span>
-                               )}
+                        </div>
+                     </div>
+ 
+                     {/* DESKTOP TABLE ROW (Hidden on Mobile, Grid on Desktop) */}
+                     <div className="hidden sm:grid bg-[#050505] border border-[#1E2530] rounded-xl px-6 py-4 grid-cols-[1.5fr_1.5fr_4fr] items-center gap-0 hover:border-[#2D3748] transition-colors relative group">
+                        
+                        {/* Left Dot Indicator */}
+                        <div className={`absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full shadow-sm ${dotColor}`}></div>
+ 
+                        {/* Date */}
+                        <div className="text-[#E2E8F0] text-sm font-medium w-full text-center">
+                           {dateDisplay}
+                        </div>
+ 
+                        {/* Signal */}
+                        <div className="flex items-center justify-center gap-3 w-full">
+                           <span className={`text-sm font-medium ${item.from_rating.includes("Buy") ? "text-[#00FFB7]" : item.from_rating.includes("Sell") ? "text-[#FF3069]" : "text-[#94A3B8]"}`}>
+                             {item.from_rating}
+                           </span>
+                           <ArrowRight className="w-3 h-3 text-[#52525B]" />
+                           <div className={`px-3 py-1 rounded-[4px] text-[11px] font-bold uppercase tracking-wider ${
+                              item.to_rating === 'Strong Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7]' :
+                              item.to_rating === 'Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7]' :
+                              item.to_rating === 'Sell' ? 'bg-[#FF3069]/10 text-[#FF3069]' :
+                              item.to_rating === 'Strong Sell' ? 'bg-[#FF3069]/10 text-[#FF3069]' :
+                              'bg-[#2A3441] text-white'
+                           }`}>
+                             {item.to_rating}
                            </div>
-                       </div>
-
-                    </div>
-                 </div>
-               )
-             })
-           )}
-        </div>
-      </div>
-    </div>
+                        </div>
+ 
+                        {/* Price & Result Box */}
+                        <div className="w-full bg-[#0F151F] border border-[#1E2530] rounded-lg px-6 py-3 grid grid-cols-[1.2fr_0.2fr_1.2fr_1fr] items-center gap-0">
+                            
+                            {/* Price 1 (Align Center) */}
+                            <div className="flex items-baseline justify-center gap-1">
+                                <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
+                                    {item.entry_price.toFixed(2)}
+                                </span>
+                                <span className="text-[#64748B] text-[9px] font-bold uppercase">USD</span>
+                            </div>
+ 
+                            {/* Arrow (Center) */}
+                            <div className="flex justify-center text-[#52525B]">
+                                <ArrowRight className="w-4 h-4" />
+                            </div>
+ 
+                            {/* Price 2 (Align Center) */}
+                              <div className="flex items-baseline justify-center gap-1">
+                                {item.exit_price ? (
+                                    <>
+                                    <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
+                                        {item.exit_price.toFixed(2)}
+                                    </span>
+                                    <span className="text-[#64748B] text-[9px] font-bold uppercase">USD</span>
+                                    </>
+                                ) : (
+                                    <span className="text-[#64748B] font-medium text-base tracking-widest">...</span>
+                                )}
+                            </div>
+ 
+                            {/* Result */}
+                            <div className="text-right">
+                                {item.result !== undefined && item.result !== null ? (
+                                    <span className={`text-base font-bold ${isWin ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>
+                                        ({item.result > 0 ? "+" : ""}{Number(item.result).toFixed(1)}%)
+                                    </span>
+                                ) : (
+                                    <span className="text-[#64748B] text-sm">Pending</span>
+                                )}
+                            </div>
+                        </div>
+                     </div>
+                  </div>
+                )
+              })
+            )}
+         </div>
+       </div>
+     </div>
   );
 }
