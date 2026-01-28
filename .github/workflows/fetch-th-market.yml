@@ -1,9 +1,15 @@
 name: Fetch Thailand Market Data
 
 on:
-  # Run at 16:45 ICT (09:45 UTC) - 15 min after Thailand market closes
+  # Run at 10:00, 12:45, 14:30, and 16:45 ICT - Thailand market sessions
   schedule:
-    - cron: '45 9 * * 1-5'  # Monday-Friday only
+    - cron: '15 3 * * 1-5'  # 10:15 ICT - Before morning session
+    - cron: '0 4 * * 1-5'  # 11:00 ICT
+    - cron: '45 5 * * 1-5'  # 12:45 ICT - Mid-day
+    - cron: '0 6 * * 1-5'  # 13:00 ICT
+    - cron: '45 7 * * 1-5'  # 14:45 ICT - Before afternoon session
+    - cron: '30 8 * * 1-5'  # 15:30 ICT
+    - cron: '45 9 * * 1-5'  # 16:45 ICT - After market closes
   
   # Allow manual trigger
   workflow_dispatch:
@@ -19,7 +25,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-          lfs: true      
+          lfs: true
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -72,7 +79,8 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git lfs install          git add src/api/data/stocks.db
+          git lfs install
+          git add src/api/data/stocks.db
           
           if git diff --staged --quiet; then
             echo "No database changes"

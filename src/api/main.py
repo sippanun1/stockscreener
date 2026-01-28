@@ -21,6 +21,11 @@ DATA_DIR.mkdir(exist_ok=True)
 columns = [
     "name",
     "close",
+    "open",
+    "premarket_close",
+    "premarket_open",
+    "postmarket_close",
+    "postmarket_open",
     "Recommend.All",
     "description"
 ]
@@ -111,13 +116,18 @@ def fetch_market(market_name, url, batch_size=300):
 
     for row in all_rows:
         d = row["d"]
-        score = d[2]
+        score = d[7]
 
         out.append({
             "market": market_name,
             "symbol": row["s"],
-            "name": d[3],
+            "name": d[0],
             "current_price": d[1],
+            "open": d[2],
+            "premarket_close": d[3],
+            "premarket_open": d[4],
+            "postmarket_close": d[5],
+            "postmarket_open": d[6],
             "Technical_Score": score,
             "Technical_Rating": convert_rating(score),
             "fetched_at": fetched_at_str,
