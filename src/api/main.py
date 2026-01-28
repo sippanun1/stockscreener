@@ -37,7 +37,11 @@ screeners = {
     "US": "https://scanner.tradingview.com/america/scan",
     "HK": "https://scanner.tradingview.com/hongkong/scan",
     "TH": "https://scanner.tradingview.com/thailand/scan",
-    "JP": "https://scanner.tradingview.com/japan/scan"
+    "JP": "https://scanner.tradingview.com/japan/scan",
+    "IN": "https://scanner.tradingview.com/india/scan",
+    "VN": "https://scanner.tradingview.com/vietnam/scan",
+    "UK": "https://scanner.tradingview.com/uk/scan"
+}
 }
 
 headers = {
