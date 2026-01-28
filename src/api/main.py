@@ -42,7 +42,7 @@ screeners = {
     "VN": "https://scanner.tradingview.com/vietnam/scan",
     "UK": "https://scanner.tradingview.com/uk/scan"
 }
-}
+
 
 headers = {
     "accept": "application/json",
