@@ -68,6 +68,28 @@ def convert_rating(score):
         return "Strong Sell"
 
 # ================================
+# Robust Save Helper
+# ================================
+def save_to_db_with_retry(df, market, today, retries=3, delay=2):
+    """
+    Attempts to save dataframe to DB.
+    Returns True if success, False if all retries failed.
+    """
+    for attempt in range(1, retries + 1):
+        try:
+            import database
+            stocks_list = df.to_dict('records')
+            database.save_daily_stocks(stocks_list, today, session_type='post_market')
+            print(f">> ✅ Success: Saved {market} to Database")
+            return True # Success!
+        except Exception as e:
+            print(f">> ⚠️ Attempt {attempt}/{retries} failed: {e}")
+            if attempt < retries:
+                time.sleep(delay)
+    
+    return False # All retries failed
+
+# ================================
 # Fetch unlimited rows + ONLY STOCK
 # ================================
 def fetch_market(market_name, url, batch_size=300):
@@ -151,9 +173,27 @@ def fetch_all_markets():
         try:
             df = fetch_market(market, url)
             if df is not None:
+                # 1. BUFFER: Save JSON immediately
                 filename = DATA_DIR / f"{market}_{today}.json"
                 df.to_json(filename, orient='records', indent=2)
-                print(f">> Saved {filename} ({len(df)} rows)")
+                print(f">> 📦 Buffered {filename} ({len(df)} rows)")
+                
+                # 2. PUSH with RETRY
+                success = save_to_db_with_retry(df, market, today)
+
+                # 3. CLEANUP or ALERT
+                if success:
+                    if filename.exists():
+                        filename.unlink() 
+                        print(f">> 🧹 Cleaned up buffer file: {filename.name}")
+                else:
+                    # ❌ FAILURE after retries - KEEP FILE & ALERT USER
+                    print(f"\n{'!'*50}")
+                    print(f"❌ CRITICAL ERROR: Could not save {market} to Database after 3 attempts.")
+                    print(f"📦 DATA SAVED IN: {filename.name}")
+                    print(f"🛠️  TO FIX: Run 'python main.py --import-local' later.")
+                    print(f"{'!'*50}\n")
+
                 all_df.append(df)
         except Exception as e:
             print(f">> Error fetching {market}: {e}")
@@ -165,13 +205,14 @@ def fetch_all_markets():
         print(f"\n>> Saved combined file: {combined_filename}")
         
         # ⭐ Save to SQLite database
-        try:
-            import database
-            stocks_list = combined.to_dict('records')
-            database.save_daily_stocks(stocks_list, today, session_type='post_market')
-            print(">> Saved to SQLite database")
-        except Exception as e:
-            print(f">> Error saving to SQLite: {e}")
+        # (Already saved incrementally above to prevent data loss)
+        # try:
+        #     import database
+        #     stocks_list = combined.to_dict('records')
+        #     database.save_daily_stocks(stocks_list, today, session_type='post_market')
+        #     print(">> Saved to SQLite database")
+        # except Exception as e:
+        #     print(f">> Error saving to SQLite: {e}")
         
         print("\n>> DONE - All Markets Fetched Successfully!")
     else:
@@ -204,8 +245,55 @@ if __name__ == "__main__":
     parser.add_argument('--market', type=str, help='Specific market to fetch (US, HK, TH, JP)', default=None)
     parser.add_argument('--once', action='store_true', help='Run once and exit (for GitHub Actions)')
     parser.add_argument('--preopen', action='store_true', help='Mark this as pre-market data (before market opens)')
+    parser.add_argument('--import-local', action='store_true', help='Import data from local JSON files instead of fetching (Recovery Mode)')
     args = parser.parse_args()
     
+    if args.import_local:
+        # ================================
+        # Recovery Mode: Import Local JSONs
+        # ================================
+        print(f"\n{'='*50}")
+        print(f">> 📦 Starting Local Import (Recovery Mode)")
+        print(f"{'='*50}\n")
+        
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # Look for files matching pattern: {MARKET}_{TODAY}.json
+        files_found = list(DATA_DIR.glob(f"*_{today}.json"))
+        
+        if not files_found:
+            print(f">> No buffer files found for today ({today}).")
+            sys.exit(0)
+            
+        print(f">> Found {len(files_found)} buffer files.")
+        
+        for json_file in files_found:
+            market_name = json_file.name.split('_')[0]
+            print(f"\n>> Processing {json_file.name}...")
+            
+            try:
+                # Load JSON
+                with open(json_file, 'r') as f:
+                    data = json.load(f)
+                    df = pd.DataFrame(data)
+                
+                print(f">> Loaded {len(df)} rows.")
+                
+                # Push to DB with retry
+                success = save_to_db_with_retry(df, market_name, today)
+                
+                if success:
+                    json_file.unlink()
+                    print(f">> 🧹 Cleaned up buffer file: {json_file.name}")
+                else:
+                    print(f">> ❌ Failed to import {json_file.name}. File kept.")
+                    
+            except Exception as e:
+                print(f">> ⚠️ Error processing {json_file.name}: {e}")
+                
+        print("\n>> Recovery process completed.")
+        sys.exit(0)
+        
     if args.once or args.market:
         # Run once mode (for GitHub Actions or specific market)
         print(f">> Running in once mode{f' for market: {args.market}' if args.market else ''}")

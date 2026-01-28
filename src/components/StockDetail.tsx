@@ -374,9 +374,9 @@ export default function StockDetail() {
             <div className="text-center">Date</div>
             <div className="text-center">Signal</div>
             <div className="grid grid-cols-[1.2fr_0.2fr_1.2fr_1fr] text-right pr-4">
-               <div className="text-center">OpenPrice (D1)</div>
+               <div className="text-center">{activeTab === 'intraday' ? 'Entry Price' : 'OpenPrice (D1)'}</div>
                <div></div>{/* Arrow placeholder */}
-               <div className="text-center">OpenPrice (D2)</div>
+               <div className="text-center">{activeTab === 'intraday' ? 'Exit Price' : 'OpenPrice (D2)'}</div>
                <div className="text-right">Result</div>
             </div>
          </div>

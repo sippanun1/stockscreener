@@ -683,60 +683,46 @@ def get_today_summary():
         upgrades_change_from_yesterday = ((upgrades - yesterday_upgrades) / yesterday_upgrades) * 100
 
     top_opportunities = []
-    if latest_date:
-        # Find the actual previous trading day from database (not calendar yesterday)
-        cursor.execute("""
-            SELECT DISTINCT DATE(fetched_date) as date 
-            FROM stock_ratings 
-            WHERE DATE(fetched_date) < ?
-                AND session_type = 'post_market'
-            ORDER BY DATE(fetched_date) DESC
+    query_top = """
+    SELECT 
+        today.symbol,
+        today.name,
+        today.current_price,
+        today.technical_rating,
+        (
+            SELECT prev.current_price 
+            FROM stock_ratings prev 
+            WHERE prev.symbol = today.symbol 
+            AND DATE(prev.fetched_date) < DATE(today.fetched_date)
+            AND prev.session_type = 'post_market'
+            ORDER BY prev.fetched_date DESC
             LIMIT 1
-        """, (latest_date,))
-        prev_row = cursor.fetchone()
-        
-        if prev_row:
-            previous_trading_date = prev_row["date"]
-            
-            query_top = """
-            SELECT 
-                today.symbol,
-                today.name,
-                today.current_price,
-                today.technical_rating,
-                (
-                    SELECT prev.current_price 
-                    FROM stock_ratings prev 
-                    WHERE prev.symbol = today.symbol 
-                    AND DATE(prev.fetched_date) = ?
-                    AND prev.session_type = 'post_market'
-                    LIMIT 1
-                ) as yesterday_price
-            FROM stock_ratings today
-            WHERE DATE(today.fetched_date) = ?
-            AND today.technical_rating IN ('Buy', 'Strong Buy')
-            AND today.current_price >= 0.1
-            AND today.session_type = 'post_market'
-            """
-            cursor.execute(query_top, (previous_trading_date, latest_date))
-        
-        candidates = []
-        for row in cursor.fetchall():
-            curr = row["current_price"]
-            yesterday = row["yesterday_price"]
-            if curr and yesterday and yesterday > 0:
-                change_pct = ((curr - yesterday) / yesterday) * 100
-                candidates.append({
-                    "symbol": row["symbol"],
-                    "market": row["symbol"].split(":")[0] if ":" in row["symbol"] else "",
-                    "name": row["name"],
-                    "change_percent": change_pct
-                })
-        
-        if candidates:
-            # Sort by change percent descending and get top 3
-            candidates.sort(key=lambda x: x["change_percent"], reverse=True)
-            top_opportunities = candidates[:3]
+        ) as yesterday_price
+    FROM stock_ratings today
+    WHERE DATE(today.fetched_date) = ?
+    AND today.technical_rating IN ('Buy', 'Strong Buy')
+    AND today.current_price >= 0.1
+    AND today.session_type = 'post_market'
+    """
+    cursor.execute(query_top, (latest_date,))
+
+    candidates = []
+    for row in cursor.fetchall():
+        curr = row["current_price"]
+        yesterday = row["yesterday_price"]
+        if curr and yesterday and yesterday > 0:
+            change_pct = ((curr - yesterday) / yesterday) * 100
+            candidates.append({
+                "symbol": row["symbol"],
+                "market": row["symbol"].split(":")[0] if ":" in row["symbol"] else "",
+                "name": row["name"],
+                "change_percent": change_pct
+            })
+    
+    if candidates:
+        # Sort by change percent descending and get top 3
+        candidates.sort(key=lambda x: x["change_percent"], reverse=True)
+        top_opportunities = candidates[:3]
 
     conn.close()
     
