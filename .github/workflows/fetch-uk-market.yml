@@ -74,8 +74,6 @@ jobs:
               print('❌ UK data file not found')
               sys.exit(1)
           "
-        env:
-          TZ: Europe/London
       
       - name: Commit and push database
         if: steps.fetch.outcome == 'success'
