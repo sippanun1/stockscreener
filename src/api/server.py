@@ -598,76 +598,18 @@ async def get_intraday_changes(
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
     try:
-        conn = database.get_connection()
-        cursor = conn.cursor()
-        
         # Use today if no date specified
         if not date:
             date = datetime.now().strftime("%Y-%m-%d")
-        
-        # Build query
-        query = """
-            SELECT 
-                p.symbol,
-                p.market,
-                p.name,
-                p.technical_rating as preopen_rating,
-                p.current_price as preopen_price,
-                p.fetched_time as preopen_time,
-                r.technical_rating as regular_rating,
-                r.current_price as regular_price,
-                r.fetched_time as regular_time,
-                r.current_price - p.current_price as price_change,
-                CASE 
-                    WHEN p.technical_rating != r.technical_rating THEN 1
-                    ELSE 0
-                END as rating_changed
-            FROM stock_ratings p
-            JOIN stock_ratings r 
-                ON p.symbol = r.symbol 
-                AND p.fetched_date = r.fetched_date
-            WHERE p.session_type = 'pre_market'
-              AND r.session_type = 'post_market'
-              AND p.fetched_date = ?
-        """
-        
-        params = [date]
-        
-        if market:
-            query += " AND p.market = ?"
-            params.append(market.upper())
-        
-        query += " ORDER BY rating_changed DESC, ABS(r.current_price - p.current_price) DESC"
-        
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        conn.close()
-        
-        results = []
-        for row in rows:
-            results.append({
-                "symbol": row[0],
-                "market": row[1],
-                "name": row[2],
-                "pre_market": {
-                    "rating": "N/A" if row[3] == "Neutral" else row[3],
-                    "price": row[4],
-                    "time": row[5]
-                },
-                "post_market": {
-                    "rating": "N/A" if row[6] == "Neutral" else row[6],
-                    "price": row[7],
-                    "time": row[8]
-                },
-                "price_change": row[9],
-                "rating_changed": bool(row[10])
-            })
+            
+        # Use helper function
+        results = database.get_intraday_comparison(date, market)
         
         return {
             "date": date,
-            "market": market,
-            "total": len(results),
-            "stocks": results
+            "market": market or "All",
+            "count": len(results),
+            "data": results
         }
         
     except Exception as e:

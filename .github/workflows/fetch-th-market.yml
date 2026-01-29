@@ -25,7 +25,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-          lfs: true
+          lfs: false
           
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -45,6 +45,8 @@ jobs:
           python main.py --market TH --once 2>&1 | tee fetch_log.txt
         env:
           TZ: Asia/Bangkok
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         continue-on-error: true
       
       - name: Validate data
@@ -74,23 +76,10 @@ jobs:
       
 
       
-      - name: Commit and push database
-        if: steps.fetch.outcome == 'success'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git lfs install
-          git add src/api/data/stocks.db
-          
-          if git diff --staged --quiet; then
-            echo "No database changes"
-            exit 0
-          fi
-          
-          git commit -m "chore: update database with Thailand Regular market data $(date +'%Y-%m-%d')"
-          for i in 1 2 3 4 5; do git pull --rebase origin main && git push && break || sleep 10; done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Commit and push database
+      #   if: steps.fetch.outcome == 'success'
+      #   run: |
+      #     echo "Database updated locally (pushed to Supabase direct)"
       
       - name: Create summary
         if: always()
