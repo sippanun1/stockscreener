@@ -31,7 +31,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   }, [currentFilters]);
 
   const ratingOptions = ["Strong Buy", "Buy", "Sell", "Strong Sell"];
-  const marketOptions = ["US", "HK", "TH", "JP"];
+  const marketOptions = ["US", "HK", "TH", "JP", "IN", "VN", "UK"];
 
 
   const getRatingHoverColor = (rating: string) => {

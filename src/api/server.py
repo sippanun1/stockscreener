@@ -334,7 +334,8 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                     raw_entry_date = entry.get("fetched_date")
                     entry_date = raw_entry_date[:10]  # Normalize to YYYY-MM-DD (handle ISO timestamps in DB)
                     entry_time = entry.get("fetched_time")
-                    entry_price = entry.get("current_price", 0)
+                    # Use Official Open if available, else fallback to current_price (Safe for old data)
+                    entry_price = entry.get("open") or entry.get("current_price", 0)
                     
                     # Look for D2 (The next record representing a NEW CALENDAR DAY)
                     # FIX: Use raw_history (includes Neutrals) to just get the very next trading day
@@ -358,7 +359,8 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                     
                     if exit_entry:
                         exit_date = exit_entry.get("fetched_date") # Keep original for frontend parsing
-                        exit_price = exit_entry.get("current_price", 0)
+                        # exit_price is the OPEN of the next day (Daily Strategy)
+                        exit_price = exit_entry.get("open") or exit_entry.get("current_price", 0)
                         
                         # Calculate Result (D1 -> D2)
                         profit_percent = 0.0
