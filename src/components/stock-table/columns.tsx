@@ -41,6 +41,12 @@ export const getCurrencySymbol = (market: string | undefined) => {
       return "JPY"
     case "US":
       return "USD"
+    case "IN":
+      return "INR"
+    case "VN":
+      return "VND"
+    case "UK":
+      return "GBX"
     default:
       return "USD"
   }
@@ -104,6 +110,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       return (
         <div className={`text-right text-sm ${color}`}>
           {change > 0 ? "+" : ""}{change.toFixed(2)}
+          <span className="text-[#F8FAFC] text-[0.5rem] sm:text-[0.65rem] ml-1 hidden sm:inline">{getCurrencySymbol(row.original.market)}</span>
         </div>
       )
     },

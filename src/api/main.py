@@ -116,7 +116,8 @@ def fetch_market(market_name, url, batch_size=300):
             },
 
             "filter": [
-                {"left": "market_cap_basic", "operation": "nempty"}
+                {"left": "market_cap_basic", "operation": "nempty"},
+                {"left": "exchange", "operation": "not_in_range", "right": ["OTC"]} # filter out OTC
             ]
         }
 

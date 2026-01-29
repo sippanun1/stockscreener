@@ -90,6 +90,12 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     // Filter out stocks with price below 0.1
     filtered = filtered.filter((stock) => stock.current_price >= 0.1)
 
+    // Filter out OTC exchanges
+    filtered = filtered.filter((stock) => {
+      const exchange = stock.symbol.split(":")[0]
+      return exchange !== "OTC"
+    })
+
     // External Filters
     if (filters?.market) {
       filtered = filtered.filter((stock) => stock.market === filters.market)
