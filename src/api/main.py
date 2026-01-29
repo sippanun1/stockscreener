@@ -82,7 +82,12 @@ def save_to_db_with_retry(df, market, today, retries=3, delay=2):
     for attempt in range(1, retries + 1):
         try:
             import database
-            stocks_list = df.to_dict('records')
+            # Fix JSON NaN error: Replace NaN with None (Robust)
+            df_clean = df.astype(object).where(pd.notnull(df), None)
+            # Fix Duplicate Rows error: Drop duplicates by symbol
+            df_clean = df_clean.drop_duplicates(subset=['symbol'])
+            
+            stocks_list = df_clean.to_dict('records')
             database.save_daily_stocks(stocks_list, today, session_type='post_market')
             print(f">> ✅ Success: Saved {market} to Database")
             return True # Success!
@@ -144,6 +149,17 @@ def fetch_market(market_name, url, batch_size=300):
     for row in all_rows:
         d = row["d"]
         score = d[7]
+
+        # --- FILTERS ---
+        # 1. Filter out Penny Stocks (Price < 0.20)
+        if d[1] is None or d[1] < 0.2:
+            continue
+            
+        # 2. Filter out OTC Stocks (Symbol or Exchange)
+        raw_symbol = row.get("s", "")
+        # Check exchange in d[0] (name) or if symbol has :OTC
+        if "OTC" in raw_symbol or "PINK" in raw_symbol:
+            continue
 
         out.append({
             "market": market_name,

@@ -101,22 +101,37 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
     if not records:
         return {"inserted": 0, "updated": 0}
 
+    if not records:
+        return {"inserted": 0, "updated": 0}
+
+    # BATCHING LOGIC to prevent "Payload Too Large"
+    BATCH_SIZE = 1000
+    total_saved = 0
+    
     try:
-        # Perform Bulk Upsert
-        # Note: Supabase upsert requires specifying the conflict columns if they differ from PK
-        # We use the unique constraint: symbol, fetched_date, fetched_time, session_type
-        response = client.table("stock_ratings").upsert(
-            records, 
-            on_conflict="symbol, fetched_date, fetched_time, session_type"
-        ).execute()
-        
-        # Count implicitly (heuristic as API response format varies)
-        count = len(response.data) if response.data else 0
-        print(f">> Saved {count} stocks to Supabase ({session_type})")
-        return {"inserted": count, "updated": 0} # upsert counts as insert/update mixed
+        # Loop through records in chunks
+        for i in range(0, len(records), BATCH_SIZE):
+            batch = records[i : i + BATCH_SIZE]
+            
+            response = client.table("stock_ratings").upsert(
+                batch, 
+                on_conflict="symbol, fetched_date, fetched_time, session_type"
+            ).execute()
+            
+            # Count inserted/updated
+            if response.data:
+                total_saved += len(response.data)
+                
+            print(f">> 📦 Batch {i//BATCH_SIZE + 1} saved: {len(batch)} records")
+
+        print(f">> ✅ Total Saved: {total_saved} stocks to Supabase ({session_type})")
+        return {"inserted": total_saved, "updated": 0}
 
     except Exception as e:
         logger.error(f"Supabase Upsert Error: {e}")
+        # If one batch fails, we re-raise. Or we could continue?
+        # Re-raise to alert main.py to retry the WHOLE logic or log partially.
+        # Ideally, main.py should know.
         raise e
 
 def get_stocks_with_previous_rating(
@@ -361,29 +376,23 @@ def _empty_summary():
     }
 
 def get_stocks_by_rating(rating: str, date: Optional[str] = None, limit: int = 1000):
-   # Simple filter query
+   """
+   Get stocks filtered by rating.
+   Uses the RPC function `get_stocks_with_last_rating` to ensure consistent filtering (OTC, Price, Date).
+   """
    client = get_client()
    try:
-       query = client.table("stock_ratings")\
-           .select("*")\
-           .eq("technical_rating", rating)\
-           .eq("session_type", "post_market")
-           
-       if date:
-           query = query.eq("fetched_date", date)
-       else:
-           # Ideally fetch latest date first
-           pass
-           
-       response = query.limit(limit).execute()
+       # Use the new target_rating parameter in RPC
+       res = client.rpc("get_stocks_with_last_rating", {
+           "target_rating": rating,
+           "target_date": date, # Can be None for latest per market
+           "limit_val": limit
+       }).execute()
        
-       # Need to format similar to expected output with "previous_rating"
-       # Without RPC, we might lack previous_rating column.
-       # Frontend might break if missing?
-       # Let's just return what we have, frontend handles missing keys usually or we patch.
-       return response.data
+       return res.data if res.data else []
+
    except Exception as e:
-       logger.error(f"get_stocks_by_rating error: {e}")
+       logger.error(f"Error fetching stocks by rating: {e}")
        return []
 
 def get_connection():

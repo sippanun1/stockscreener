@@ -599,8 +599,8 @@ async def get_intraday_changes(
     
     try:
         # Use today if no date specified
-        if not date:
-            date = datetime.now().strftime("%Y-%m-%d")
+        # if not date:
+        #    date = datetime.now().strftime("%Y-%m-%d")
             
         # Use helper function
         results = database.get_intraday_comparison(date, market)
