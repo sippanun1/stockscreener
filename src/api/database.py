@@ -38,6 +38,11 @@ def init_db():
             market TEXT NOT NULL,
             name TEXT,
             current_price REAL,
+            open REAL,
+            premarket_close REAL,
+            premarket_open REAL,
+            postmarket_close REAL,
+            postmarket_open REAL,
             technical_score REAL,
             technical_rating TEXT,
             fetched_date DATE NOT NULL,
@@ -47,6 +52,23 @@ def init_db():
             UNIQUE(symbol, fetched_date, session_type)
         )
     """)
+    
+    # Simple migration: Add columns if they don't exist (for existing DB)
+    new_columns = [
+        ("open", "REAL"),
+        ("premarket_close", "REAL"),
+        ("premarket_open", "REAL"),
+        ("postmarket_close", "REAL"),
+        ("postmarket_open", "REAL")
+    ]
+    
+    for col_name, col_type in new_columns:
+        try:
+            cursor.execute(f"ALTER TABLE stock_ratings ADD COLUMN {col_name} {col_type}")
+            print(f">> Migrated: Added column {col_name}")
+        except sqlite3.OperationalError:
+            # Column likely already exists
+            pass
     
     # Create indexes for fast queries
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_symbol ON stock_ratings(symbol)")
@@ -94,10 +116,15 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
             
             cursor.execute("""
                 INSERT INTO stock_ratings 
-                (symbol, market, name, current_price, technical_score, technical_rating, fetched_date, fetched_time, session_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (symbol, market, name, current_price, open, premarket_close, premarket_open, postmarket_close, postmarket_open, technical_score, technical_rating, fetched_date, fetched_time, session_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(symbol, fetched_date, session_type) DO UPDATE SET
                     current_price = excluded.current_price,
+                    open = excluded.open,
+                    premarket_close = excluded.premarket_close,
+                    premarket_open = excluded.premarket_open,
+                    postmarket_close = excluded.postmarket_close,
+                    postmarket_open = excluded.postmarket_open,
                     technical_score = excluded.technical_score,
                     technical_rating = excluded.technical_rating,
                     fetched_time = excluded.fetched_time
@@ -106,6 +133,11 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
                 stock.get("market"),
                 stock.get("name"),
                 stock.get("current_price"),
+                stock.get("open"),
+                stock.get("premarket_close"),
+                stock.get("premarket_open"),
+                stock.get("postmarket_close"),
+                stock.get("postmarket_open"),
                 stock.get("Technical_Score"),
                 stock.get("Technical_Rating"),
                 record_date,
