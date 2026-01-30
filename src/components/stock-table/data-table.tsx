@@ -138,7 +138,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     filtered = filtered.filter((stock) => stock.current_price >= 0.1)
 
     // Filter out OTC exchanges (Using pre-calculated exchange field)
-    filtered = filtered.filter((stock) => (stock as any).exchange !== "OTC")
+    filtered = filtered.filter((stock) => stock.exchange !== "OTC")
 
     // External Filters (Market is already filtered by API, but double check doesn't hurt)
     if (filters?.market) {
@@ -280,24 +280,22 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                   {headerGroup.headers.map((header) => {
                     // Determine alignment based on column
                     const isExchange = header.column.id === 'exchange'
-                    const isSymbol = header.column.id === 'symbol'
                     const isNumeric = ['current_price', 'change', 'changePercent'].includes(header.column.id)
+                    const isSymbol = header.column.id === 'symbol'
                     
                     const alignClass = isExchange 
                       ? 'text-left justify-start' 
                       : isNumeric 
                         ? 'text-right justify-end' 
                         : 'text-center justify-center'
-                    
-                    // Sticky styles for Symbol column
-                    const stickyClass = isSymbol 
-                      ? "sticky left-0 z-30 bg-[#0F151F] shadow-[1px_0_0_0_#1E2530]" 
-                      : ""
 
+                    // Sticky Symbol Logic
+                    const stickyClass = isSymbol ? "sticky left-0 z-30 bg-[#0F151F]" : ""
+                    
                     return (
                       <TableHead
                         key={header.id}
-                        className={`text-[#F8FAFC] text-sm cursor-pointer hover:bg-[#1E2530] bg-[#0F151F] font-semibold ${alignClass} ${stickyClass}`}
+                        className={`text-[#F8FAFC] text-sm cursor-pointer hover:bg-[#1E2530] font-semibold ${alignClass} ${stickyClass} ${!isSymbol ? 'bg-[#0F151F]' : ''}`}
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <div className={`flex items-center gap-1 ${alignClass.split(' ')[1]}`}>
@@ -306,7 +304,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                             : flexRender(
                                 header.column.columnDef.header,
                                 header.getContext()
-                                )}
+                              )}
                           {header.column.getCanSort() && (
                             <SortArrows 
                               sortDirection={header.column.getIsSorted()}
@@ -331,20 +329,14 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                     }}
                   >
                     {row.getVisibleCells().map((cell) => {
-                      const isSymbol = cell.column.id === 'symbol'
-                      // Use solid BG to cover scrolling content, matching the row's base color approx
-                      // The row is bg-[#7588A31A] (~ #0F151Fish). 
-                      // We use #0B0E14 (blackish) or #121820. Let's try #121820.
-                      // And ensure hover updates it.
-                      const stickyClass = isSymbol 
-                        ? "sticky left-0 z-20 bg-[#121820] group-hover:bg-[#292D33] shadow-[1px_0_0_0_#1E2530]" 
-                        : ""
-                        
-                      return (
-                        <TableCell key={cell.id} className={`py-2 ${stickyClass}`}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      )
+                         const isSymbol = cell.column.id === 'symbol'
+                         const stickyClass = isSymbol ? "sticky left-0 z-20 bg-[#000000] group-hover:bg-[#1E2530]" : ""
+
+                         return (
+                          <TableCell key={cell.id} className={`py-2 ${stickyClass}`}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                         )
                     })}
                   </TableRow>
                 ))
