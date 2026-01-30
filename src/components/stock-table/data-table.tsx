@@ -280,6 +280,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                   {headerGroup.headers.map((header) => {
                     // Determine alignment based on column
                     const isExchange = header.column.id === 'exchange'
+                    const isSymbol = header.column.id === 'symbol'
                     const isNumeric = ['current_price', 'change', 'changePercent'].includes(header.column.id)
                     
                     const alignClass = isExchange 
@@ -288,10 +289,15 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                         ? 'text-right justify-end' 
                         : 'text-center justify-center'
                     
+                    // Sticky styles for Symbol column
+                    const stickyClass = isSymbol 
+                      ? "sticky left-0 z-30 bg-[#0F151F] shadow-[1px_0_0_0_#1E2530]" 
+                      : ""
+
                     return (
                       <TableHead
                         key={header.id}
-                        className={`text-[#F8FAFC] text-sm cursor-pointer hover:bg-[#1E2530] bg-[#0F151F] font-semibold ${alignClass}`}
+                        className={`text-[#F8FAFC] text-sm cursor-pointer hover:bg-[#1E2530] bg-[#0F151F] font-semibold ${alignClass} ${stickyClass}`}
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <div className={`flex items-center gap-1 ${alignClass.split(' ')[1]}`}>
@@ -318,17 +324,28 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                 table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}
-                    className="bg-[#7588A31A] hover:bg-[#292D33]/80 border-[#1E2530] cursor-pointer h-10"
+                    className="bg-[#7588A31A] hover:bg-[#292D33]/80 border-[#1E2530] cursor-pointer h-10 group"
                     onClick={() => {
                       const stock = row.original as { symbol: string }
                       navigate(`/symbols/${encodeURIComponent(stock.symbol.replace(':', '-'))}`)
                     }}
                   >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="py-2">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
+                    {row.getVisibleCells().map((cell) => {
+                      const isSymbol = cell.column.id === 'symbol'
+                      // Use solid BG to cover scrolling content, matching the row's base color approx
+                      // The row is bg-[#7588A31A] (~ #0F151Fish). 
+                      // We use #0B0E14 (blackish) or #121820. Let's try #121820.
+                      // And ensure hover updates it.
+                      const stickyClass = isSymbol 
+                        ? "sticky left-0 z-20 bg-[#121820] group-hover:bg-[#292D33] shadow-[1px_0_0_0_#1E2530]" 
+                        : ""
+                        
+                      return (
+                        <TableCell key={cell.id} className={`py-2 ${stickyClass}`}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      )
+                    })}
                   </TableRow>
                 ))
               ) : (
