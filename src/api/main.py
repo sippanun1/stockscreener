@@ -161,16 +161,19 @@ def fetch_market(market_name, url, batch_size=300):
         if "OTC" in raw_symbol or "PINK" in raw_symbol:
             continue
 
+        # UK prices are in pence (GBX), convert to pounds (GBP)
+        price_multiplier = 0.01 if market_name == "UK" else 1.0
+        
         out.append({
             "market": market_name,
             "symbol": row["s"],
             "name": d[8],  # Use description (full company name) instead of d[0] (ticker)
-            "current_price": d[1],
-            "open": d[2],
-            "premarket_close": d[3],
-            "premarket_open": d[4],
-            "postmarket_close": d[5],
-            "postmarket_open": d[6],
+            "current_price": d[1] * price_multiplier if d[1] else None,
+            "open": d[2] * price_multiplier if d[2] else None,
+            "premarket_close": d[3] * price_multiplier if d[3] else None,
+            "premarket_open": d[4] * price_multiplier if d[4] else None,
+            "postmarket_close": d[5] * price_multiplier if d[5] else None,
+            "postmarket_open": d[6] * price_multiplier if d[6] else None,
             "Technical_Score": score,
             "Technical_Rating": convert_rating(score),
             "fetched_at": fetched_at_str,
