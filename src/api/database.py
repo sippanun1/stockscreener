@@ -108,10 +108,88 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
     BATCH_SIZE = 1000
     total_saved = 0
     
+    # --- OPTIMIZATION: Fetch Previous Ratings Baseline ---
+    # To correctly set `rating_change_date`, we need to compare with the PREVIOUS record.
+    # Since checking 1-by-1 is slow, we fetch the latest snapshot for this market.
+    
+    prev_ratings_map = {}
+    try:
+        # 1. Identify Market (assume list is consistent)
+        target_market = stocks_list[0].get("market") if stocks_list else None
+        
+        if target_market:
+            # 2. Find latest fetched_date BEFORE today
+            # We want records strictly before the current batch's date (to avoid comparing with self if re-running)
+            target_date_obj = datetime.strptime(default_date, "%Y-%m-%d")
+            
+            # Simple query to find max date < current
+            date_res = client.table("stock_ratings") \
+                .select("fetched_date") \
+                .eq("market", target_market) \
+                .lt("fetched_date", default_date) \
+                .order("fetched_date", desc=True) \
+                .limit(1) \
+                .execute()
+                
+            if date_res.data:
+                baseline_date = date_res.data[0]['fetched_date']
+                logger.info(f"Comparing with baseline date: {baseline_date}")
+                
+                # 3. Fetch all ratings for this baseline date (Handle pagination for >1000 inputs)
+                # We need all stocks to ensure map is complete.
+                all_baseline = []
+                offset = 0
+                while True:
+                    r = client.table("stock_ratings") \
+                        .select("symbol, technical_rating, rating_change_date") \
+                        .eq("market", target_market) \
+                        .eq("fetched_date", baseline_date) \
+                        .range(offset, offset + 999) \
+                        .execute()
+                    
+                    if not r.data:
+                        break
+                        
+                    all_baseline.extend(r.data)
+                    if len(r.data) < 1000:
+                        break
+                    offset += 1000
+                
+                # 4. Build Map
+                for row in all_baseline:
+                    prev_ratings_map[row['symbol']] = {
+                        "rating": row.get("technical_rating"),
+                        "change_date": row.get("rating_change_date")
+                    }
+                    
+    except Exception as e:
+        logger.warning(f"Could not fetch baseline ratings (First run?): {e}")
+
     try:
         # Loop through records in chunks
         for i in range(0, len(records), BATCH_SIZE):
             batch = records[i : i + BATCH_SIZE]
+            
+            # --- LOGIC: Compute rating_change_date ---
+            for rec in batch:
+                sym = rec["symbol"]
+                curr_rating = rec["technical_rating"]
+                
+                prev_data = prev_ratings_map.get(sym)
+                
+                if prev_data:
+                    prev_rating = prev_data["rating"]
+                    prev_date = prev_data["change_date"]
+                    
+                    if curr_rating == prev_rating:
+                        # NO CHANGE: Keep original date (or fallback to today if None)
+                        rec["rating_change_date"] = prev_date if prev_date else rec["fetched_date"]
+                    else:
+                        # CHANGED: Update to today
+                        rec["rating_change_date"] = rec["fetched_date"]
+                else:
+                    # NEW STOCK: Date is today
+                    rec["rating_change_date"] = rec["fetched_date"]
             
             response = client.table("stock_ratings").upsert(
                 batch, 
