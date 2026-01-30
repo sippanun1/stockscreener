@@ -44,44 +44,91 @@ const BATCH_SIZE = 100
 // API base URL from environment variable
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-// Fetch function for React Query
-const fetchStocks = async (): Promise<Stock[]> => {
-  const response = await fetch(`${API_URL}/api/stocks?limit=25000`)
-  const result = await response.json()
+// Response type from API
+interface StockApiResponse {
+  data: any[];
+  count: number;
+  total: number;
+}
+
+// Fetch function for React Query - returns stocks and total count
+const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total: number }> => {
+  const [_, currentFilters] = queryKey;
   
-  return result.data.map((s: any) => ({
-    market: s.market,
-    symbol: s.symbol,
-    name: s.name,
-    current_price: Number(s.current_price),
-    previous_price: s.previous_price ? Number(s.previous_price) : undefined,
-    Technical_Rating: s.Technical_Rating,
-    Previous_Rating: s.Previous_Rating,
-    previous_rating_date: s.previous_rating_date,
-    rating_change_date: s.rating_change_date,
-    fetched_date: s.fetched_date,
-  }))
+  const params = new URLSearchParams();
+  const limit = currentFilters?.limit || '2000';
+  params.append('limit', limit); // Fetch initial small amount for speed
+  
+  if (currentFilters?.market && currentFilters.market !== 'all') {
+    params.append('market', currentFilters.market);
+  }
+
+  // Include search term in API request for server-side filtering
+  if (currentFilters?.search && currentFilters.search.trim() !== '') {
+    params.append('search', currentFilters.search);
+  }
+
+  // Include rating filter for accurate count
+  if (currentFilters?.rating) {
+    params.append('rating', currentFilters.rating);
+  }
+  
+  const response = await fetch(`${API_URL}/api/stocks?${params.toString()}`)
+  const result: StockApiResponse = await response.json()
+  
+  const stocks = result.data.map((s: any) => {
+    const currentPrice = Number(s.current_price)
+    const previousPrice = s.previous_price ? Number(s.previous_price) : undefined
+    const change = previousPrice && previousPrice > 0 ? ((currentPrice - previousPrice) / previousPrice * 100) : 0
+    const exchange = s.symbol?.split(":")[0] || ""
+
+    return {
+      market: s.market,
+      symbol: s.symbol,
+      name: s.name,
+      current_price: currentPrice,
+      previous_price: previousPrice,
+      change: change, // Pre-calculated % change
+      exchange: exchange, // Pre-calculated exchange
+      Technical_Rating: s.Technical_Rating,
+      Previous_Rating: s.Previous_Rating,
+      previous_rating_date: s.previous_rating_date,
+      rating_change_date: s.rating_change_date,
+      fetched_date: s.fetched_date,
+    }
+  })
+
+  return {
+    stocks: stocks,
+    total: result.total || 0  // Total count from database
+  }
 }
 
 export function DataTable({ columns, filters, onFilteredCountChange }: DataTableProps) {
   const [displayCount, setDisplayCount] = useState(BATCH_SIZE)
   const [loadingMore, setLoadingMore] = useState(false)
-  // Default sort by Date (fetched_date key) descending
   const [sorting, setSorting] = useState<SortingState>([{ id: "fetched_date", desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Fetch stocks with React Query (5 minute cache)
-  const { data: allData = [], isLoading: loading } = useQuery({
-    queryKey: ['stocks'],
+  const [fetchLimit, setFetchLimit] = useState(2000)
+
+  // Fetch stocks with React Query
+  // Fixed: Include search and limit in queryKey to re-fetch when searching or loading more
+  // Note: technicalRating (Positive/Negative) is handled client-side, only currentRating goes to API
+  const { data, isLoading: loading, refetch } = useQuery({
+    queryKey: ['stocks', { market: filters?.market, search: filters?.search, limit: fetchLimit, rating: filters?.currentRating }],
     queryFn: fetchStocks,
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    staleTime: 5 * 60 * 1000, 
   })
 
-  // Apply external filters and internal search using useMemo
-  // This prevents double-rendering by calculating state during render instead of in an effect
+  // Extract stocks array and total count from response
+  const allData = data?.stocks || []
+  const totalInDatabase = data?.total || 0
+
+  // Apply LOCAL filters (Rating, Search, Price)
   const filteredData = useMemo(() => {
     if (allData.length === 0) return []
 
@@ -90,13 +137,10 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     // Filter out stocks with price below 0.1
     filtered = filtered.filter((stock) => stock.current_price >= 0.1)
 
-    // Filter out OTC exchanges
-    filtered = filtered.filter((stock) => {
-      const exchange = stock.symbol.split(":")[0]
-      return exchange !== "OTC"
-    })
+    // Filter out OTC exchanges (Using pre-calculated exchange field)
+    filtered = filtered.filter((stock) => stock.exchange !== "OTC")
 
-    // External Filters
+    // External Filters (Market is already filtered by API, but double check doesn't hurt)
     if (filters?.market) {
       filtered = filtered.filter((stock) => stock.market === filters.market)
     }
@@ -130,17 +174,11 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
         let aValue: any = a[id as keyof Stock]
         let bValue: any = b[id as keyof Stock]
 
-        // Handle calculated columns
-        if (id === "change") {
-          const aPrev = a.previous_price || 0
-          const bPrev = b.previous_price || 0
-          aValue = aPrev === 0 ? 0 : ((a.current_price || 0) - aPrev) / aPrev
-          bValue = bPrev === 0 ? 0 : ((b.current_price || 0) - bPrev) / bPrev
-        } else if (id === "changePercent") {
-          const aPrev = a.previous_price || 0
-          const bPrev = b.previous_price || 0
-          aValue = aPrev === 0 ? 0 : ((a.current_price || 0) - aPrev) / aPrev
-          bValue = bPrev === 0 ? 0 : ((b.current_price || 0) - bPrev) / bPrev
+        // Handle calculated columns (Now using pre-calculated fields or simple fallbacks)
+        if (id === "change" || id === "changePercent") {
+           // We've pre-calculated 'change' to be the % value
+           aValue = (a as any).change || 0
+           bValue = (b as any).change || 0
         } else if (id === "fetched_date") {
           // Sort by signal date (rating_change_date) if available
           aValue = a.rating_change_date || a.fetched_date
@@ -152,8 +190,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
         if (bValue === null || bValue === undefined) return -1
 
         if (aValue > bValue) return desc ? -1 : 1
-        if (aValue < bValue) return desc ? 1 : -1
-        return 0
+        return 1 // simplified
       })
     }
 
@@ -169,8 +206,13 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
 
   // Notify parent of filtered count changes
   useEffect(() => {
-    onFilteredCountChange?.(filteredData.length)
-  }, [filteredData.length, onFilteredCountChange])
+    // Use totalInDatabase when we can trust it (only server-side filters active)
+    // Use filteredData.length when client-side filters are applied (technicalRating)
+    const hasClientSideFilter = !!filters?.technicalRating
+    const countToShow = hasClientSideFilter ? filteredData.length : totalInDatabase
+    
+    onFilteredCountChange?.(countToShow)
+  }, [filteredData.length, totalInDatabase, filters?.technicalRating, onFilteredCountChange])
 
   // Slice data for display
   const currentData = useMemo(() => {
@@ -307,12 +349,29 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
             </div>
           )}
           
-          {/* Scroll hint */}
-          {displayCount < filteredData.length && !loadingMore && (
-            <div className="text-center py-2 text-xs text-[#7588A3]">
-              Scroll down to load more
-            </div>
-          )}
+          {/* Scroll hint / Load more all */}
+          <div className="flex flex-col items-center py-4 border-t border-[#1E2530] bg-[#0F151F]/50">
+            {displayCount < filteredData.length && !loadingMore && (
+              <div className="text-xs text-[#7588A3] mb-2">
+                Scroll down to see more of the current {allData.length} records
+              </div>
+            )}
+            
+            {allData.length === fetchLimit && !loading && (
+              <button 
+                onClick={() => setFetchLimit(50000)}
+                className="px-6 py-2 bg-[#1E2530] hover:bg-[#292D33] text-[#F8FAFC] text-sm font-medium rounded-lg transition-colors border border-[#7588A3]/20"
+              >
+                Load All Stocks (50,000 max)
+              </button>
+            )}
+            
+            {allData.length > 2000 && (
+              <div className="mt-2 text-[10px] text-[#7588A3] opacity-60">
+                Viewing {allData.length} stocks
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -143,39 +143,92 @@ def get_stocks_with_previous_rating(
 ):
     """
     Get stocks using the Supabase RPC function `get_stocks_with_last_rating`.
+    Handles pagination automatically if limit > 1000.
     """
     client = get_client()
     
-    params = {
-        "target_market": market,
-        "target_date": date,
-        "search_term": search,
-        "limit_val": limit,
-        "offset_val": offset
-    }
+    all_results = []
+    current_offset = offset
+    remaining_limit = limit
+    
+    while remaining_limit > 0:
+        # Request in batches of up to 1000 (Supabase default cap)
+        batch_size = min(remaining_limit, 1000)
+        
+        params = {
+            "target_market": market,
+            "target_date": date,
+            "search_term": search,
+            "limit_val": batch_size,
+            "offset_val": current_offset
+        }
+        
+        try:
+            response = client.rpc("get_stocks_with_last_rating", params).execute()
+            
+            if not response.data:
+                break
+                
+            for row in response.data:
+                all_results.append({
+                    "symbol": row["symbol"],
+                    "market": row["market"],
+                    "name": row["name"],
+                    "current_price": row["current_price"],
+                    "Technical_Rating": row["current_rating"],
+                    "Previous_Rating": row["previous_rating"],
+                    "previous_rating_date": row["previous_rating_date"],
+                    "previous_price": row["previous_price"],
+                    "rating_change_date": row["rating_change_date"],
+                    "fetched_date": row["fetched_date"]
+                })
+            
+            # If we reached the end of the database results
+            if len(response.data) < batch_size:
+                break
+                
+            current_offset += len(response.data)
+            remaining_limit -= len(response.data)
+            
+        except Exception as e:
+            logger.error(f"RPC Error on get_stocks_with_last_rating: {e}")
+            break
+            
+    return all_results
+
+def get_stocks_count(
+    market: Optional[str] = None,
+    date: Optional[str] = None,
+    search: Optional[str] = None,
+    rating: Optional[str] = None
+) -> int:
+    """
+    Get total count of stocks matching filters.
+    Excludes: price < 0.2, OTC stocks (handled by RPC function).
+    Returns the actual database count, not just loaded records.
+    """
+    client = get_client()
     
     try:
-        response = client.rpc("get_stocks_with_last_rating", params).execute()
+        params = {
+            "target_market": market,
+            "target_date": date,
+            "search_term": search,
+            "target_rating": rating
+        }
         
-        # Map response back to frontend expectations
-        results = []
-        for row in response.data:
-            results.append({
-                "symbol": row["symbol"],
-                "market": row["market"],
-                "name": row["name"],
-                "current_price": row["current_price"],
-                "Technical_Rating": row["current_rating"],
-                "Previous_Rating": row["previous_rating"],
-                "previous_rating_date": row["previous_rating_date"],
-                "previous_price": row["previous_price"],
-                "rating_change_date": row["rating_change_date"],
-                "fetched_date": row["fetched_date"]
-            })
-        return results
+        # Use a dedicated count RPC function for better performance
+        response = client.rpc("get_stocks_count_filtered", params).execute()
+        
+        if response.data and len(response.data) > 0:
+            return response.data[0].get("total", 0)
+        
+        return 0
+        
     except Exception as e:
-        logger.error(f"RPC Error on get_stocks_with_last_rating: {e}")
-        return []
+        logger.error(f"Error getting stocks count: {e}")
+        # Fallback: If count RPC doesn't exist, return 0 to avoid crashes
+        return 0
 
 def get_available_dates():
     """Get list of distinct dates from database."""
@@ -378,22 +431,40 @@ def _empty_summary():
 def get_stocks_by_rating(rating: str, date: Optional[str] = None, limit: int = 1000):
    """
    Get stocks filtered by rating.
-   Uses the RPC function `get_stocks_with_last_rating` to ensure consistent filtering (OTC, Price, Date).
+   Uses the RPC function `get_stocks_with_last_rating` to ensure consistent filtering.
+   Handles pagination if limit > 1000.
    """
    client = get_client()
-   try:
-       # Use the new target_rating parameter in RPC
-       res = client.rpc("get_stocks_with_last_rating", {
-           "target_rating": rating,
-           "target_date": date, # Can be None for latest per market
-           "limit_val": limit
-       }).execute()
-       
-       return res.data if res.data else []
+   all_results = []
+   current_offset = 0
+   remaining_limit = limit
 
-   except Exception as e:
-       logger.error(f"Error fetching stocks by rating: {e}")
-       return []
+   while remaining_limit > 0:
+       batch_size = min(remaining_limit, 1000)
+       try:
+           res = client.rpc("get_stocks_with_last_rating", {
+               "target_rating": rating,
+               "target_date": date,
+               "limit_val": batch_size,
+               "offset_val": current_offset
+           }).execute()
+           
+           if not res.data:
+               break
+               
+           all_results.extend(res.data)
+           
+           if len(res.data) < batch_size:
+               break
+               
+           current_offset += len(res.data)
+           remaining_limit -= len(res.data)
+
+       except Exception as e:
+           logger.error(f"Error fetching stocks by rating: {e}")
+           break
+           
+   return all_results
 
 def get_connection():
     # Deprecated but kept for compatibility logic loops if any

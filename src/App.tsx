@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import './App.css'
 import MenuHeader from "./components/MenuHeader";
@@ -23,13 +23,13 @@ function ScreenerPage() {
   });
   const [filteredCount, setFilteredCount] = useState(0);
 
-  const handleFilterChange = (newFilters: typeof filters) => {
+  const handleFilterChange = useCallback((newFilters: typeof filters) => {
     setFilters(newFilters);
-  };
+  }, []);
 
-  const handleFilteredCountChange = (count: number) => {
+  const handleFilteredCountChange = useCallback((count: number) => {
     setFilteredCount(count);
-  };
+  }, []);
 
   const handleSummaryFilterChange = (filterType: string) => {
     if (filterType === "Positive" || filterType === "Negative") {
@@ -47,10 +47,10 @@ function ScreenerPage() {
   };
 
   return (
-    <div className="flex flex-col h-auto lg:h-full lg:overflow-hidden">
+    <div className="flex flex-col h-auto lg:h-full">
       <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
       <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
-      <div className="h-[500px] sm:h-[600px] lg:h-auto lg:flex-1 lg:overflow-hidden">
+      <div className="min-h-[400px] h-auto lg:flex-1 lg:overflow-hidden">
         <DataTable columns={stockColumns} filters={filters} onFilteredCountChange={handleFilteredCountChange} />
       </div>
     </div>
@@ -59,9 +59,9 @@ function ScreenerPage() {
 
 function App() {
   return (
-    <div className="App bg-[#000000] h-[100dvh] flex flex-col overflow-hidden">
+    <div className="App bg-[#000000] min-h-screen lg:h-[100dvh] flex flex-col overflow-x-hidden">
       <MenuHeader />
-      <div className="flex-1 overflow-x-hidden overflow-y-auto">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto lg:overflow-y-hidden">
         <Routes>
           <Route path="/" element={<ScreenerPage />} />
           <Route path="/symbols/:symbol" element={<StockDetail />} />

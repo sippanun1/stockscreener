@@ -48,3 +48,5 @@ src/api/data/*_*.json
 
 # Migration scripts
 src/api/migrate_db.py
+
+logs/

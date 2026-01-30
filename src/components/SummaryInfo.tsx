@@ -192,9 +192,9 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
         className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex gap-3 min-h-[120px] h-auto overflow-hidden cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
       >
         {/* Trophy Icon Section */}
-        <div className="flex flex-col items-center justify-center min-w-[60px]">
-          <div className="w-10 h-10 flex items-center justify-center">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <div className="flex flex-col items-center justify-center min-w-[100px] sm:min-w-[140px] border-r border-[#7588A3]/10 pr-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center mb-1">
+            <svg className="w-12 h-12 sm:w-16 sm:h-16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 9C6 10.5913 6.63214 12.1174 7.75736 13.2426C8.88258 14.3679 10.4087 15 12 15C13.5913 15 15.1174 14.3679 16.2426 13.2426C17.3679 12.1174 18 10.5913 18 9V3H6V9Z" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M6 3H4C3.46957 3 2.96086 3.21071 2.58579 3.58579C2.21071 3.96086 2 4.46957 2 5C2 5.53043 2.21071 6.03914 2.58579 6.41421C2.96086 6.78929 3.46957 7 4 7H6" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M18 3H20C20.5304 3 21.0391 3.21071 21.4142 3.58579C21.7893 3.96086 22 4.46957 22 5C22 5.53043 21.7893 6.03914 21.4142 6.41421C21.0391 6.78929 20.5304 7 20 7H18" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -202,7 +202,7 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
               <path d="M8 21H16" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <div className="text-[#F8FAFC] text-[10px] font-semibold mt-0.5 whitespace-nowrap">
+          <div className="text-[#F8FAFC] text-xs sm:text-sm font-bold tracking-tight uppercase mt-1 whitespace-nowrap">
             Top Gainers
           </div>
         </div>
@@ -229,10 +229,10 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
                   </div>
                 </div>
                 
-                {/* Market */}
+                {/* Exchange */}
                 <div className="text-right">
-                  <div className="text-[#F8FAFC] text-xs">
-                    {stock.market}
+                  <div className="text-[#F8FAFC] text-[10px] font-medium opacity-80 uppercase">
+                    {stock.symbol.split(':')[0] || stock.market}
                   </div>
                 </div>
                 

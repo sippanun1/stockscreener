@@ -21,7 +21,8 @@
 /* Prevent page from scrolling outside content boundaries */
 html, body {
   height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
@@ -29,8 +30,7 @@ html, body {
 
 /* App container - full height, no overflow */
 #root {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }

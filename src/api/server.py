@@ -156,6 +156,7 @@ def get_stocks(
     market: Optional[str] = Query(None, description="Filter by market: US, TH, HK, JP"),
     date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
     search: Optional[str] = Query(None, description="Search term for symbol or name"),
+    rating: Optional[str] = Query(None, description="Filter by rating: Strong Buy, Buy, Sell, Strong Sell"),
     limit: int = Query(100, ge=1, le=50000, description="Number of results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     _auth: bool = Depends(verify_api_key)
@@ -168,6 +169,7 @@ def get_stocks(
     - previous_rating: The most recent rating that was DIFFERENT from current
     - previous_rating_date: When the rating last changed
     - previous_price: Price when the rating last changed
+    - total: Total count in database matching filters (excludes price < 0.2, OTC)
     """
     try:
         stocks = database.get_stocks_with_previous_rating(
@@ -178,14 +180,24 @@ def get_stocks(
             offset=offset
         )
         
-        logger.debug(f"Fetched {len(stocks)} stocks (market={market}, date={date})")
+        # Get total count matching the same filters (for "Total Signal" display)
+        total_count = database.get_stocks_count(
+            market=market,
+            date=date,
+            search=search,
+            rating=rating
+        )
+        
+        logger.debug(f"Fetched {len(stocks)} stocks out of {total_count} total (market={market}, date={date})")
         
         return {
             "data": stocks,
             "count": len(stocks),
+            "total": total_count,
             "filters": {
                 "market": market,
-                "date": date
+                "date": date,
+                "rating": rating
             }
         }
     except Exception as e:
@@ -464,25 +476,26 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                 
                 # Check for Neutral ratings and skip if present
                 if prev_rec["technical_rating"] != "Neutral" and first_rec["technical_rating"] != "Neutral":
-                    # Calculate overnight return
-                    try:
-                        start_price = prev_rec["current_price"]
-                        end_price = first_rec["current_price"]
-                        res_pct = ((end_price - start_price) / start_price * 100) if start_price > 0 else 0
-                        
-                        intraday_moves.append({
-                            "date": first_rec["fetched_date"],
-                            "start_time": "Prev Close", # Indicate context
-                            "end_time": first_rec["fetched_time"], 
-                            "from_rating": prev_rec["technical_rating"],
-                            "to_rating": first_rec["technical_rating"],
-                            "entry_price": start_price,
-                            "exit_price": end_price, # Current price at that moment
-                            "result": res_pct,
-                            "status": "COMPLETED"
-                        })
-                    except Exception:
-                        pass
+                    # ONLY show if rating changed (Case-insensitive)
+                    if prev_rec["technical_rating"].lower() != first_rec["technical_rating"].lower():
+                        try:
+                            start_price = prev_rec["current_price"]
+                            end_price = first_rec["current_price"]
+                            res_pct = ((end_price - start_price) / start_price * 100) if start_price > 0 else 0
+                            
+                            intraday_moves.append({
+                                "date": first_rec["fetched_date"],
+                                "start_time": "Prev Close", # Indicate context
+                                "end_time": first_rec["fetched_time"], 
+                                "from_rating": prev_rec["technical_rating"],
+                                "to_rating": first_rec["technical_rating"],
+                                "entry_price": start_price,
+                                "exit_price": end_price, # Current price at that moment
+                                "result": res_pct,
+                                "status": "COMPLETED"
+                            })
+                        except Exception:
+                            pass
             
             # 2. Intraday Moves (Record A -> Record B)
             for i in range(len(today_recs) - 1):
@@ -493,36 +506,42 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                 if rec_a["technical_rating"] == "Neutral" or rec_b["technical_rating"] == "Neutral":
                     continue
                 
-                try:
-                    start_price = rec_a["current_price"]
-                    end_price = rec_b["current_price"]
-                    res_pct = ((end_price - start_price) / start_price * 100) if start_price > 0 else 0
-                    
-                    intraday_moves.append({
-                        "date": rec_b["fetched_date"],
-                        "start_time": rec_a["fetched_time"], 
-                        "end_time": rec_b["fetched_time"],
-                        "from_rating": rec_a["technical_rating"],
-                        "to_rating": rec_b["technical_rating"],
-                        "entry_price": start_price,
-                        "exit_price": end_price,
-                        "result": res_pct,
-                        "status": "COMPLETED"
-                    })
-                except Exception:
-                    pass
+                # ONLY show if rating changed (Case-insensitive)
+                if rec_a["technical_rating"].lower() != rec_b["technical_rating"].lower():
+                    try:
+                        start_price = rec_a["current_price"]
+                        end_price = rec_b["current_price"]
+                        res_pct = ((end_price - start_price) / start_price * 100) if start_price > 0 else 0
+                        
+                        intraday_moves.append({
+                            "date": rec_b["fetched_date"],
+                            "start_time": rec_a["fetched_time"], 
+                            "end_time": rec_b["fetched_time"],
+                            "from_rating": rec_a["technical_rating"],
+                            "to_rating": rec_b["technical_rating"],
+                            "entry_price": start_price,
+                            "exit_price": end_price,
+                            "result": res_pct,
+                            "status": "COMPLETED"
+                        })
+                    except Exception:
+                        pass
             
-            # If only 1 record today and NO previous record (unlikely), show 1 static row?
-            if not intraday_moves and len(today_recs) == 1:
-                 # Just show the snapshot
-                 rec = today_recs[0]
-                 if rec["technical_rating"] != "Neutral":
+            # 3. If no moves were recorded today but a record exists, 
+            # check if it's a change from Yesterday's last record.
+            if not intraday_moves and len(today_recs) >= 1:
+                 rec = today_recs[-1] # Most recent today
+                 from_rating = prev_rec["technical_rating"] if prev_rec else "Neutral"
+                 to_rating = rec["technical_rating"]
+                 
+                 # Only show as an OPEN record if it's a CHANGE from yesterday or a fresh signal
+                 if to_rating != "Neutral" and from_rating.lower() != to_rating.lower():
                      intraday_moves.append({
                         "date": rec["fetched_date"],
                         "start_time": rec["fetched_time"],
                         "end_time": None,
-                        "from_rating": rec["technical_rating"],
-                        "to_rating": rec["technical_rating"],
+                        "from_rating": from_rating,
+                        "to_rating": to_rating,
                         "entry_price": rec["current_price"],
                         "exit_price": None,
                         "result": None,
