@@ -138,7 +138,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     filtered = filtered.filter((stock) => stock.current_price >= 0.1)
 
     // Filter out OTC exchanges (Using pre-calculated exchange field)
-    filtered = filtered.filter((stock) => stock.exchange !== "OTC")
+    filtered = filtered.filter((stock) => (stock as any).exchange !== "OTC")
 
     // External Filters (Market is already filtered by API, but double check doesn't hurt)
     if (filters?.market) {
