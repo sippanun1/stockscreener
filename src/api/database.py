@@ -370,10 +370,64 @@ def get_latest_intraday_records(symbol: str):
 # on restricted Anon/Service keys if we want performance.
 # For now, I'll return empty or basic structures to prevent crashes on frontend calls.
 
-def get_signal_changes(market=None, date=None, signal_type=None):
-    # This requires comparison with previous rows. Best as RPC.
-    # Return empty list for now to allow app to load.
-    return [] 
+def get_signal_changes(market: Optional[str] = None, date: Optional[str] = None, signal_type: Optional[str] = None):
+    """
+    Get stocks where the rating has changed compared to the previous different rating.
+    This works by fetching stocks with their previous rating and filtering in Python
+    (since complex cross-row logic is hard in Supabase simple queries without specific RPC).
+    """
+    client = get_client()
+    try:
+        # Use existing RPC that already calculates previous rating!
+        # RPC: get_stocks_with_last_rating
+        params = {
+            "target_market": market,
+            "target_date": date,
+            "search_term": None,
+            "limit_val": 1000, # Cap at 1000 for performance
+            "offset_val": 0
+        }
+        
+        response = client.rpc("get_stocks_with_last_rating", params).execute()
+        
+        if not response.data:
+            return []
+            
+        results = []
+        for row in response.data:
+            current = row.get("current_rating")
+            previous = row.get("previous_rating")
+            
+            # Filter for actual changes
+            if current and previous and current != previous and current != "Neutral":
+                
+                # Determine Upgrade/Downgrade
+                score_map = {"Strong Buy": 2, "Buy": 1, "Neutral": 0, "Sell": -1, "Strong Sell": -2, "NA": 0}
+                curr_score = score_map.get(current, 0)
+                prev_score = score_map.get(previous, 0)
+                
+                change_type = "UPGRADE" if curr_score > prev_score else "DOWNGRADE"
+                
+                # Filter by signal_type if requested
+                if signal_type and signal_type.upper() != change_type:
+                    continue
+                    
+                results.append({
+                    "symbol": row["symbol"],
+                    "market": row["market"],
+                    "name": row["name"],
+                    "current_rating": current,
+                    "previous_rating": previous,
+                    "previous_rating_date": row["previous_rating_date"],
+                    "change_type": change_type,
+                    "fetched_date": row["fetched_date"]
+                })
+                
+        return results
+        
+    except Exception as e:
+        logger.error(f"Error getting signal changes: {e}")
+        return []
 
 def get_today_summary():
     client = get_client()
@@ -465,10 +519,10 @@ def get_stocks_by_rating(rating: str, date: Optional[str] = None, limit: int = 1
            break
            
    return all_results
-
+        
+# Deprecated: SQLite connection removed. Use Supabase client.
 def get_connection():
-    # Deprecated but kept for compatibility logic loops if any
-    return None
+    raise NotImplementedError("SQLite connection is deprecated. Use Supabase client.")
 
 def get_intraday_comparison(date: str, market: Optional[str] = None):
     """

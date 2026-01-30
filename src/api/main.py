@@ -344,7 +344,8 @@ if __name__ == "__main__":
                             database.save_daily_stocks(stocks_list, today, session_type=session_type)
                             print(f">> Saved to SQLite database ({session_type} session)")
                         except Exception as e:
-                            print(f">> Error saving to SQLite: {e}")
+                            print(f">> ❌ Error saving to Database: {e}")
+                            sys.exit(1) # CRITICAL: Fail the workflow if DB save fails
                         
                         print("\n>> DONE - Market Fetched Successfully!")
                         sys.exit(0)

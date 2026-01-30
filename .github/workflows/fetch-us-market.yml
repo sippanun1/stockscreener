@@ -18,7 +18,7 @@ on:
 jobs:
   fetch-us-market:
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # US market has more stocks
+    timeout-minutes: 45  # Increased for US market size
     
     steps:
       - name: Checkout repository
@@ -48,7 +48,7 @@ jobs:
           TZ: America/New_York
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        continue-on-error: true
+
       
       - name: Validate data
         if: steps.fetch.outcome == 'success'

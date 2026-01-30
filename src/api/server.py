@@ -650,50 +650,54 @@ async def get_stock_intraday(
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     
     try:
-        conn = database.get_connection()
-        cursor = conn.cursor()
+        # Fetch directly from Supabase via helper
+        # Note: get_latest_intraday_records currently fetches the "Latest" available date.
+        # If a specific date is requested, we might need a new helper or just filter here?
+        # For now, let's trust the helper or strictly use client if date is provided.
         
-        # Use today if no date specified
-        if not date:
-            date = datetime.now().strftime("%Y-%m-%d")
+        # Actually, let's just use the Supabase client directly here for flexibility
+        client = database.get_client()
+        query = client.table("stock_ratings").select("*").eq("symbol", symbol)
         
-        cursor.execute("""
-            SELECT 
-                symbol,
-                market,
-                name,
-                session_type,
-                technical_rating,
-                current_price,
-                technical_score,
-                fetched_time
-            FROM stock_ratings
-            WHERE symbol = ?
-              AND fetched_date = ?
-            ORDER BY session_type
-        """, (symbol, date))
+        if date:
+            query = query.eq("fetched_date", date)
+        else:
+            # If no date, get latest date first? Or just order by desc limit 20
+            # Let's order by date desc, time desc to get latest sessions
+            pass
+            
+        # Fetch last 50 records (enough for a few days of sessions)
+        response = query.order("fetched_date", desc=True).order("fetched_time", desc=True).limit(50).execute()
         
-        rows = cursor.fetchall()
-        conn.close()
+        rows = response.data
         
         if not rows:
-            raise HTTPException(status_code=404, detail=f"No data found for {symbol} on {date}")
+            raise HTTPException(status_code=404, detail=f"No data found for {symbol}")
+        
+        # If date was not provided, infer the latest date from the data
+        target_date = date if date else rows[0]["fetched_date"]
+        
+        # Filter rows for this date only
+        day_rows = [r for r in rows if r["fetched_date"] == target_date]
+        
+        # Sort by time ASC for the graph/list
+        day_rows.sort(key=lambda x: x["fetched_time"])
         
         result = {
-            "symbol": rows[0][0],
-            "market": rows[0][1],
-            "name": rows[0][2],
-            "date": date,
+            "symbol": symbol,
+            "market": day_rows[0]["market"] if day_rows else "",
+            "name": day_rows[0]["name"] if day_rows else "",
+            "date": target_date,
             "sessions": []
         }
         
-        for row in rows:
+        for row in day_rows:
             result["sessions"].append({
-                "type": row[3],
-                "rating": "N/A" if row[4] == "Neutral" else row[4],
-                "price": row[5],
-                "score": row[6],
-                "time": row[7]
+                "type": row["session_type"],
+                "rating": "N/A" if row["technical_rating"] == "Neutral" else row["technical_rating"],
+                "price": row["current_price"],
+                "score": row["technical_score"],
+                "time": row["fetched_time"]
             })
         
         return result

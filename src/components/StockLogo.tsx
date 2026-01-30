@@ -65,13 +65,12 @@ export const StockLogo = ({ symbol, name, className }: StockLogoProps) => {
     // Use full ticker symbol (e.g. "AJA") instead of initials
     const parts = symbol.split(':')
     const ticker = parts[1] || symbol
-    const initials = ticker.toUpperCase()
+    // Display first 3 characters maximum as requested
+    const initials = ticker.substring(0, 3).toUpperCase()
     
-    // Scale font size based on length to prevent overflow
+    // Scale font size based on length
     let fontSize = "text-[10px]"
-    if (initials.length >= 5) fontSize = "text-[6px]"
-    else if (initials.length === 4) fontSize = "text-[8px]"
-    else if (initials.length === 3) fontSize = "text-[9px]"
+    if (initials.length >= 3) fontSize = "text-[10px]"
 
     return (
       <div 
