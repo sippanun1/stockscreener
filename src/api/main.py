@@ -164,7 +164,7 @@ def fetch_market(market_name, url, batch_size=300):
         out.append({
             "market": market_name,
             "symbol": row["s"],
-            "name": d[0],
+            "name": d[8],  # Use description (full company name) instead of d[0] (ticker)
             "current_price": d[1],
             "open": d[2],
             "premarket_close": d[3],
@@ -334,7 +334,9 @@ if __name__ == "__main__":
                         # Save to SQLite
                         try:
                             import database
-                            stocks_list = df.to_dict('records')
+                            # Clean the data (Replace NaN with None)
+                            df_clean = df.astype(object).where(pd.notnull(df), None)
+                            stocks_list = df_clean.to_dict('records')
                             # Add fetched_at timestamp
                             for stock in stocks_list:
                                 stock['fetched_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
