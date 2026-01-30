@@ -76,6 +76,20 @@ const formatDateRange = (start: string | undefined, end: string) => {
   }
 };
 
+// Get currency unit based on market
+const getCurrencyUnit = (market: string): string => {
+  const currencyMap: { [key: string]: string } = {
+    'US': 'USD',
+    'TH': 'THB',
+    'HK': 'HKD',
+    'JP': 'JPY',
+    'IN': 'INR',
+    'VN': 'VND',
+    'UK': 'GBX',
+  };
+  return currencyMap[market] || 'USD';
+};
+
 export default function StockDetail() {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
@@ -243,7 +257,7 @@ export default function StockDetail() {
          <div className="text-left sm:text-right mt-6 sm:mt-0 w-full sm:w-auto flex flex-row sm:flex-col justify-between items-end">
            <div className="flex flex-col items-start sm:items-end w-full">
               <div className="text-white text-3xl sm:text-[32px] font-medium tracking-tight mb-3 flex items-baseline gap-2">
-                 {data.current_price.toFixed(2)} <span className="text-lg text-[#94A3B8] font-normal">USD</span>
+                 {data.current_price.toFixed(2)} <span className="text-lg text-[#94A3B8] font-normal">{getCurrencyUnit(data.market)}</span>
                </div>
                
                <div className="flex items-center gap-3">
@@ -474,9 +488,9 @@ export default function StockDetail() {
                                {/* Price 1 */}
                                <div className="flex items-baseline gap-1">
                                    <span className="text-[#E2E8F0] font-medium text-sm font-mono tracking-tight">
-                                       {price1?.toFixed(2)}
-                                   </span>
-                                   <span className="text-[#64748B] text-[8px] font-bold uppercase">USD</span>
+                                      {price1?.toFixed(2)}
+                                  </span>
+                                   <span className="text-[#64748B] text-[8px] font-bold uppercase">{getCurrencyUnit(data.market)}</span>
                                </div>
  
                                <ArrowRight className="w-3 h-3 text-[#52525B]" />
@@ -486,9 +500,9 @@ export default function StockDetail() {
                                    {price2 ? (
                                        <>
                                        <span className="text-[#E2E8F0] font-medium text-sm font-mono tracking-tight">
-                                           {price2.toFixed(2)}
-                                       </span>
-                                       <span className="text-[#64748B] text-[8px] font-bold uppercase">USD</span>
+                                          {price2.toFixed(2)}
+                                      </span>
+                                       <span className="text-[#64748B] text-[8px] font-bold uppercase">{getCurrencyUnit(data.market)}</span>
                                        </>
                                    ) : (
                                        <span className="text-[#64748B] font-medium text-sm tracking-widest">...</span>
@@ -534,7 +548,7 @@ export default function StockDetail() {
                                 <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
                                     {price1?.toFixed(2)}
                                 </span>
-                                <span className="text-[#64748B] text-[9px] font-bold uppercase">USD</span>
+                                <span className="text-[#64748B] text-[9px] font-bold uppercase">{getCurrencyUnit(data.market)}</span>
                             </div>
  
                             {/* Arrow (Center) */}
@@ -549,7 +563,7 @@ export default function StockDetail() {
                                     <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
                                         {price2.toFixed(2)}
                                     </span>
-                                    <span className="text-[#64748B] text-[9px] font-bold uppercase">USD</span>
+                                    <span className="text-[#64748B] text-[9px] font-bold uppercase">{getCurrencyUnit(data.market)}</span>
                                     </>
                                 ) : (
                                     <span className="text-[#64748B] font-medium text-base tracking-widest">...</span>
