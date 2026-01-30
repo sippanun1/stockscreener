@@ -47,10 +47,10 @@ function ScreenerPage() {
   };
 
   return (
-    <div className="flex flex-col h-auto lg:h-full">
+    <div className="flex flex-col h-full">
       <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
       <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
-      <div className="min-h-[400px] h-auto lg:flex-1 lg:overflow-hidden">
+      <div className="flex-1 overflow-hidden min-h-0">
         <DataTable columns={stockColumns} filters={filters} onFilteredCountChange={handleFilteredCountChange} />
       </div>
     </div>
@@ -59,9 +59,9 @@ function ScreenerPage() {
 
 function App() {
   return (
-    <div className="App bg-[#000000] min-h-screen lg:h-[100dvh] flex flex-col overflow-x-hidden">
+    <div className="App bg-[#000000] h-[100dvh] flex flex-col overflow-hidden">
       <MenuHeader />
-      <div className="flex-1 overflow-x-hidden overflow-y-auto lg:overflow-y-hidden">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto">
         <Routes>
           <Route path="/" element={<ScreenerPage />} />
           <Route path="/symbols/:symbol" element={<StockDetail />} />
