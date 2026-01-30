@@ -47,10 +47,11 @@ function ScreenerPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col lg:h-full">
       <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
       <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
-      <div className="flex-1 overflow-hidden min-h-0">
+      {/* Mobile: Fixed height table (nested scroll). Desktop: Flex-1 filling remaining space. */}
+      <div className="h-[75vh] lg:h-auto lg:flex-1 overflow-hidden min-h-0">
         <DataTable columns={stockColumns} filters={filters} onFilteredCountChange={handleFilteredCountChange} />
       </div>
     </div>
