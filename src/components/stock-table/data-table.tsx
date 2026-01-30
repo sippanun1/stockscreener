@@ -273,7 +273,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
         >
           {/* Horizontal scroll wrapper for mobile */}
           <div className="min-w-full w-max lg:w-full">
-            <Table>
+            <table className="w-full caption-bottom text-sm">
             <TableHeader className="bg-[#0F151F] sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-[#1E2530] hover:bg-[#1E2530]">
@@ -348,7 +348,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </table>
           </div>
           
           {/* Loading more indicator */}
