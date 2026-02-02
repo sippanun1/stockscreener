@@ -485,7 +485,7 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                             
                             intraday_moves.append({
                                 "date": first_rec["fetched_date"],
-                                "start_time": "Prev Close", # Indicate context
+                                "start_time": prev_rec["fetched_time"], # Use actual time from previous record
                                 "end_time": first_rec["fetched_time"], 
                                 "from_rating": prev_rec["technical_rating"],
                                 "to_rating": first_rec["technical_rating"],
