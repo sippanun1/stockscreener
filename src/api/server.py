@@ -29,6 +29,20 @@ import database
 # Load environment variables
 load_dotenv()
 
+# Market open times (local time for each market)
+def get_market_open_time(market: str) -> str:
+    """Get market open time for each market"""
+    market_times = {
+        "TH": "10:00",  # Thailand
+        "US": "09:30",  # United States
+        "HK": "09:30",  # Hong Kong
+        "JP": "09:00",  # Japan
+        "IN": "09:15",  # India
+        "VN": "09:00",  # Vietnam
+        "UK": "08:00",  # United Kingdom
+    }
+    return market_times.get(market.upper(), "09:00")
+
 # =================================
 # Configuration
 # =================================
@@ -486,7 +500,7 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                             
                             intraday_moves.append({
                                 "date": first_rec["fetched_date"],
-                                "start_time": prev_rec["fetched_time"], # Use actual time from previous record
+                                "start_time": get_market_open_time(first_rec["market"]), # Use market open time
                                 "end_time": first_rec["fetched_time"], 
                                 "from_rating": prev_rec["technical_rating"],
                                 "to_rating": first_rec["technical_rating"],
