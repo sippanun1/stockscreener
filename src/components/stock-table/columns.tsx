@@ -65,7 +65,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       const displaySymbol = symbol.split(":")[1] || symbol
       return (
         <div className="flex items-center gap-1 sm:gap-3">
-          <StockLogo symbol={symbol} name={row.original.name} className="w-5 h-5 sm:w-8 sm:h-8 text-[9px] sm:text-xs flex-shrink-0" />
+          <StockLogo symbol={symbol} name={row.original.name} className="w-5 h-5 sm:w-8 sm:h-8 text-[9px] sm:text-xs shrink-0" />
           <div className="text-[#F8FAFC] font-semibold text-[10px] sm:text-sm truncate max-w-[55px] sm:max-w-none">
             {displaySymbol}
           </div>
@@ -208,7 +208,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
           // Always show actual date format (MMM dd, yyyy)
           displayDate = format(date, "MMM dd, yyyy")
         }
-      } catch (e) {
+      } catch {
         // Fallback to original string if parse fails
       }
 
