@@ -479,7 +479,8 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                     # ONLY show if rating changed (Case-insensitive)
                     if prev_rec["technical_rating"].lower() != first_rec["technical_rating"].lower():
                         try:
-                            start_price = prev_rec["current_price"]
+                            # Use today's open price as entry (not yesterday's close)
+                            start_price = first_rec.get("open") or first_rec["current_price"]
                             end_price = first_rec["current_price"]
                             res_pct = ((end_price - start_price) / start_price * 100) if start_price > 0 else 0
                             
