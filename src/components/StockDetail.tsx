@@ -436,8 +436,21 @@ export default function StockDetail() {
                      }
                   }
                 } else {
-                  dateDisplay = item.start_time ? item.start_time.substring(0, 5) : "";
-                  if (item.end_time) dateDisplay += ` - ${item.end_time.substring(0, 5)}`;
+                  // Intraday mode - show time
+                  // Validate that start_time is actually a time format (HH:MM) and not text like "Prev"
+                  const isValidTime = (time: string) => /^\d{1,2}:\d{2}/.test(time);
+                  
+                  const validStartTime = item.start_time && isValidTime(item.start_time) ? item.start_time.substring(0, 5) : "";
+                  const validEndTime = item.end_time && isValidTime(item.end_time) ? item.end_time.substring(0, 5) : "";
+                  
+                  if (validStartTime && validEndTime) {
+                    dateDisplay = `${validStartTime} - ${validEndTime}`;
+                  } else if (validStartTime) {
+                    dateDisplay = validStartTime;
+                  } else if (validEndTime) {
+                    dateDisplay = validEndTime;
+                  }
+                  
                   // Add date if available
                   if ((item as any).date) {
                      try { dateDisplay += `, ${format(parseISO((item as any).date), "MMM dd")}`; } catch(e){}
