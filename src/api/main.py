@@ -331,7 +331,7 @@ if __name__ == "__main__":
                         df.to_json(filename, orient='records', indent=2)
                         print(f">> Saved {filename} ({len(df)} rows)")
                         
-                        # Save to SQLite
+                        # Save to Database (Supabase or PostgreSQL)
                         try:
                             import database
                             # Clean the data (Replace NaN with None)
@@ -342,7 +342,7 @@ if __name__ == "__main__":
                                 stock['fetched_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             session_type = 'pre_market' if args.preopen else 'post_market'
                             database.save_daily_stocks(stocks_list, today, session_type=session_type)
-                            print(f">> Saved to SQLite database ({session_type} session)")
+                            print(f">> ✅ Saved to database ({session_type} session)")
                         except Exception as e:
                             print(f">> ❌ Error saving to Database: {e}")
                             sys.exit(1) # CRITICAL: Fail the workflow if DB save fails
