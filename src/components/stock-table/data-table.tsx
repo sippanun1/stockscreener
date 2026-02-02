@@ -273,7 +273,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
         >
           {/* Horizontal scroll wrapper for mobile */}
           <div className="min-w-full w-max lg:w-full">
-            <table className="w-full caption-bottom text-sm">
+            <table className="w-full caption-bottom text-sm" style={{ tableLayout: 'auto' }}>
             <TableHeader className="bg-[#0F151F] sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-[#1E2530] hover:bg-[#1E2530]">
@@ -289,14 +289,19 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                         ? 'text-right justify-end' 
                         : 'text-center justify-center'
 
-                    // Sticky Symbol Logic
-                    const stickyClass = isSymbol ? "sticky left-0 z-30 bg-[#0F151F]" : ""
+                    // No sticky for symbol column - prevent overlapping
+                    const stickyClass = ""
+                    
+                    // Reduce padding for numeric columns to minimize gaps - use !important to override default
+                    // Also reduce padding for symbol column in mobile
+                    const paddingClass = isNumeric ? '!px-1.5' : isSymbol ? '!px-1 sm:!px-2' : ''
                     
                     return (
                       <TableHead
                         key={header.id}
-                        className={`text-[#F8FAFC] text-sm cursor-pointer hover:bg-[#1E2530] font-semibold ${alignClass} ${stickyClass} ${!isSymbol ? 'bg-[#0F151F]' : ''}`}
+                        className={`text-[#F8FAFC] text-sm cursor-pointer hover:bg-[#1E2530] font-semibold ${alignClass} ${stickyClass} ${paddingClass} ${!isSymbol ? 'bg-[#0F151F]' : ''}`}
                         onClick={header.column.getToggleSortingHandler()}
+                        style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
                       >
                         <div className={`flex items-center gap-1 ${alignClass.split(' ')[1]}`}>
                           {header.isPlaceholder
@@ -330,10 +335,19 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                   >
                     {row.getVisibleCells().map((cell) => {
                          const isSymbol = cell.column.id === 'symbol'
-                         const stickyClass = isSymbol ? "sticky left-0 z-20 bg-[#000000] group-hover:bg-[#1E2530]" : ""
+                         const stickyClass = ""
+                         
+                         // Reduce padding for numeric columns to minimize gaps - use !important to override default
+                         const isNumeric = ['current_price', 'change', 'changePercent'].includes(cell.column.id)
+                         // Also reduce padding for symbol column in mobile
+                         const paddingClass = isNumeric ? '!py-2 !px-1.5' : isSymbol ? '!py-2 !px-1 sm:!px-2' : ''
 
                          return (
-                          <TableCell key={cell.id} className={`py-2 ${stickyClass}`}>
+                          <TableCell 
+                            key={cell.id} 
+                            className={`${paddingClass} ${stickyClass}`}
+                            style={{ width: cell.column.getSize() !== 150 ? cell.column.getSize() : undefined }}
+                          >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>
                          )

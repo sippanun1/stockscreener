@@ -107,6 +107,9 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
             </SelectTrigger>
             <SelectContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0">
               <SelectGroup>
+                <SelectItem value="all" className="text-white hover:text-white focus:text-white hover:bg-[#7588A380] focus:bg-[#7588A380] cursor-pointer px-3 py-2.5 rounded-none">
+                  All
+                </SelectItem>
                 {ratingOptions.map((rating) => (
                   <SelectItem key={rating} value={rating} className={`text-white hover:text-white focus:text-white ${getRatingHoverColor(rating)} cursor-pointer px-3 py-2.5 rounded-none`}>
                     {rating}
