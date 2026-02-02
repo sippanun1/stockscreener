@@ -308,10 +308,10 @@ export default function StockDetail() {
          </div>
  
          {/* Right: Filters */}
-        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 bg-transparent w-full sm:w-auto pb-1">
+        <div className="flex items-center justify-start sm:justify-end gap-2 sm:gap-3 bg-transparent w-full sm:w-auto pb-1 overflow-x-auto scrollbar-hide">
             <button 
             onClick={() => setSelectedRating(null)}
-            className={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wide border transition-all whitespace-nowrap ${
+            className={`px-4 sm:px-6 py-2 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wide border transition-all whitespace-nowrap flex-shrink-0 ${
                 !selectedRating ? 'bg-[#2D3748] border-[#2D3748] text-white' : 'border-[#2D3748] text-[#94A3B8] hover:text-white'
             }`}
             >
@@ -326,7 +326,7 @@ export default function StockDetail() {
                 <button
                     key={filter}
                     onClick={() => setSelectedRating(isSelected ? null : filter)}
-                    className={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wide border transition-all duration-200 whitespace-nowrap shadow-sm ${
+                    className={`px-4 sm:px-6 py-2 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wide border transition-all duration-200 whitespace-nowrap shadow-sm flex-shrink-0 ${
                     isSelected 
                         ? isSell 
                             ? "bg-[#FF3069] border-[#FF3069] text-white" 

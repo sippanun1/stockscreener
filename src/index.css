@@ -106,6 +106,16 @@ html, body {
   scrollbar-color: rgba(117, 136, 163, 0.3) transparent;
 }
 
+/* Hide Scrollbar Completely */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 /* Responsive Container Utility */
 .app-container {
   padding-left: var(--app-padding-x);

@@ -253,12 +253,12 @@ def get_stocks_with_previous_rating(
                     "market": row["market"],
                     "name": row["name"],
                     "current_price": row["current_price"],
-                    "Technical_Rating": row["current_rating"],
-                    "Previous_Rating": row["previous_rating"],
-                    "previous_rating_date": row["previous_rating_date"],
+                    "Technical_Rating": row["Technical_Rating"],
+                    "Previous_Rating": row["Previous_Rating"],
                     "previous_price": row["previous_price"],
                     "rating_change_date": row["rating_change_date"],
-                    "fetched_date": row["fetched_date"]
+                    "fetched_date": row["fetched_date"],
+                    "fetched_time": row["fetched_time"]
                 })
             
             # If we reached the end of the database results
@@ -378,6 +378,7 @@ def get_stock_history(symbol: str, days: int = 30):
         response = client.table("stock_ratings")\
             .select("*")\
             .eq("symbol", symbol)\
+            .neq("technical_rating", "Neutral")\
             .eq("session_type", "post_market")\
             .order("fetched_date", desc=True)\
             .limit(days)\
@@ -393,6 +394,7 @@ def get_stock_pre_market_history(symbol: str, limit: int = 2):
         response = client.table("stock_ratings")\
             .select("*")\
             .eq("symbol", symbol)\
+            .neq("technical_rating", "Neutral")\
             .eq("session_type", "pre_market")\
             .order("fetched_date", desc=True)\
             .limit(limit)\
@@ -477,7 +479,7 @@ def get_signal_changes(market: Optional[str] = None, date: Optional[str] = None,
             previous = row.get("previous_rating")
             
             # Filter for actual changes
-            if current and previous and current != previous and current != "Neutral":
+            if current and previous and current != previous and current != "Neutral" and previous != "Neutral":
                 
                 # Determine Upgrade/Downgrade
                 score_map = {"Strong Buy": 2, "Buy": 1, "Neutral": 0, "Sell": -1, "Strong Sell": -2, "NA": 0}
@@ -511,43 +513,56 @@ def get_today_summary():
     client = get_client()
     try:
         # 1. Get Stats (Counts)
-        stats_res = client.rpc("get_dashboard_stats").execute()
+        stats_res = client.rpc("get_dashboard_stats", {
+            "target_market": None,
+            "target_date": None
+        }).execute()
         if not stats_res.data:
              return _empty_summary()
             
-        data = stats_res.data[0]
-        
+        # Handle response format (List vs Dict)
+        data = stats_res.data
+        if isinstance(data, list):
+            data = data[0] if data else {}
+            
         # 2. Get Top Gainers
-        gainers_res = client.rpc("get_top_gainers", {"limit_val": 3}).execute()
+        gainers_res = client.rpc("get_top_gainers", {
+            "target_market": None,
+            "target_date": None,
+            "limit_val": 3
+        }).execute()
         top_gainers = gainers_res.data if gainers_res.data else []
 
-        # Calculate Aggregates for Frontend (Positive = Strong Buy + Buy)
-        # Note: 'total_signals_today' in DB is count of all.
-        # Frontend 'Positive Signals' big number expects sum of bullish.
+        # Map SQL keys (e.g. 'strong_buy') to Frontend keys (if needed)
+        # SQL returns: strong_buy, buy, strong_sell, sell, total_positive, total_negative, date
         
-        strong_buy = data.get("strong_buy_count", 0)
-        buy = data.get("buy_count", 0)
-        strong_sell = data.get("strong_sell_count", 0)
-        sell = data.get("sell_count", 0)
+        strong_buy = data.get("strong_buy", 0)
+        buy = data.get("buy", 0)
+        strong_sell = data.get("strong_sell", 0)
+        sell = data.get("sell", 0)
+        
+        # Calculate total signals if not provided (or use specific totals)
+        total_signals = data.get("total_positive", 0) + data.get("total_negative", 0) + data.get("neutral", 0)
         
         return {
-            "total_signals_today": data.get("total_signals", 0),
+            "total_signals_today": total_signals,
             "strong_buy_count": strong_buy,
             "buy_count": buy, 
             "strong_sell_count": strong_sell,
             "sell_count": sell,
-            "date": data.get("latest_date"),
+            "date": data.get("date"),
             
             # Map aggregated counts for "Positive/Negative Signals" cards
-            "upgrades": strong_buy + buy,       # Used for Positive Signals big number
-            "downgrades": strong_sell + sell,   # Used for Negative Signals big number
+            "upgrades": data.get("total_positive", 0),       # Positive Card Big Number
+            "downgrades": data.get("total_negative", 0),    # Negative Card Big Number
             
-            "change_from_yesterday": 0, # Placeholder
-            "upgrades_change_from_yesterday": 0, # Placeholder
+            "change_from_yesterday": 0, 
+            "upgrades_change_from_yesterday": 0, 
             "top_opportunities": top_gainers
         }
     except Exception as e:
         logger.error(f"Error summary: {e}")
+        return _empty_summary()
         return _empty_summary()
 
 def _empty_summary():
