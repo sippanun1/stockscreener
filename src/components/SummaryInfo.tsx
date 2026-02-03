@@ -2,6 +2,28 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { Stock } from "../types/stock";
 
+// Currency symbol helper
+const getCurrencySymbol = (market: string | undefined) => {
+  switch (market?.toUpperCase()) {
+    case "TH":
+      return "THB"
+    case "HK":
+      return "HKD"
+    case "JP":
+      return "JPY"
+    case "US":
+      return "USD"
+    case "IN":
+      return "INR"
+    case "VN":
+      return "VND"
+    case "UK":
+      return "GBX"
+    default:
+      return "USD"
+  }
+}
+
 
 type SummaryInfoProps = {
   stocks: Stock[];
@@ -239,7 +261,7 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
                 {/* Percentage */}
                 <div className="text-right">
                   <div className="text-[#10B981] text-xs font-semibold">
-                    +{stock.change_percent.toFixed(2)}%
+                    +{stock.change_percent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% <span className="text-[10px] opacity-70">{getCurrencySymbol(stock.market)}</span>
                   </div>
                 </div>
               </div>
