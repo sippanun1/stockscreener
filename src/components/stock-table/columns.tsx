@@ -100,7 +100,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       const market = row.original.market
       return (
         <div className="text-right text-xs sm:text-sm">
-          <span className="text-[#F8FAFC]">{price}</span>
+          <span className="text-[#F8FAFC]">{price.toLocaleString()}</span>
           <span className="text-[#F8FAFC] text-[10px] sm:text-[0.65rem] ml-0.5 sm:ml-1">{getCurrencySymbol(market)}</span>
         </div>
       )
@@ -121,7 +121,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       const color = change > 0 ? "text-[#00FFB7]" : change < 0 ? "text-[#FF3069]" : "text-[#7588A3]"
       return (
         <div className={`text-right text-xs sm:text-sm ${color}`}>
-          {change > 0 ? "+" : ""}{change.toFixed(2)}
+          {change > 0 ? "+" : ""}{change.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           <span className="text-[#F8FAFC] text-[10px] sm:text-[0.65rem] ml-0.5 sm:ml-1">{getCurrencySymbol(row.original.market)}</span>
         </div>
       )
@@ -142,7 +142,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       const color = pct > 0 ? "text-[#00FFB7]" : pct < 0 ? "text-[#FF3069]" : "text-[#7588A3]"
       return (
         <div className={`text-right text-xs sm:text-sm ${color}`}>
-          {pct > 0 ? "+" : ""}{pct.toFixed(2)}%
+          {pct > 0 ? "+" : ""}{pct.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
         </div>
       )
     },
