@@ -77,9 +77,9 @@ export const stockColumns: ColumnDef<Stock>[] = [
     accessorFn: (row) => row.symbol.split(":")[0],
     id: "exchange",
     header: "Exchange",
-    size: 70,
-    minSize: 60,
-    maxSize: 90,
+    size: 60,
+    minSize: 50,
+    maxSize: 75,
     cell: ({ row }) => {
       const symbol = row.original.symbol
       return (

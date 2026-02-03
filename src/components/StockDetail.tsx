@@ -257,14 +257,14 @@ export default function StockDetail() {
          <div className="text-left sm:text-right mt-6 sm:mt-0 w-full sm:w-auto flex flex-row sm:flex-col justify-between items-end">
            <div className="flex flex-col items-start sm:items-end w-full">
               <div className="text-white text-3xl sm:text-[32px] font-medium tracking-tight mb-3 flex items-baseline gap-2">
-                 {data.current_price.toFixed(2)} <span className="text-lg text-[#94A3B8] font-normal">{getCurrencyUnit(data.market)}</span>
-               </div>
-               
-               <div className="flex items-center gap-3">
-                  <div className={`text-base font-medium flex items-center gap-2 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                     <span>{data.change > 0 ? "+" : ""}{Number(data.change).toFixed(2)}</span>
-                     <span>({data.change_percent > 0 ? "+" : ""}{data.change_percent.toFixed(2)}%)</span>
-                  </div>
+                 {data.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-lg text-[#94A3B8] font-normal">{getCurrencyUnit(data.market)}</span>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                 <div className={`text-base font-medium flex items-center gap-2 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                    <span>{data.change > 0 ? "+" : ""}{Number(data.change).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span>({data.change_percent > 0 ? "+" : ""}{data.change_percent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%)</span>
+                 </div>
                   
                   <div className={`px-3 py-1 rounded-[4px] text-[11px] font-bold uppercase tracking-wider ${
                      data.current_rating === 'Strong Buy' ? 'bg-[#00FFB7]/20 text-[#00FFB7]' :
@@ -345,14 +345,14 @@ export default function StockDetail() {
            {/* Accuracy */}
            <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col justify-center items-center shadow-lg group hover:border-[#2D3748] transition-colors">
                <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Accuracy</div>
-               <div className="text-[#00FFB7] text-3xl sm:text-5xl font-bold tracking-tight">{currentStats.winRate.toFixed(0)}%</div>
+               <div className="text-[#00FFB7] text-3xl sm:text-5xl font-bold tracking-tight">{currentStats.winRate.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}%</div>
            </div>
            
            {/* Total Return */}
            <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col justify-center items-center shadow-lg group hover:border-[#2D3748] transition-colors">
                <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Total</div>
                <div className={`text-3xl sm:text-5xl font-bold tracking-tight ${currentStats.avgReturn >= 0 ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>
-                 {currentStats.avgReturn > 0 ? "+" : ""}{currentStats.avgReturn.toFixed(2)}%
+                 {currentStats.avgReturn > 0 ? "+" : ""}{currentStats.avgReturn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                </div>
            </div>
  
@@ -471,7 +471,7 @@ export default function StockDetail() {
                               <div className="text-right">
                                 {item.result !== undefined && item.result !== null ? (
                                     <span className={`text-sm font-bold ${isWin ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>
-                                        {item.result > 0 ? "+" : ""}{Number(item.result).toFixed(1)}%
+                                        {item.result > 0 ? "+" : ""}{Number(item.result).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
                                     </span>
                                 ) : (
                                     <span className="text-[#64748B] text-xs uppercase tracking-wider">Pending</span>
@@ -501,19 +501,19 @@ export default function StockDetail() {
                                {/* Price 1 */}
                                <div className="flex items-baseline gap-1">
                                    <span className="text-[#E2E8F0] font-medium text-sm font-mono tracking-tight">
-                                      {price1?.toFixed(2)}
+                                      {price1?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </span>
                                    <span className="text-[#64748B] text-[8px] font-bold uppercase">{getCurrencyUnit(data.market)}</span>
                                </div>
- 
+
                                <ArrowRight className="w-3 h-3 text-[#52525B]" />
- 
+
                                {/* Price 2 */}
                                <div className="flex items-baseline gap-1">
                                    {price2 ? (
                                        <>
                                        <span className="text-[#E2E8F0] font-medium text-sm font-mono tracking-tight">
-                                          {price2.toFixed(2)}
+                                          {price2.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                       </span>
                                        <span className="text-[#64748B] text-[8px] font-bold uppercase">{getCurrencyUnit(data.market)}</span>
                                        </>
@@ -559,22 +559,22 @@ export default function StockDetail() {
                             {/* Price 1 (Align Center) */}
                             <div className="flex items-baseline justify-center gap-1">
                                 <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
-                                    {price1?.toFixed(2)}
+                                    {price1?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                                 <span className="text-[#64748B] text-[9px] font-bold uppercase">{getCurrencyUnit(data.market)}</span>
                             </div>
- 
+
                             {/* Arrow (Center) */}
                             <div className="flex justify-center text-[#52525B]">
                                 <ArrowRight className="w-4 h-4" />
                             </div>
- 
+
                             {/* Price 2 (Align Center) */}
                               <div className="flex items-baseline justify-center gap-1">
                                 {price2 ? (
                                     <>
                                     <span className="text-[#E2E8F0] font-medium text-base font-mono tracking-tight">
-                                        {price2.toFixed(2)}
+                                        {price2.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                     <span className="text-[#64748B] text-[9px] font-bold uppercase">{getCurrencyUnit(data.market)}</span>
                                     </>
@@ -582,12 +582,12 @@ export default function StockDetail() {
                                     <span className="text-[#64748B] font-medium text-base tracking-widest">...</span>
                                 )}
                             </div>
- 
+
                             {/* Result */}
                             <div className="text-right">
                                 {item.result !== undefined && item.result !== null ? (
                                     <span className={`text-base font-bold ${isWin ? "text-[#00FFB7]" : "text-[#FF3069]"}`}>
-                                        ({item.result > 0 ? "+" : ""}{Number(item.result).toFixed(1)}%)
+                                        ({item.result > 0 ? "+" : ""}{Number(item.result).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%)
                                     </span>
                                 ) : (
                                     <span className="text-[#64748B] text-sm">Pending</span>

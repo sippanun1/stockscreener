@@ -214,9 +214,9 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
         className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex gap-3 min-h-[120px] h-auto overflow-hidden cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
       >
         {/* Trophy Icon Section */}
-        <div className="flex flex-col items-center justify-center min-w-[100px] sm:min-w-[140px] border-r border-[#7588A3]/10 pr-4">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center mb-1">
-            <svg className="w-12 h-12 sm:w-16 sm:h-16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <div className="flex flex-col items-center justify-center min-w-[85px] sm:min-w-[120px] border-r border-[#7588A3]/10 pr-3 sm:pr-4">
+          <div className="w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center mb-1">
+            <svg className="w-10 h-10 sm:w-16 sm:h-16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 9C6 10.5913 6.63214 12.1174 7.75736 13.2426C8.88258 14.3679 10.4087 15 12 15C13.5913 15 15.1174 14.3679 16.2426 13.2426C17.3679 12.1174 18 10.5913 18 9V3H6V9Z" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M6 3H4C3.46957 3 2.96086 3.21071 2.58579 3.58579C2.21071 3.96086 2 4.46957 2 5C2 5.53043 2.21071 6.03914 2.58579 6.41421C2.96086 6.78929 3.46957 7 4 7H6" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M18 3H20C20.5304 3 21.0391 3.21071 21.4142 3.58579C21.7893 3.96086 22 4.46957 22 5C22 5.53043 21.7893 6.03914 21.4142 6.41421C21.0391 6.78929 20.5304 7 20 7H18" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -224,7 +224,7 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
               <path d="M8 21H16" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <div className="text-[#F8FAFC] text-xs sm:text-sm font-bold tracking-tight uppercase mt-1 whitespace-nowrap">
+          <div className="text-[#F8FAFC] text-[10px] sm:text-sm font-bold tracking-tight uppercase mt-1 whitespace-nowrap">
             Top Gainers
           </div>
         </div>
@@ -235,33 +235,33 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
             summary.top_opportunities.slice(0, 3).map((stock, index) => (
               <div 
                 key={stock.symbol} 
-                className="grid grid-cols-[20px_1fr_48px_85px] gap-2 items-center py-1.5 border-b border-[#7588A3]/10 last:border-b-0"
+                className="grid grid-cols-[18px_1fr_48px_110px] sm:grid-cols-[20px_1fr_55px_120px] gap-1.5 sm:gap-2 items-center py-1.5 border-b border-[#7588A3]/10 last:border-b-0"
               >
                 {/* Rank */}
                 <div className="text-center">
-                  <span className="text-[#F8FAFC] text-xs font-semibold">
+                  <span className="text-[#F8FAFC] text-[10px] sm:text-xs font-semibold">
                     {index + 1}
                   </span>
                 </div>
                 
                 {/* Symbol */}
                 <div className="min-w-0">
-                  <div className="text-[#F8FAFC] text-sm font-bold truncate">
+                  <div className="text-[#F8FAFC] text-xs sm:text-sm font-bold truncate">
                     {stock.symbol.split(':')[1] || stock.symbol}
                   </div>
                 </div>
                 
                 {/* Exchange */}
                 <div className="text-right">
-                  <div className="text-[#F8FAFC] text-[10px] font-medium opacity-80 uppercase">
+                  <div className="text-[#F8FAFC] text-[10px] sm:text-[11px] font-medium opacity-80 uppercase">
                     {stock.symbol.split(':')[0] || stock.market}
                   </div>
                 </div>
                 
                 {/* Percentage */}
                 <div className="text-right">
-                  <div className="text-[#10B981] text-xs font-semibold">
-                    +{stock.change_percent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% <span className="text-[10px] opacity-70">{getCurrencySymbol(stock.market)}</span>
+                  <div className="text-[#00FFB7] text-[11px] sm:text-xs font-semibold whitespace-nowrap">
+                    +{stock.change_percent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% <span className="text-[#F8FAFC] text-[9px] sm:text-[10px]">{getCurrencySymbol(stock.market)}</span>
                   </div>
                 </div>
               </div>

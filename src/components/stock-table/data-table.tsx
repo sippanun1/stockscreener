@@ -292,9 +292,19 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                     // No sticky for symbol column - prevent overlapping
                     const stickyClass = ""
                     
-                    // Reduce padding for numeric columns to minimize gaps - use !important to override default
-                    // Also reduce padding for symbol column in mobile
-                    const paddingClass = isNumeric ? '!px-1.5' : isSymbol ? '!px-1 sm:!px-2' : ''
+                    // Reduce padding for numeric columns and exchange to minimize gaps
+                    let paddingClass = ''
+                    if (header.column.id === 'current_price') {
+                      paddingClass = '!px-0.5 sm:!px-1'
+                    } else if (header.column.id === 'change') {
+                      paddingClass = '!pl-0.5 !pr-2 sm:!pl-1 sm:!pr-3' // Add more right padding
+                    } else if (header.column.id === 'changePercent') {
+                      paddingClass = '!px-0.5 sm:!px-1'
+                    } else if (isSymbol) {
+                      paddingClass = '!px-1 sm:!px-2'
+                    } else if (isExchange) {
+                      paddingClass = '!pr-0 !pl-2' // No right padding at all
+                    }
                     
                     return (
                       <TableHead
@@ -335,12 +345,24 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                   >
                     {row.getVisibleCells().map((cell) => {
                          const isSymbol = cell.column.id === 'symbol'
+                         const isExchange = cell.column.id === 'exchange'
                          const stickyClass = ""
                          
-                         // Reduce padding for numeric columns to minimize gaps - use !important to override default
+                         // Reduce padding for numeric columns and exchange to minimize gaps
                          const isNumeric = ['current_price', 'change', 'changePercent'].includes(cell.column.id)
-                         // Also reduce padding for symbol column in mobile
-                         const paddingClass = isNumeric ? '!py-2 !px-1.5' : isSymbol ? '!py-2 !px-1 sm:!px-2' : ''
+                         
+                         let paddingClass = ''
+                         if (cell.column.id === 'current_price') {
+                           paddingClass = '!py-2 !px-0.5 sm:!px-1'
+                         } else if (cell.column.id === 'change') {
+                           paddingClass = '!py-2 !pl-0.5 !pr-2 sm:!pl-1 sm:!pr-3' // Add more right padding
+                         } else if (cell.column.id === 'changePercent') {
+                           paddingClass = '!py-2 !px-0.5 sm:!px-1'
+                         } else if (isSymbol) {
+                           paddingClass = '!py-2 !px-1 sm:!px-2'
+                         } else if (isExchange) {
+                           paddingClass = '!py-2 !pr-0 !pl-2' // No right padding at all, normal left
+                         }
 
                          return (
                           <TableCell 
