@@ -63,11 +63,14 @@ const fetchSummary = async (): Promise<SummaryData> => {
 };
 
 export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
-  // Fetch summary with React Query (5 minute cache)
+  // Fetch summary with React Query (30 minute cache)
   const { data: summary, isLoading: loading } = useQuery({
     queryKey: ['summary'],
     queryFn: fetchSummary,
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    staleTime: 30 * 60 * 1000, // 30 minutes - optimized cache
+    gcTime: 60 * 60 * 1000, // Keep in cache for 60 minutes
+    refetchOnWindowFocus: false, // Don't refetch when user returns to tab
+    refetchOnMount: false, // Don't refetch if data is fresh
   });
 
   if (loading || !summary) {

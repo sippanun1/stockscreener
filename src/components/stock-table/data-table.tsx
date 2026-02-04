@@ -13,7 +13,6 @@ import {
 import { useQuery } from "@tanstack/react-query"
 
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -123,7 +122,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const [fetchLimit, setFetchLimit] = useState(500) // Reduced from 2000 for faster initial load
+  const [fetchLimit, setFetchLimit] = useState(300) // Optimized for faster initial load
 
   // Fetch stocks with React Query
   // All filters (market, search, rating) and sorting are sent to API for server-side processing
@@ -134,7 +133,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const sortBy = sorting.length > 0 ? sorting[0].id : 'fetched_date'
   const sortOrder = sorting.length > 0 ? (sorting[0].desc ? 'desc' : 'asc') : 'desc'
   
-  const { data, isLoading: loading, refetch } = useQuery({
+  const { data, isLoading: loading } = useQuery({
     queryKey: ['stocks', { 
       market: filters?.market, 
       search: filters?.search, 
@@ -144,8 +143,8 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
       sortOrder: sortOrder
     }],
     queryFn: fetchStocks,
-    staleTime: 10 * 60 * 1000, // 10 minutes - data doesn't change that often
-    cacheTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes - optimized cache
+    gcTime: 60 * 60 * 1000, // Keep in cache for 60 minutes
     refetchOnWindowFocus: false, // Don't refetch when user returns to tab
     refetchOnMount: false, // Don't refetch if data is fresh
   })
@@ -334,9 +333,6 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                          const isExchange = cell.column.id === 'exchange'
                          const stickyClass = ""
                          
-                         // Reduce padding for numeric columns and exchange to minimize gaps
-                         const isNumeric = ['current_price', 'change', 'changePercent'].includes(cell.column.id)
-                         
                          let paddingClass = ''
                          if (cell.column.id === 'current_price') {
                            paddingClass = '!py-2 !px-0.5 sm:!px-1'
@@ -390,10 +386,10 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
             
             {allData.length === fetchLimit && !loading && (
               <button 
-                onClick={() => setFetchLimit(prev => prev === 500 ? 2000 : 50000)}
+                onClick={() => setFetchLimit(prev => prev === 300 ? 1000 : prev === 1000 ? 5000 : 50000)}
                 className="px-6 py-2 bg-[#1E2530] hover:bg-[#292D33] text-[#F8FAFC] text-sm font-medium rounded-lg transition-colors border border-[#7588A3]/20"
               >
-                {fetchLimit === 500 ? 'Load More (2,000)' : 'Load All Stocks (50,000 max)'}
+                {fetchLimit === 300 ? 'Load More (1,000)' : fetchLimit === 1000 ? 'Load More (5,000)' : 'Load All Stocks (50,000 max)'}
               </button>
             )}
             
