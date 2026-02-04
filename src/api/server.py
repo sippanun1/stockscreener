@@ -171,6 +171,7 @@ def get_stocks(
     date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
     search: Optional[str] = Query(None, description="Search term for symbol or name"),
     rating: Optional[str] = Query(None, description="Filter by rating: Strong Buy, Buy, Sell, Strong Sell"),
+    technical_rating: Optional[str] = Query(None, description="Filter by technical rating group: Positive or Negative"),
     sort_by: str = Query('fetched_date', description="Sort by: symbol, current_price, change, changePercent, fetched_date"),
     sort_order: str = Query('desc', description="Sort order: asc or desc"),
     limit: int = Query(100, ge=1, le=50000, description="Number of results"),
@@ -193,6 +194,7 @@ def get_stocks(
             date=date,
             search=search,
             rating=rating,
+            technical_rating=technical_rating,
             sort_by=sort_by,
             sort_order=sort_order,
             limit=limit,
@@ -204,10 +206,11 @@ def get_stocks(
             market=market,
             date=date,
             search=search,
-            rating=rating
+            rating=rating,
+            technical_rating=technical_rating
         )
         
-        logger.debug(f"Fetched {len(stocks)} stocks out of {total_count} total (market={market}, date={date})")
+        logger.debug(f"Fetched {len(stocks)} stocks out of {total_count} total (market={market}, date={date}, technical_rating={technical_rating})")
         
         return {
             "data": stocks,
@@ -216,7 +219,8 @@ def get_stocks(
             "filters": {
                 "market": market,
                 "date": date,
-                "rating": rating
+                "rating": rating,
+                "technical_rating": technical_rating
             }
         }
     except Exception as e:

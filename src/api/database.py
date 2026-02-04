@@ -217,6 +217,7 @@ def get_stocks_with_previous_rating(
     date: Optional[str] = None,
     search: Optional[str] = None,
     rating: Optional[str] = None,
+    technical_rating: Optional[str] = None,
     sort_by: str = 'fetched_date',
     sort_order: str = 'desc',
     limit: int = 100,
@@ -241,6 +242,7 @@ def get_stocks_with_previous_rating(
             "target_date": date,
             "search_term": search,
             "target_rating": rating,
+            "target_technical_rating": technical_rating,
             "sort_by": sort_by,
             "sort_order": sort_order,
             "limit_val": batch_size,
@@ -284,7 +286,8 @@ def get_stocks_count(
     market: Optional[str] = None,
     date: Optional[str] = None,
     search: Optional[str] = None,
-    rating: Optional[str] = None
+    rating: Optional[str] = None,
+    technical_rating: Optional[str] = None
 ) -> int:
     """
     Get total count of stocks matching filters.
@@ -298,7 +301,8 @@ def get_stocks_count(
             "target_market": market,
             "target_date": date,
             "search_term": search,
-            "target_rating": rating
+            "target_rating": rating,
+            "target_technical_rating": technical_rating
         }
         
         # Use a dedicated count RPC function for better performance

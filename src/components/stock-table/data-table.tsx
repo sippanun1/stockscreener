@@ -72,6 +72,11 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
     params.append('rating', currentFilters.rating);
   }
 
+  // Include technicalRating filter for server-side filtering
+  if (currentFilters?.technicalRating) {
+    params.append('technical_rating', currentFilters.technicalRating);
+  }
+
   // Include sort parameters for server-side sorting
   if (currentFilters?.sortBy) {
     params.append('sort_by', currentFilters.sortBy);
@@ -116,7 +121,7 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
 export function DataTable({ columns, filters, onFilteredCountChange }: DataTableProps) {
   const [displayCount, setDisplayCount] = useState(BATCH_SIZE)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [sorting, setSorting] = useState<SortingState>([{ id: "fetched_date", desc: true }])
+  const [sorting, setSorting] = useState<SortingState>([{ id: "rating_change_date", desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const navigate = useNavigate()
@@ -130,7 +135,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   // Only technicalRating (Positive/Negative) grouping is handled client-side
   
   // Convert sorting state to API parameters
-  const sortBy = sorting.length > 0 ? sorting[0].id : 'fetched_date'
+  const sortBy = sorting.length > 0 ? sorting[0].id : 'rating_change_date'
   const sortOrder = sorting.length > 0 ? (sorting[0].desc ? 'desc' : 'asc') : 'desc'
   
   const { data, isLoading: loading } = useQuery({
@@ -139,6 +144,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
       search: filters?.search, 
       limit: fetchLimit, 
       rating: filters?.currentRating,
+      technicalRating: filters?.technicalRating,
       sortBy: sortBy,
       sortOrder: sortOrder
     }],
@@ -153,33 +159,11 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const allData = data?.stocks || []
   const totalInDatabase = data?.total || 0
 
-  // Apply LOCAL filters (Only for UI-level groupings)
-  // Note: Price, OTC, Market, Rating, Search, and Sorting are ALL handled at database level
-  // Only technicalRating (Positive/Negative) grouping is done client-side for UI convenience
+  // ALL filters are now handled server-side for better performance
+  // No client-side filtering needed
   const filteredData = useMemo(() => {
-    if (allData.length === 0) return []
-
-    let filtered = [...allData]
-
-    // Only apply technicalRating filter (Positive/Negative grouping) client-side
-    // All other filters and sorting are handled by database
-    if (filters?.technicalRating) {
-      if (filters.technicalRating === "Positive") {
-        filtered = filtered.filter((stock) =>
-          stock.Technical_Rating === "Buy" || stock.Technical_Rating === "Strong Buy"
-        )
-      } else if (filters.technicalRating === "Negative") {
-        filtered = filtered.filter((stock) =>
-          stock.Technical_Rating === "Sell" || stock.Technical_Rating === "Strong Sell"
-        )
-      }
-    }
-
-    // No client-side sorting - all sorting is done at database level for performance
-    // The data comes pre-sorted from the API based on sort_by and sort_order parameters
-
-    return filtered
-  }, [filters, allData])
+    return allData
+  }, [allData])
 
   // React to sortBy filter changes
   useEffect(() => {
@@ -189,14 +173,10 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   }, [filters?.sortBy])
 
   // Notify parent of filtered count changes
+  // All filtering is server-side now, so always use totalInDatabase
   useEffect(() => {
-    // Use totalInDatabase when we can trust it (only server-side filters active)
-    // Use filteredData.length when client-side filters are applied (technicalRating)
-    const hasClientSideFilter = !!filters?.technicalRating
-    const countToShow = hasClientSideFilter ? filteredData.length : totalInDatabase
-    
-    onFilteredCountChange?.(countToShow)
-  }, [filteredData.length, totalInDatabase, filters?.technicalRating, onFilteredCountChange])
+    onFilteredCountChange?.(totalInDatabase)
+  }, [totalInDatabase, onFilteredCountChange])
 
   // Slice data for display
   const currentData = useMemo(() => {

@@ -146,13 +146,28 @@ export const stockColumns: ColumnDef<Stock>[] = [
     header: "Previous Rating",
     enableSorting: false,
     cell: ({ row }) => {
-      const rating = row.getValue("Previous_Rating") as string
+      const previousRating = row.getValue("Previous_Rating") as string
+      const currentRating = row.getValue("Technical_Rating") as string
+      
+      // Hide if Previous and Current are the same (no actual rating change)
+      if (previousRating && previousRating !== "N/A" && previousRating !== "" && previousRating === currentRating) {
+        return (
+          <div className="text-[#7588A3] text-center text-sm">
+            -
+          </div>
+        )
+      }
+      
+      const displayRating = (!previousRating || previousRating === "N/A" || previousRating === "") 
+        ? "N/A" 
+        : previousRating
+
       return (
         <div className="flex justify-center">
           <div
-            className={`w-[80px] sm:w-[100px] h-[22px] sm:h-[24px] ${getRatingStyles(rating)} rounded-[16px] flex items-center justify-center text-xs sm:text-sm font-semibold`}
+            className={`w-[80px] sm:w-[100px] h-[22px] sm:h-[24px] ${displayRating === "N/A" ? "text-[#7588A3]" : getRatingStyles(displayRating)} rounded-[16px] flex items-center justify-center text-xs sm:text-sm font-semibold`}
           >
-            {rating || "N/A"}
+            {displayRating}
           </div>
         </div>
       )
@@ -161,11 +176,25 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     id: "arrow",
     enableSorting: false,
-    cell: () => (
-      <div className="flex justify-center">
-        <LongArrowRight className="text-[#F8FAFC]" />
-      </div>
-    ),
+    cell: ({ row }) => {
+      const previousRating = row.getValue("Previous_Rating") as string
+      const currentRating = row.getValue("Technical_Rating") as string
+      
+      // Hide arrow if Previous and Current are the same
+      if (previousRating && previousRating !== "N/A" && previousRating !== "" && previousRating === currentRating) {
+        return (
+          <div className="flex items-center justify-center">
+            <div className="text-[#7588A3] text-xs">-</div>
+          </div>
+        )
+      }
+      
+      return (
+        <div className="flex items-center justify-center">
+          <LongArrowRight className="text-[#F8FAFC]" />
+        </div>
+      )
+    },
   },
   {
     accessorKey: "Technical_Rating",
@@ -188,10 +217,18 @@ export const stockColumns: ColumnDef<Stock>[] = [
     accessorKey: "fetched_date",
     header: "Date",
     cell: ({ row }) => {
-      // Use rating_change_date if available (signal start date), otherwise fetched_date
+      const previousRating = row.getValue("Previous_Rating") as string
+      const currentRating = row.getValue("Technical_Rating") as string
+      
+      // Hide date if Previous and Current are the same
+      if (previousRating && previousRating !== "N/A" && previousRating !== "" && previousRating === currentRating) {
+        return <div className="text-[#7588A3] text-center text-sm">-</div>
+      }
+      
+      // Show rating_change_date (when the rating changed to current status)
       const dateString = (row.original.rating_change_date || row.getValue("fetched_date")) as string
       
-      if (!dateString) return <div className="text-[#F8FAFC] text-center text-sm">-</div>
+      if (!dateString) return <div className="text-[#7588A3] text-center text-sm">-</div>
 
       let displayDate = dateString
       // Try to parse both simple date (YYYY-MM-DD) and ISO string
