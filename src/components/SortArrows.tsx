@@ -7,8 +7,9 @@ interface SortArrowsProps {
 
 export const SortArrows: React.FC<SortArrowsProps> = ({ sortDirection, className = '' }) => {
   const getArrowColor = (direction: 'up' | 'down') => {
-    if (sortDirection === 'asc' && direction === 'up') return '#F8FAFC'
-    if (sortDirection === 'desc' && direction === 'down') return '#F8FAFC'
+    // Custom logic: up arrow = descending (มาก→น้อย), down arrow = ascending (น้อย→มาก)
+    if (sortDirection === 'desc' && direction === 'up') return '#F8FAFC'
+    if (sortDirection === 'asc' && direction === 'down') return '#F8FAFC'
     return '#7588A3'
   }
 

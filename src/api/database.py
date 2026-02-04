@@ -216,6 +216,9 @@ def get_stocks_with_previous_rating(
     market: Optional[str] = None,
     date: Optional[str] = None,
     search: Optional[str] = None,
+    rating: Optional[str] = None,
+    sort_by: str = 'fetched_date',
+    sort_order: str = 'desc',
     limit: int = 100,
     offset: int = 0
 ):
@@ -237,6 +240,9 @@ def get_stocks_with_previous_rating(
             "target_market": market,
             "target_date": date,
             "search_term": search,
+            "target_rating": rating,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
             "limit_val": batch_size,
             "offset_val": current_offset
         }

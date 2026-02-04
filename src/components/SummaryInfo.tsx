@@ -252,7 +252,7 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
                 </div>
                 
                 {/* Exchange */}
-                <div className="text-right">
+                <div className="text-left">
                   <div className="text-[#F8FAFC] text-[10px] sm:text-[11px] font-medium opacity-80 uppercase">
                     {stock.symbol.split(':')[0] || stock.market}
                   </div>

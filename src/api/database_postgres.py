@@ -226,6 +226,9 @@ def get_stocks_with_previous_rating(
     market: Optional[str] = None,
     date: Optional[str] = None,
     search: Optional[str] = None,
+    rating: Optional[str] = None,
+    sort_by: str = 'fetched_date',
+    sort_order: str = 'desc',
     limit: int = 100,
     offset: int = 0
 ):
@@ -233,8 +236,8 @@ def get_stocks_with_previous_rating(
     with get_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
-                SELECT * FROM get_stocks_with_last_rating(%s, %s, %s, %s, %s)
-            """, (market, date, search, limit, offset))
+                SELECT * FROM get_stocks_with_last_rating(%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (market, date, search, rating, sort_by, sort_order, limit, offset))
             
             rows = cur.fetchall()
             

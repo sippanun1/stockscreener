@@ -72,6 +72,14 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   if (currentFilters?.rating) {
     params.append('rating', currentFilters.rating);
   }
+
+  // Include sort parameters for server-side sorting
+  if (currentFilters?.sortBy) {
+    params.append('sort_by', currentFilters.sortBy);
+  }
+  if (currentFilters?.sortOrder) {
+    params.append('sort_order', currentFilters.sortOrder);
+  }
   
   const response = await fetch(`${API_URL}/api/stocks?${params.toString()}`)
   const result: StockApiResponse = await response.json()
@@ -79,7 +87,8 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   const stocks = result.data.map((s: any) => {
     const currentPrice = Number(s.current_price)
     const previousPrice = s.previous_price ? Number(s.previous_price) : undefined
-    const change = previousPrice && previousPrice > 0 ? ((currentPrice - previousPrice) / previousPrice * 100) : 0
+    const absoluteChange = previousPrice ? currentPrice - previousPrice : 0
+    const percentChange = previousPrice && previousPrice > 0 ? ((currentPrice - previousPrice) / previousPrice * 100) : 0
     const exchange = s.symbol?.split(":")[0] || ""
 
     return {
@@ -88,7 +97,8 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
       name: s.name,
       current_price: currentPrice,
       previous_price: previousPrice,
-      change: change, // Pre-calculated % change
+      change: absoluteChange, // Absolute price change
+      changePercent: percentChange, // Percentage change
       exchange: exchange, // Pre-calculated exchange
       Technical_Rating: s.Technical_Rating,
       Previous_Rating: s.Previous_Rating,
@@ -113,40 +123,47 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const [fetchLimit, setFetchLimit] = useState(2000)
+  const [fetchLimit, setFetchLimit] = useState(500) // Reduced from 2000 for faster initial load
 
   // Fetch stocks with React Query
-  // Fixed: Include search and limit in queryKey to re-fetch when searching or loading more
-  // Note: technicalRating (Positive/Negative) is handled client-side, only currentRating goes to API
+  // All filters (market, search, rating) and sorting are sent to API for server-side processing
+  // Database filters: price >= 0.1, excludes OTC, sorts, then limits
+  // Only technicalRating (Positive/Negative) grouping is handled client-side
+  
+  // Convert sorting state to API parameters
+  const sortBy = sorting.length > 0 ? sorting[0].id : 'fetched_date'
+  const sortOrder = sorting.length > 0 ? (sorting[0].desc ? 'desc' : 'asc') : 'desc'
+  
   const { data, isLoading: loading, refetch } = useQuery({
-    queryKey: ['stocks', { market: filters?.market, search: filters?.search, limit: fetchLimit, rating: filters?.currentRating }],
+    queryKey: ['stocks', { 
+      market: filters?.market, 
+      search: filters?.search, 
+      limit: fetchLimit, 
+      rating: filters?.currentRating,
+      sortBy: sortBy,
+      sortOrder: sortOrder
+    }],
     queryFn: fetchStocks,
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 10 * 60 * 1000, // 10 minutes - data doesn't change that often
+    cacheTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+    refetchOnWindowFocus: false, // Don't refetch when user returns to tab
+    refetchOnMount: false, // Don't refetch if data is fresh
   })
 
   // Extract stocks array and total count from response
   const allData = data?.stocks || []
   const totalInDatabase = data?.total || 0
 
-  // Apply LOCAL filters (Rating, Search, Price)
+  // Apply LOCAL filters (Only for UI-level groupings)
+  // Note: Price, OTC, Market, Rating, Search, and Sorting are ALL handled at database level
+  // Only technicalRating (Positive/Negative) grouping is done client-side for UI convenience
   const filteredData = useMemo(() => {
     if (allData.length === 0) return []
 
     let filtered = [...allData]
 
-    // Filter out stocks with price below 0.1
-    filtered = filtered.filter((stock) => stock.current_price >= 0.1)
-
-    // Filter out OTC exchanges (Using pre-calculated exchange field)
-    filtered = filtered.filter((stock) => stock.exchange !== "OTC")
-
-    // External Filters (Market is already filtered by API, but double check doesn't hurt)
-    if (filters?.market) {
-      filtered = filtered.filter((stock) => stock.market === filters.market)
-    }
-    if (filters?.currentRating) {
-      filtered = filtered.filter((stock) => stock.Technical_Rating === filters.currentRating)
-    }
+    // Only apply technicalRating filter (Positive/Negative grouping) client-side
+    // All other filters and sorting are handled by database
     if (filters?.technicalRating) {
       if (filters.technicalRating === "Positive") {
         filtered = filtered.filter((stock) =>
@@ -158,44 +175,12 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
         )
       }
     }
-    // External Search
-    if (filters?.search && filters.search.trim() !== "") {
-      const searchLower = filters.search.toLowerCase()
-      filtered = filtered.filter((stock) =>
-        stock.symbol.toLowerCase().includes(searchLower) ||
-        stock.name.toLowerCase().includes(searchLower)
-      )
-    }
 
-    // Apply Sorting
-    if (sorting.length > 0) {
-      const { id, desc } = sorting[0]
-      filtered.sort((a, b) => {
-        let aValue: any = a[id as keyof Stock]
-        let bValue: any = b[id as keyof Stock]
-
-        // Handle calculated columns (Now using pre-calculated fields or simple fallbacks)
-        if (id === "change" || id === "changePercent") {
-           // We've pre-calculated 'change' to be the % value
-           aValue = (a as any).change || 0
-           bValue = (b as any).change || 0
-        } else if (id === "fetched_date") {
-          // Sort by signal date (rating_change_date) if available
-          aValue = a.rating_change_date || a.fetched_date
-          bValue = b.rating_change_date || b.fetched_date
-        }
-
-        if (aValue === bValue) return 0
-        if (aValue === null || aValue === undefined) return 1
-        if (bValue === null || bValue === undefined) return -1
-
-        if (aValue > bValue) return desc ? -1 : 1
-        return 1 // simplified
-      })
-    }
+    // No client-side sorting - all sorting is done at database level for performance
+    // The data comes pre-sorted from the API based on sort_by and sort_order parameters
 
     return filtered
-  }, [filters, allData, sorting])
+  }, [filters, allData])
 
   // React to sortBy filter changes
   useEffect(() => {
@@ -243,6 +228,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     getCoreRowModel: getCoreRowModel(),
     // getSortedRowModel: getSortedRowModel(), // Disable client-side sorting of the slice
     manualSorting: true, // Enable manual sorting
+    sortDescFirst: true, // Start with descending when clicking column (TradingView style)
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     state: {
@@ -303,7 +289,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                     } else if (isSymbol) {
                       paddingClass = '!px-1 sm:!px-2'
                     } else if (isExchange) {
-                      paddingClass = '!pr-0 !pl-2' // No right padding at all
+                      paddingClass = '!pl-2 !pr-1' // Left aligned padding
                     }
                     
                     return (
@@ -361,7 +347,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                          } else if (isSymbol) {
                            paddingClass = '!py-2 !px-1 sm:!px-2'
                          } else if (isExchange) {
-                           paddingClass = '!py-2 !pr-0 !pl-2' // No right padding at all, normal left
+                           paddingClass = '!py-2 !pl-2 !pr-1' // Left aligned padding
                          }
 
                          return (
@@ -404,10 +390,10 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
             
             {allData.length === fetchLimit && !loading && (
               <button 
-                onClick={() => setFetchLimit(50000)}
+                onClick={() => setFetchLimit(prev => prev === 500 ? 2000 : 50000)}
                 className="px-6 py-2 bg-[#1E2530] hover:bg-[#292D33] text-[#F8FAFC] text-sm font-medium rounded-lg transition-colors border border-[#7588A3]/20"
               >
-                Load All Stocks (50,000 max)
+                {fetchLimit === 500 ? 'Load More (2,000)' : 'Load All Stocks (50,000 max)'}
               </button>
             )}
             

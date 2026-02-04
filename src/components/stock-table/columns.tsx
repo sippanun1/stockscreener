@@ -107,10 +107,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
     },
   },
   {
-    accessorFn: (row) => {
-      if (!row.previous_price) return 0
-      return row.current_price - row.previous_price
-    },
+    accessorKey: "change",
     id: "change",
     header: "Change",
     size: 95,
@@ -128,10 +125,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
     },
   },
   {
-    accessorFn: (row) => {
-      if (!row.previous_price || row.previous_price === 0) return 0
-      return ((row.current_price - row.previous_price) / row.previous_price) * 100
-    },
+    accessorKey: "changePercent",
     id: "changePercent",
     header: "Change%",
     size: 85,

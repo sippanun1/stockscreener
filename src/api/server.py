@@ -171,6 +171,8 @@ def get_stocks(
     date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
     search: Optional[str] = Query(None, description="Search term for symbol or name"),
     rating: Optional[str] = Query(None, description="Filter by rating: Strong Buy, Buy, Sell, Strong Sell"),
+    sort_by: str = Query('fetched_date', description="Sort by: symbol, current_price, change, changePercent, fetched_date"),
+    sort_order: str = Query('desc', description="Sort order: asc or desc"),
     limit: int = Query(100, ge=1, le=50000, description="Number of results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     _auth: bool = Depends(verify_api_key)
@@ -190,6 +192,9 @@ def get_stocks(
             market=market,
             date=date,
             search=search,
+            rating=rating,
+            sort_by=sort_by,
+            sort_order=sort_order,
             limit=limit,
             offset=offset
         )

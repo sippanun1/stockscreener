@@ -5,6 +5,9 @@ export type Stock = {
   current_price: number;
   previous_price?: number;
   yesterday_price?: number;
+  change?: number;                // Absolute price change
+  changePercent?: number;         // Percentage change
+  exchange?: string;              // Exchange code (e.g., BSE, NSE)
   Technical_Rating: string;
   Previous_Rating?: string;       // Last different rating
   previous_rating_date?: string;  // When the rating last changed (end of previous rating)
