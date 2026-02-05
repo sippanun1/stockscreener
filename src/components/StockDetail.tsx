@@ -401,8 +401,9 @@ export default function StockDetail() {
                <div className="text-center py-12 text-[#94A3B8] bg-[#0F151F] rounded-lg border border-[#1E2530]">No history available for this view.</div>
             ) : (
               historyItems.map((item, idx) => {
-                const isWin = item.result !== undefined && item.result > 0;
-                const isLoss = item.result !== undefined && item.result < 0;
+                // Use same threshold as accuracy calculation (0.2%)
+                const isWin = item.result !== undefined && item.result > 0.2;
+                const isLoss = item.result !== undefined && item.result < -0.2;
                 const dotColor = isWin ? "bg-[#00FFB7]" : isLoss ? "bg-[#FF3069]" : "bg-[#7588A3]";
  
                // Normalize Price Access between Daily (open_price_d1/d2) and Intraday (entry_price/exit_price)
