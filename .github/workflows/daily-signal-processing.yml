@@ -1,0 +1,75 @@
+name: Daily Signal Processing
+
+on:
+  # Run at 23:00 UTC (06:00 ICT) - After all markets close
+  schedule:
+    - cron: '0 23 * * *'  # 6:00 AM ICT daily
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  process-signals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          cd src/api
+          pip install -r requirements.txt
+      
+      - name: Detect new signals
+        id: detect
+        run: |
+          cd src/api
+          python signal_detector.py 2>&1 | tee detect_log.txt
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      
+      - name: Calculate returns
+        id: calculate
+        run: |
+          cd src/api
+          python returns_calculator.py 2>&1 | tee calculate_log.txt
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## 📊 Daily Signal Processing" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### 🔍 Signal Detection" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.detect.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          tail -20 src/api/detect_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### 📈 Returns Calculation" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.calculate.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          tail -20 src/api/calculate_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Signal processing failed!"
+          echo "Check the logs above for details"
