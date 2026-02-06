@@ -270,6 +270,27 @@ python main.py --import-local
 
 ---
 
+## 📊 Signal Returns Tracking
+
+Analyze performance of technical rating signals over 1/10/30 trading days.
+
+### Usage
+
+```bash
+# 1. Backfill historical data (one-time)
+cd src/api
+python backfill_signals.py
+
+# 2. Query analytics
+curl "http://localhost:8000/api/analytics/signal-performance?period=10"
+curl "http://localhost:8000/api/analytics/rating-comparison?period=1"
+curl "http://localhost:8000/api/analytics/stock-signals/NASDAQ:AAPL"
+```
+
+**Automation:** GitHub Actions runs daily at 6 AM (`.github/workflows/daily-signal-processing.yml`)
+
+---
+
 ## 📚 API Documentation
 
 Once the backend is running, visit:
@@ -278,11 +299,17 @@ Once the backend is running, visit:
 
 ### Key Endpoints
 
+**Stock Data:**
 - `GET /api/stocks` - Get stocks with ratings and filters
 - `GET /api/summary` - Dashboard statistics
 - `GET /api/stock/{symbol}` - Historical data for specific stock
 - `GET /api/stock/{symbol}/detail` - Detailed analysis with backtest
 - `GET /api/signal-changes` - Stocks with rating changes
+
+**Analytics (Signal Returns):**
+- `GET /api/analytics/signal-performance` - Performance statistics
+- `GET /api/analytics/rating-comparison` - Compare ratings
+- `GET /api/analytics/stock-signals/{symbol}` - Stock signal history
 
 ---
 
