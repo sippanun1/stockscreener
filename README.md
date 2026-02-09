@@ -69,10 +69,12 @@ To prevent execution timeouts in Supabase, the setup is split into four parts. R
 We provide tools to export data from one database and import it into another via CSV.
 
 ### 📤 Export Data to CSV
-Exports your active ratings from your current Supabase to `scripts/exports/`.
+Exports your active ratings. By default, it saves to `../stockscreener_backups` (outside this folder) to keep your project clean.
 ```bash
 cd scripts
 python export_to_csv.py
+# To specify a different folder:
+# python export_to_csv.py --dir /path/to/your/folder
 ```
 
 ### 📥 Import Data from CSV (Restore/Migrate)
