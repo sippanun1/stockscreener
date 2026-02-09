@@ -28,3 +28,8 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Data Backups
+*.csv
+*.zip
+!README.md
