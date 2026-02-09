@@ -66,7 +66,7 @@ def export_table_to_csv(table_name: str, output_file: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Export Supabase table to CSV.")
-    parser.add_argument("--dir", default="../../stockscreener_backups", help="Target directory for export (default: outside the project folder)")
+    parser.add_argument("--dir", default="..", help="Target directory for export (default: project root next to README.md)")
     parser.add_argument("--table", default="stock_ratings", help="Table name to export (default: stock_ratings)")
     
     args = parser.parse_args()
