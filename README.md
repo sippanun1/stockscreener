@@ -1,335 +1,176 @@
-# 📈 Stock Screener - Technical Analysis Rating Tracker
+# 📈 Stock Screener
 
-A powerful web application for tracking and analyzing technical analysis ratings across multiple global stock markets (US, Thailand, Hong Kong, Japan). Get real-time signals when stocks change ratings, with historical backtesting to validate signal accuracy.
-
-![Tech Stack](https://img.shields.io/badge/React-19-61DAFB?logo=react)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791?logo=postgresql)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)
+Technical analysis rating tracker for global stock markets (US, TH, HK, JP, IN, VN, UK).
 
 ---
 
 ## 🚀 Quick Start
 
-Get the project running in 3 steps:
-
+### Frontend
 ```bash
-# 1. Install and start frontend
+cd frontend
 npm install
-npm run dev
+npm run dev  # http://localhost:5173
+```
 
-# 2. Setup backend (in another terminal)
-cd src/api
+### Backend
+```bash
+cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# 3. Configure database and start server
-# Create .env file with your Supabase credentials (see below)
-python server.py
+python src/server.py  # http://localhost:8000
 ```
-
-Visit `http://localhost:5173` to see the app! 🎉
 
 ---
 
-## 📋 Prerequisites
+## ⚙️ Configuration
 
-Before you begin, ensure you have:
-
-- **Node.js** v18 or higher ([Download](https://nodejs.org/))
-- **Python** 3.8 or higher ([Download](https://www.python.org/downloads/))
-- **Supabase Account** (free) OR **PostgreSQL** 12+ installed locally
-- **Git** for cloning the repository
-
----
-
-## 🛠️ Detailed Setup
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/yourusername/stockscreener.git
-cd stockscreener
-```
-
-### 2. Frontend Setup
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server (runs on port 5173)
-npm run dev
-```
-
-The frontend will automatically connect to `http://localhost:8000` for the API.
-
-### 3. Backend Setup
-
-```bash
-# Navigate to API directory
-cd src/api
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate  # macOS/Linux
-# OR
-venv\Scripts\activate  # Windows
-
-# Install Python dependencies
-pip install -r requirements.txt
-```
-
-### 4. Database Setup
-
-#### Option A: Supabase (Recommended for Quick Start)
-
-1. **Create Account**: Sign up at [supabase.com](https://supabase.com) (free tier available)
-2. **Create Project**: Click "New Project" and choose a name
-3. **Get Credentials**: 
-   - Go to Settings → API
-   - Copy your `Project URL` and `anon public` key
-4. **Run Database Schema**:
-   - Open SQL Editor in Supabase dashboard
-   - Copy contents of `full_refresh.sql` from this repository
-   - Paste and click "Run"
-5. **Configure Environment**:
-
-Create `src/api/.env` file:
+### Frontend Environment (`frontend/.env`)
 
 ```env
+VITE_API_URL=http://localhost:8000
+```
+
+### Backend Environment (`backend/.env`)
+
+```env
+# Supabase Database
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-anon-public-key-here
+SUPABASE_KEY=your-anon-public-key
+
+# API Settings
+API_PORT=8000
 ALLOWED_ORIGINS=http://localhost:5173
 ```
 
-#### Option B: Custom PostgreSQL Database
+---
 
-For using your own PostgreSQL database, you'll need to:
-1. Install PostgreSQL 12+ locally or use a managed service
-2. Create a database and user
-3. Run `full_refresh.sql` to create tables and functions
-4. Update `.env` with your database credentials
+## 🗄️ Database Setup
 
-### 5. Fetch Initial Data
+### 1. Create Supabase Project
+- Sign up at [supabase.com](https://supabase.com)
+- Create new project
+- Get credentials from Settings → API
+
+### 2. Run Database Schema
+
+Open SQL Editor in Supabase and run [`database_schema.sql`](database_schema.sql):
+
+**Creates:**
+- `stock_ratings` - Main stock data table
+- `signal_changes` - Rating change history
+- `signal_returns` - Performance tracking (1/10/30 day returns)
+
+**Functions:**
+- `get_stocks_with_previous_rating()` - Get stocks with last different rating
+- `get_signal_changes()` - Track rating changes
+- `calculate_signal_returns()` - Calculate performance metrics
+
+### 3. Initial Data Migration
 
 ```bash
-# Make sure you're in src/api directory with venv activated
-cd src/api
+cd backend
+
+# Fetch initial data (one market)
+python src/main.py --market TH --once
+
+# Or fetch all markets (takes 5-10 min)
+python src/main.py --once
+```
+
+**Available Markets:** `US`, `TH`, `HK`, `JP`, `IN`, `VN`, `UK`
+
+### 4. Backfill Signal Returns (Optional)
+
+```bash
+cd backend
+python src/backfill_signals.py
+```
+
+This calculates historical returns for existing signals.
+
+---
+
+## 🔄 Migrate Data from Dev to Production
+
+### Scenario: Moving from Dev Supabase to Production Database
+
+If you have data in a **dev Supabase** and want to migrate to a **new Supabase** or **PostgreSQL** for production:
+
+#### Step 1: Setup New Production Database
+
+**For Supabase:**
+1. Create new Supabase project for production
+2. Run `database_schema.sql` in SQL Editor
+3. Get new credentials (URL and Key)
+
+**For PostgreSQL:**
+1. Create new PostgreSQL database
+2. Run `database_schema.sql` using psql or pgAdmin
+3. Get connection credentials
+
+#### Step 2: Configure Migration Script
+
+Edit `backend/src/migrate_to_postgres.py` to set source and destination:
+
+```python
+# Source (Dev Supabase)
+SOURCE_SUPABASE_URL = "https://dev-project.supabase.co"
+SOURCE_SUPABASE_KEY = "dev-anon-key"
+
+# Destination (Production Supabase or PostgreSQL)
+DEST_SUPABASE_URL = "https://prod-project.supabase.co"
+DEST_SUPABASE_KEY = "prod-anon-key"
+
+# OR for PostgreSQL
+DEST_POSTGRES_URL = "postgresql://user:pass@host:5432/dbname"
+```
+
+#### Step 3: Run Migration
+
+```bash
+cd backend
 source venv/bin/activate
-
-# Fetch single market to test (Thailand)
-python main.py --market TH --once
-
-# Or fetch all markets (takes 5-10 minutes)
-python main.py --once
+python src/migrate_to_postgres.py
 ```
 
-**Available Markets**: `US`, `TH`, `HK`, `JP`, `IN`, `VN`, `UK`
+**What it does:**
+- Reads all data from dev database
+- Migrates to production database
+- Preserves all historical data and signals
 
-### 6. Start Backend Server
+#### Step 4: Update Production Environment
 
-```bash
-# In src/api directory with venv activated
-python server.py
-```
-
-The API server runs on `http://localhost:8000`
-
-Visit `http://localhost:8000/docs` to see interactive API documentation.
-
----
-
-## 🤖 Automated Data Fetching with GitHub Actions
-
-### Why Use GitHub Actions?
-
-GitHub Actions can automatically fetch stock data daily **for free**, eliminating the need to keep your computer running 24/7.
-
-**Benefits:**
-- ✅ Free for public repositories (2,000 minutes/month for private repos)
-- ✅ Runs automatically on schedule
-- ✅ No server maintenance required
-- ✅ Parallel fetching for all markets
-- ✅ Built-in error logging and monitoring
-
-### Setup GitHub Workflow
-
-#### Step 1: Enable GitHub Actions
-
-1. Push your code to GitHub
-2. Go to your repository on GitHub.com
-3. Click on the "Actions" tab
-4. If prompted, click "I understand my workflows, go ahead and enable them"
-
-#### Step 2: Add Database Credentials as Secrets
-
-GitHub Secrets keep your database credentials safe and hidden from public view.
-
-**For Supabase users:**
-
-1. Go to your repository on GitHub
-2. Click **Settings** → **Secrets and variables** → **Actions**
-3. Click **"New repository secret"**
-4. Add the following secrets (one at a time):
-
-   **Secret 1:**
-   - Name: `SUPABASE_URL`
-   - Value: `https://your-project.supabase.co` (get from Supabase Dashboard → Settings → API)
-   
-   **Secret 2:**
-   - Name: `SUPABASE_KEY`
-   - Value: Your anon/public key (get from Supabase Dashboard → Settings → API)
-
-**For PostgreSQL users:**
-
-Add these secrets instead:
-- `DB_HOST` - Your database host (e.g., `localhost` or `db.example.com`)
-- `DB_PORT` - Database port (usually `5432`)
-- `DB_NAME` - Database name (e.g., `stockscreener`)
-- `DB_USER` - Database username
-- `DB_PASSWORD` - Database password
-
-#### Step 3: Workflow Schedule
-
-This project includes multiple workflows in `.github/workflows/` that run automatically:
-
-💡 **Why multiple fetches per day?**
-- Captures **intraday rating changes** (not just end-of-day)
-- Tracks how ratings change during market hours
-- Better for short-term trading signals
-- More accurate signal timing
-
-💡 **How it works**: 
-- Individual workflows run automatically during trading hours (Monday-Friday)
-- Each workflow fetches data for one specific market
-- Data is saved to your database with timestamps
-- You can see the full history of rating changes throughout the day
-ไกฟหกไฟ-
-**Manual Trigger:**
-
-You can also run any workflow manually:
-1. Go to **Actions** tab on GitHub
-2. Select a workflow (e.g., "Fetch Thailand Market Data")
-3. Click **"Run workflow"** → **"Run workflow"**
-
-**View Schedule Details:**
-- Check `.github/workflows/` folder to see exact timing for each market
-- Each workflow file shows its cron schedule at the top
-
-#### Step 4: Monitor Workflow
-
-- Check the **Actions** tab to see workflow runs
-- Green checkmark ✅ = Success
-- Red X ❌ = Failed (click to see error logs)
-- View logs for each market to verify data was saved
-
-### Troubleshooting GitHub Actions
-
-**Workflow not running:**
-- Check that secrets are correctly named (case-sensitive!)
-- Verify workflow files exist in `.github/workflows/`
-- Make sure GitHub Actions is enabled in repository settings
-- Check the **Actions** tab for any error messages
-
-**"Error: No database credentials" in logs:**
-- Verify you added the secrets in the correct repository
-- Check secret names match exactly: `SUPABASE_URL` and `SUPABASE_KEY`
-- Secrets may take a few seconds to become available after adding
-
-**Workflow runs but no data in database:**
-- Check workflow logs for specific error messages
-- Verify your Supabase credentials are correct
-- Test locally first: `python main.py --market TH --once`
-
-**Too many workflow runs (quota exceeded):**
-- GitHub free tier: 2,000 minutes/month for private repos
-- Public repos: unlimited
-- Each fetch takes ~2-5 minutes
-- With multiple daily runs: Monitor your usage in Settings → Billing
-- Consider reducing frequency if needed
-
-### Manual Data Fetching
-
-```bash
-# Fetch specific market
-python main.py --market US --once
-
-# Fetch all markets
-python main.py --once
-
-# Schedule for continuous operation (runs daily at 16:30)
-python main.py
-
-# Recovery mode (import failed local files)
-python main.py --import-local
-```
-
----
-
-## 📊 Signal Returns Tracking
-
-Analyze performance of technical rating signals over 1/10/30 trading days.
-
-### Usage
-
-```bash
-# 1. Backfill historical data (one-time)
-cd src/api
-python backfill_signals.py
-
-# 2. Query analytics
-curl "http://localhost:8000/api/analytics/signal-performance?period=10"
-curl "http://localhost:8000/api/analytics/rating-comparison?period=1"
-curl "http://localhost:8000/api/analytics/stock-signals/NASDAQ:AAPL"
-```
-
-**Automation:** GitHub Actions runs daily at 6 AM (`.github/workflows/daily-signal-processing.yml`)
-
----
-
-## 📚 API Documentation
-
-Once the backend is running, visit:
-
-**Interactive Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
-
-### Key Endpoints
-
-**Stock Data:**
-- `GET /api/stocks` - Get stocks with ratings and filters
-- `GET /api/summary` - Dashboard statistics
-- `GET /api/stock/{symbol}` - Historical data for specific stock
-- `GET /api/stock/{symbol}/detail` - Detailed analysis with backtest
-- `GET /api/signal-changes` - Stocks with rating changes
-
-**Analytics (Signal Returns):**
-- `GET /api/analytics/signal-performance` - Performance statistics
-- `GET /api/analytics/rating-comparison` - Compare ratings
-- `GET /api/analytics/stock-signals/{symbol}` - Stock signal history
-
----
-
-## 🔧 Environment Variables
-
-### Backend (.env in src/api/)
+Update `backend/.env` with production credentials:
 
 ```env
-# Database (Supabase)
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-anon-key
-
-# API Configuration
-API_PORT=8000
-ALLOWED_ORIGINS=http://localhost:5173,https://yourdomain.com
-API_KEY=optional-api-key-for-protection
-
-# Logging
-LOG_LEVEL=INFO
+SUPABASE_URL=https://prod-project.supabase.co
+SUPABASE_KEY=prod-anon-key
+ALLOWED_ORIGINS=https://your-frontend-domain.com
 ```
 
-See `src/api/env.example` for a complete template with all available options.
+#### Step 5: Backfill Signal Returns
 
+```bash
+cd backend
+python src/backfill_signals.py
+```
+
+This recalculates returns for all migrated signals.
+
+---
+
+## 🤖 Automated Data Fetching
+
+### GitHub Actions Setup
+
+1. **Add Secrets** in GitHub repo:
+   - Settings → Secrets and variables → Actions
+   - Add `SUPABASE_URL` and `SUPABASE_KEY`
+
+2. **Workflows** (in `.github/workflows/`):
+   - Market data fetching: Runs during trading hours
+   - Signal processing: Daily at 6 AM
+
+---

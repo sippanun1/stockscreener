@@ -38,13 +38,13 @@ jobs:
       
       - name: Install dependencies
         run: |
-          cd src/api
+          cd backend
           pip install -r requirements.txt
       
       - name: Fetch UK market data
         id: fetch
         run: |
-          cd src/api
+          cd backend
           python main.py --market UK --once 2>&1 | tee fetch_log.txt
         env:
           TZ: Europe/London
@@ -55,7 +55,7 @@ jobs:
       - name: Validate data
         if: steps.fetch.outcome == 'success'
         run: |
-          cd src/api
+          cd backend
           python -c "
           import json
           import sys
@@ -91,5 +91,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Fetch Details" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          grep ">>" src/api/fetch_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs captured" >> $GITHUB_STEP_SUMMARY
+          grep ">>" backend/src/fetch_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs captured" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

@@ -1,59 +1,30 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/.env.local
 
-node_modules
-dist
-dist-ssr
-*.local
+# Backend
+backend/__pycache__/
+backend/.venv/
+backend/venv/
+backend/.env
+backend/*.log
+backend/logs/
+backend/data/*.json
+backend/src/__pycache__/
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
 
-
-# Python Virtual Environments
-.venv
-venv/
-src/api/venv/
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Databases
-# *.db (Commented out to allow tracking for GitHub Actions storage)
-# *.sqlite3
-stocks_backup_*.db
-
-# Data dumps (optional, but good for clean repos)
-src/api/data/*_*.json
-
-# Environment variables (contains secrets)
-.env
-
-# Migration scripts
-src/api/migrate_db.py
-
+# Logs
+*.log
 logs/
-
-# Documentation files (don't track changes)
-full_refresh.sql
-APP_LOGIC_DOCUMENTATION.md
-
-# Temporary SQL update files
-update_*.sql

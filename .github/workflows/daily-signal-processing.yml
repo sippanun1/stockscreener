@@ -27,13 +27,13 @@ jobs:
       
       - name: Install dependencies
         run: |
-          cd src/api
+          cd backend
           pip install -r requirements.txt
       
       - name: Detect new signals
         id: detect
         run: |
-          cd src/api
+          cd backend
           python signal_detector.py 2>&1 | tee detect_log.txt
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -42,7 +42,7 @@ jobs:
       - name: Calculate returns
         id: calculate
         run: |
-          cd src/api
+          cd backend
           python returns_calculator.py 2>&1 | tee calculate_log.txt
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

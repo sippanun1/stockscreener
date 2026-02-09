@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+/* Responsive CSS Custom Properties */
+:root {
+  --app-padding-x: 1rem;     /* Mobile: 16px */
+  --app-padding-y: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --app-padding-x: 1.5rem;   /* Tablet: 24px */
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --app-padding-x: 53px;     /* Desktop: original 53px */
+  }
+}
+
+/* Prevent page from scrolling outside content boundaries */
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+}
+
+/* App container - full height, no overflow */
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Prevent rubber-band/bounce effect on scroll containers */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+[class*="overflow-"] {
+  overscroll-behavior: contain;
+}
+
+/* Calendar Styling Override */
+
+/* Remove default focus rings and borders */
+[data-slot="calendar"] button {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+[data-slot="calendar"] button:focus,
+[data-slot="calendar"] button:focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Today's date (Red circle, White text) */
+[data-slot="calendar"] button[data-today="true"] {
+  background-color: #FF3069 !important;
+  color: white !important;
+  border-radius: 9999px !important;
+}
+
+/* Selected date (White circle, Dark Blue text) */
+[data-slot="calendar"] button[data-selected-single="true"],
+[data-slot="calendar"] button[data-range-start="true"],
+[data-slot="calendar"] button[data-range-end="true"] {
+  background-color: white !important;
+  color: #1E293B !important;
+  border-radius: 9999px !important;
+}
+
+/* Ensure Selected > Today (If today is selected, show as selected style) */
+[data-slot="calendar"] button[data-today="true"][data-selected-single="true"] {
+  background-color: white !important;
+  color: #1E293B !important;
+}
+
+/* Custom Scrollbar Styles for Dark Theme */
+/* Webkit browsers (Chrome, Safari, Edge) */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(117, 136, 163, 0.3);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(117, 136, 163, 0.5);
+}
+
+/* Firefox */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(117, 136, 163, 0.3) transparent;
+}
+
+/* Hide Scrollbar Completely */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Responsive Container Utility */
+.app-container {
+  padding-left: var(--app-padding-x);
+  padding-right: var(--app-padding-x);
+}
+
+/* Touch-friendly button sizes */
+@media (max-width: 640px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Exception for inline/text buttons */
+  .inline-btn, [class*="text-xs"] button, [class*="text-sm"] button {
+    min-height: unset;
+    min-width: unset;
+  }
+}
+
+/* Safe area for mobile devices with notches */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Hide horizontal overflow on mobile body */
+@media (max-width: 640px) {
+  body {
+    overflow-x: hidden;
+  }
+}
