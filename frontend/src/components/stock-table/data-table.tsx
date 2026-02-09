@@ -55,8 +55,8 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   const [_, currentFilters] = queryKey;
   
   const params = new URLSearchParams();
-  const limit = currentFilters?.limit || '2000';
-  params.append('limit', limit); // Fetch initial small amount for speed
+  const limit = currentFilters?.limit || '100';
+  params.append('limit', limit); // Fetch initial batch - optimized for LATERAL join performance
   
   if (currentFilters?.market && currentFilters.market !== 'all') {
     params.append('market', currentFilters.market);
@@ -127,7 +127,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const [fetchLimit, setFetchLimit] = useState(300) // Optimized for faster initial load
+  const [fetchLimit, setFetchLimit] = useState(100) // Optimized for LATERAL join performance
 
   // Fetch stocks with React Query
   // All filters (market, search, rating) and sorting are sent to API for server-side processing
@@ -366,10 +366,10 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
             
             {allData.length === fetchLimit && !loading && (
               <button 
-                onClick={() => setFetchLimit(prev => prev === 300 ? 1000 : prev === 1000 ? 5000 : 50000)}
+                onClick={() => setFetchLimit(prev => prev === 100 ? 500 : prev === 500 ? 2000 : 10000)}
                 className="px-6 py-2 bg-[#1E2530] hover:bg-[#292D33] text-[#F8FAFC] text-sm font-medium rounded-lg transition-colors border border-[#7588A3]/20"
               >
-                {fetchLimit === 300 ? 'Load More (1,000)' : fetchLimit === 1000 ? 'Load More (5,000)' : 'Load All Stocks (50,000 max)'}
+                {fetchLimit === 100 ? 'Load More (500)' : fetchLimit === 500 ? 'Load More (2,000)' : 'Load All Stocks (10,000 max)'}
               </button>
             )}
             

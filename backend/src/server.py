@@ -188,6 +188,10 @@ def get_stocks(
     - previous_price: Price when the rating last changed
     - total: Total count in database matching filters (excludes price < 0.2, OTC)
     """
+    # Fix: Convert "All" to None for SQL
+    if market == "All":
+        market = None
+        
     try:
         stocks = database.get_stocks_with_previous_rating(
             market=market,
@@ -301,10 +305,18 @@ def get_stats(_auth: bool = Depends(verify_api_key)):
 
 
 @app.get("/api/summary")
-def get_summary(_auth: bool = Depends(verify_api_key)):
+def get_summary(
+    market: Optional[str] = Query(None),
+    date: Optional[str] = Query(None),
+    _auth: bool = Depends(verify_api_key)
+):
     """Get today's summary statistics for the dashboard cards."""
+    # Fix: Convert "All" to None for SQL
+    if market == "All":
+        market = None
+        
     try:
-        return database.get_today_summary()
+        return database.get_today_summary(market=market, date=date)
     except Exception as e:
         logger.error(f"Error fetching summary: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch summary")

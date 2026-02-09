@@ -141,7 +141,7 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
                 offset = 0
                 while True:
                     r = client.table("stock_ratings") \
-                        .select("symbol, technical_rating, rating_change_date") \
+                        .select("symbol, technical_rating, rating_change_date, current_price") \
                         .eq("market", target_market) \
                         .eq("fetched_date", baseline_date) \
                         .range(offset, offset + 999) \
@@ -159,7 +159,8 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
                 for row in all_baseline:
                     prev_ratings_map[row['symbol']] = {
                         "rating": row.get("technical_rating"),
-                        "change_date": row.get("rating_change_date")
+                        "change_date": row.get("rating_change_date"),
+                        "price": row.get("current_price") or 0.0
                     }
                     
     except Exception as e:
@@ -170,26 +171,47 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
         for i in range(0, len(records), BATCH_SIZE):
             batch = records[i : i + BATCH_SIZE]
             
-            # --- LOGIC: Compute rating_change_date ---
+            # --- LOGIC: Compute rating_change_date & price_change ---
             for rec in batch:
                 sym = rec["symbol"]
                 curr_rating = rec["technical_rating"]
+                curr_price = float(rec["current_price"] or 0)
                 
                 prev_data = prev_ratings_map.get(sym)
                 
+                # Default values
+                previous_price = 0.0
+                price_change = 0.0
+                change_percent = 0.0
+
                 if prev_data:
                     prev_rating = prev_data["rating"]
                     prev_date = prev_data["change_date"]
+                    previous_price = float(prev_data["price"])
                     
+                    # 1. Rating Logic
                     if curr_rating == prev_rating:
-                        # NO CHANGE: Keep original date (or fallback to today if None)
                         rec["rating_change_date"] = prev_date if prev_date else rec["fetched_date"]
                     else:
-                        # CHANGED: Update to today
                         rec["rating_change_date"] = rec["fetched_date"]
+                        
+                    # 2. Price Change Logic (Current - Previous Close)
+                    if previous_price > 0:
+                        price_change = curr_price - previous_price
+                        change_percent = (price_change / previous_price) * 100
+                    else:
+                        # Fallback to Open if no previous close (or user preference)
+                        # For now, 0 if no history
+                        pass
                 else:
-                    # NEW STOCK: Date is today
+                    # NEW STOCK: Date is today, Change is 0
                     rec["rating_change_date"] = rec["fetched_date"]
+                
+                # Store calculated values
+                rec["price_change"] = round(price_change, 2)
+                rec["change_percent"] = round(change_percent, 2)
+                # We can also store previous_price if we added a column for it, but not strictly needed if we have change
+                rec["previous_price"] = previous_price # Optional mapping if DB has column
             
             response = client.table("stock_ratings").upsert(
                 batch, 
@@ -250,7 +272,7 @@ def get_stocks_with_previous_rating(
         }
         
         try:
-            response = client.rpc("get_stocks_with_last_rating", params).execute()
+            response = client.rpc("get_stocks_v3", params).execute()
             
             if not response.data:
                 break
@@ -264,12 +286,13 @@ def get_stocks_with_previous_rating(
                     "Technical_Rating": row["Technical_Rating"],
                     "Previous_Rating": row["Previous_Rating"],
                     "previous_price": row["previous_price"],
+                    "change": row.get("change", 0),
+                    "changePercent": row.get("change_percent", 0),
                     "rating_change_date": row["rating_change_date"],
                     "fetched_date": row["fetched_date"],
                     "fetched_time": row["fetched_time"]
                 })
             
-            # If we reached the end of the database results
             if len(response.data) < batch_size:
                 break
                 
@@ -519,14 +542,15 @@ def get_signal_changes(market: Optional[str] = None, date: Optional[str] = None,
         logger.error(f"Error getting signal changes: {e}")
         return []
 
-def get_today_summary():
+def get_today_summary(market=None, date=None):
     client = get_client()
     try:
-        # 1. Get Stats (Counts)
-        stats_res = client.rpc("get_dashboard_stats", {
-            "target_market": None,
-            "target_date": None
+        # 1. Get Stats (Counts) [V3]
+        stats_res = client.rpc("get_dashboard_stats_v3", {
+            "target_market": market,
+            "target_date": date
         }).execute()
+        
         if not stats_res.data:
              return _empty_summary()
             
@@ -535,10 +559,10 @@ def get_today_summary():
         if isinstance(data, list):
             data = data[0] if data else {}
             
-        # 2. Get Top Gainers
-        gainers_res = client.rpc("get_top_gainers", {
-            "target_market": None,
-            "target_date": None,
+        # 2. Get Top Gainers [V3]
+        gainers_res = client.rpc("get_top_gainers_v3", {
+            "target_market": market,
+            "target_date": date,
             "limit_val": 3
         }).execute()
         top_gainers = gainers_res.data if gainers_res.data else []

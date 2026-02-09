@@ -180,15 +180,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       const previousRating = row.getValue("Previous_Rating") as string
       const currentRating = row.getValue("Technical_Rating") as string
       
-      // Hide arrow if Previous and Current are the same
-      if (previousRating && previousRating !== "N/A" && previousRating !== "" && previousRating === currentRating) {
-        return (
-          <div className="flex items-center justify-center">
-            <div className="text-[#7588A3] text-xs">-</div>
-          </div>
-        )
-      }
-      
+      // Always show arrow as requested
       return (
         <div className="flex items-center justify-center">
           <LongArrowRight className="text-[#F8FAFC]" />
@@ -214,19 +206,11 @@ export const stockColumns: ColumnDef<Stock>[] = [
     },
   },
   {
-    accessorKey: "fetched_date",
+    accessorKey: "rating_change_date",
     header: "Date",
     cell: ({ row }) => {
-      const previousRating = row.getValue("Previous_Rating") as string
-      const currentRating = row.getValue("Technical_Rating") as string
-      
-      // Hide date if Previous and Current are the same
-      if (previousRating && previousRating !== "N/A" && previousRating !== "" && previousRating === currentRating) {
-        return <div className="text-[#7588A3] text-center text-sm">-</div>
-      }
-      
       // Show rating_change_date (when the rating changed to current status)
-      const dateString = (row.original.rating_change_date || row.getValue("fetched_date")) as string
+      const dateString = row.original.rating_change_date as string
       
       if (!dateString) return <div className="text-[#7588A3] text-center text-sm">-</div>
 
