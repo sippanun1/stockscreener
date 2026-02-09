@@ -25,7 +25,9 @@ logs/
 server.log
 
 # Data
-data/*.json
+data/
+backend/src/data/
+
 data/*.csv
 old_db_export.csv
 src/old_db_export.csv
