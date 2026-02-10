@@ -85,7 +85,6 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
                 "market": stock.get("market"),
                 "name": stock.get("name"),
                 "current_price": stock.get("current_price"),
-                "open": stock.get("open"),
                 # "premarket_close": stock.get("premarket_close"),  <-- REMOVED: unused/empty
                 # "premarket_open": stock.get("premarket_open"),    <-- REMOVED: unused/empty
                 # "postmarket_close": stock.get("postmarket_close"),<-- REMOVED: unused/empty

@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS public.stock_ratings (
     market TEXT,
     name TEXT,
     current_price NUMERIC,
-    open NUMERIC,
     technical_score NUMERIC,
     technical_rating TEXT,
     fetched_date DATE DEFAULT CURRENT_DATE,

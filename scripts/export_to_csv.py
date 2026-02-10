@@ -48,7 +48,17 @@ def export_table_to_csv(table_name: str, output_dir: str):
             while offset < total_rows:
                 logger.debug(f"⏳ Fetching rows {offset} to {min(offset + batch_size, total_rows)}...")
                 
-                res = supabase.table(table_name).select("*").order("id", desc=False).range(offset, offset + batch_size - 1).execute()
+                if table_name == "stock_ratings":
+                    # Explicitly select columns to exclude 'open' if it still exists in DB
+                    # (and ensuring we get a clean export even before running the drop script)
+                    res = supabase.table(table_name)\
+                        .select("id,symbol,market,name,current_price,technical_score,technical_rating,fetched_date,fetched_time,session_type,rating_change_date,previous_price,price_change,change_percent")\
+                        .order("id", desc=False)\
+                        .range(offset, offset + batch_size - 1)\
+                        .execute()
+                else:
+                    # Default for other tables (like signal_returns)
+                    res = supabase.table(table_name).select("*").order("id", desc=False).range(offset, offset + batch_size - 1).execute()
                 
                 if not res.data:
                     break
