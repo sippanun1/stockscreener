@@ -4,92 +4,71 @@ Technical analysis rating tracker for global stock markets (US, TH, HK, JP, IN, 
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Complete Setup & Restore Guide
 
-### 1. Requirements
-- Python 3.9+
-- Node.js 18+
-- Supabase Account
+### 1. 🛠️ Environment Setup
 
-### 2. Frontend
+#### Prerequisites
+- **Python 3.9+**
+- **Node.js 18+**
+- **Supabase Account** (Get your URL and Key)
+
+#### Backend Setup
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+#### Frontend Setup
 ```bash
 cd frontend
 npm install
-npm run dev  # http://localhost:5173
 ```
 
-### 3. Backend
-```bash
-cd backend
-python -m venv venv
-# Linux/Mac
-source venv/bin/activate
-# Windows
-venv\Scripts\activate
+### 2. 🗄️ Database Initialization (Supabase)
 
-pip install -r requirements.txt
-python src/server.py  # http://localhost:8000
-```
+Run the following SQL scripts in your **Supabase SQL Editor** in this exact order:
 
----
+1.  **Create Tables**: Copy & Run [`database/01_schema.sql`](database/01_schema.sql)
+2.  **Add Indexes**: Copy & Run [`database/02_indexes.sql`](database/02_indexes.sql)
+3.  **UI Functions**: Copy & Run [`database/03_functions_ui.sql`](database/03_functions_ui.sql)
+4.  **Screener Logic**: Copy & Run [`database/04_functions_screener.sql`](database/04_functions_screener.sql)
 
-## ⚙️ Configuration
+*(Note: `05_drop_open_column.sql` is not needed if you started fresh with `01_schema.sql` as it's already updated).*
 
-### Frontend Environment (`frontend/.env`)
-```env
-VITE_API_URL=http://localhost:8000
-```
+### 3. � Import Data (Restore Backup)
 
-### Backend Environment (`backend/.env`)
-```env
-# Supabase Database
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-anon-public-key
+You have two CSV files in the project root. Run these commands from the `scripts/` folder to restore them.
 
-# API Settings
-API_PORT=8000
-ALLOWED_ORIGINS=http://localhost:5173
-```
-
----
-
-## 🗄️ Database Setup (4-Step Modular)
-
-To prevent execution timeouts in Supabase, the setup is split into four parts. Run these in the **Supabase SQL Editor** in numeric order:
-
-1.  **Core Schema**: Run [`database/01_schema.sql`](database/01_schema.sql) (Creates Tables)
-2.  **Performance Indexes**: Run [`database/02_indexes.sql`](database/02_indexes.sql) (Optimizes Sorting)
-3.  **UI Functions**: Run [`database/03_functions_ui.sql`](database/03_functions_ui.sql) (Dashboard & Stats)
-4.  **Screener Logic**: Run [`database/04_functions_screener.sql`](database/04_functions_screener.sql) (V7.2 High-Performance Logic)
-
----
-
-## 💾 Data Portability (CSV to Database)
-
-We provide tools to export data from one database and import it into another via CSV.
-
-### 📤 Export Data to CSV (Full Backup)
-Exports both `stock_ratings` and `signal_returns` tables by default.
+**Step 1: Restore Stock Ratings (~870k rows)**
 ```bash
 cd scripts
-# Exports separate CSV files for each table to the current directory
-python export_to_csv.py
+python3 import_from_csv.py ../stock_ratings_20260210_120210.csv --table stock_ratings
 ```
+*This may take a while (10-20 mins) as it uploads in batches.*
 
-### 📥 Import Data from CSV (Restore)
-Restores data from CSV files into your Supabase database.
-
-**Restore Stock Ratings:**
+**Step 2: Restore Signal Returns**
 ```bash
-# Uses UPSERT (updates existing records)
-python import_from_csv.py stock_ratings_202X.csv --table stock_ratings
+python3 import_from_csv.py ../signal_returns_20260210_120722.csv --table signal_returns
 ```
 
-**Restore Signal Returns:**
+### 4. 🚀 Running the App
+
+**Start Backend** (API & Calculation Engine)
 ```bash
-# Uses INSERT (append only - be careful of duplicates)
-python import_from_csv.py signal_returns_202X.csv --table signal_returns
+cd backend
+python3 src/server.py
 ```
+*The backend now handles "Calculate-on-Write" automatically for new data.*
+
+**Start Frontend**
+```bash
+cd frontend
+npm run dev
+```
+Open [http://localhost:5173](http://localhost:5173) to view your screener.
 
 ---
 
@@ -102,7 +81,9 @@ python src/main.py --once
 ```
 
 ### GitHub Actions Setup
-1. **Add Secrets** in GitHub repo: `SUPABASE_URL` and `SUPABASE_KEY`.
+1. **Add Secrets** in GitHub repo:
+   - Settings → Secrets and variables → Actions
+   - Add `SUPABASE_URL` and `SUPABASE_KEY`
 2. **Workflows**:
    - Market data fetching: Runs during trading hours.
    - Signal processing: Daily at 6 AM.
