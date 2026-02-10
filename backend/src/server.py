@@ -192,6 +192,10 @@ def get_stocks(
     if market == "All":
         market = None
         
+    # Log incoming search request
+    if search:
+        logger.info(f"🔍 SEARCH REQUEST: term='{search}', market={market}, rating={rating}, limit={limit}")
+
     try:
         stocks = database.get_stocks_with_previous_rating(
             market=market,

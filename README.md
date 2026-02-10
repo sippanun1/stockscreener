@@ -68,19 +68,27 @@ To prevent execution timeouts in Supabase, the setup is split into four parts. R
 
 We provide tools to export data from one database and import it into another via CSV.
 
-### 📤 Export Data to CSV
-Exports your active ratings. By default, it saves the file directly to the **project root** (next to `README.md`).
+### 📤 Export Data to CSV (Full Backup)
+Exports both `stock_ratings` and `signal_returns` tables by default.
 ```bash
 cd scripts
+# Exports separate CSV files for each table to the current directory
 python export_to_csv.py
 ```
 
-### 📥 Import Data from CSV (Restore/Migrate)
-Imports (Upserts) data from a CSV file into your target Supabase database.
+### 📥 Import Data from CSV (Restore)
+Restores data from CSV files into your Supabase database.
+
+**Restore Stock Ratings:**
 ```bash
-cd scripts
-# Usage: python import_from_csv.py <path_to_csv>
-python import_from_csv.py exports/stock_ratings_backup.csv
+# Uses UPSERT (updates existing records)
+python import_from_csv.py stock_ratings_202X.csv --table stock_ratings
+```
+
+**Restore Signal Returns:**
+```bash
+# Uses INSERT (append only - be careful of duplicates)
+python import_from_csv.py signal_returns_202X.csv --table signal_returns
 ```
 
 ---

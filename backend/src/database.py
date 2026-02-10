@@ -6,7 +6,7 @@ from typing import Optional, Dict, List, Any
 from pathlib import Path
 
 from dotenv import load_dotenv
-from supabase import create_client, Client
+from supabase import create_client, Client, ClientOptions
 
 # Load environment variables
 load_dotenv()
@@ -29,7 +29,9 @@ def get_client() -> Client:
     global _supabase
     if _supabase is None:
         try:
-            _supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+            # Increase timeout to 60 seconds (default is often shorter)
+            options = ClientOptions(postgrest_client_timeout=60)
+            _supabase = create_client(SUPABASE_URL, SUPABASE_KEY, options=options)
         except Exception as e:
             logger.error(f"Failed to initialize Supabase client: {e}")
             raise
@@ -84,10 +86,10 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
                 "name": stock.get("name"),
                 "current_price": stock.get("current_price"),
                 "open": stock.get("open"),
-                "premarket_close": stock.get("premarket_close"),
-                "premarket_open": stock.get("premarket_open"),
-                "postmarket_close": stock.get("postmarket_close"),
-                "postmarket_open": stock.get("postmarket_open"),
+                # "premarket_close": stock.get("premarket_close"),  <-- REMOVED: unused/empty
+                # "premarket_open": stock.get("premarket_open"),    <-- REMOVED: unused/empty
+                # "postmarket_close": stock.get("postmarket_close"),<-- REMOVED: unused/empty
+                # "postmarket_open": stock.get("postmarket_open"),  <-- REMOVED: unused/empty
                 "technical_score": stock.get("Technical_Score"),
                 "technical_rating": stock.get("Technical_Rating"),
                 "fetched_date": record_date,
@@ -272,7 +274,8 @@ def get_stocks_with_previous_rating(
         }
         
         try:
-            response = client.rpc("get_stocks_v3", params).execute()
+            # UPDATED: Use standard function name (removed _v3)
+            response = client.rpc("get_stocks", params).execute()
             
             if not response.data:
                 break
@@ -545,8 +548,8 @@ def get_signal_changes(market: Optional[str] = None, date: Optional[str] = None,
 def get_today_summary(market=None, date=None):
     client = get_client()
     try:
-        # 1. Get Stats (Counts) [V3]
-        stats_res = client.rpc("get_dashboard_stats_v3", {
+        # 1. Get Stats (Counts) [Updated: removed _v3]
+        stats_res = client.rpc("get_dashboard_stats", {
             "target_market": market,
             "target_date": date
         }).execute()
@@ -559,8 +562,8 @@ def get_today_summary(market=None, date=None):
         if isinstance(data, list):
             data = data[0] if data else {}
             
-        # 2. Get Top Gainers [V3]
-        gainers_res = client.rpc("get_top_gainers_v3", {
+        # 2. Get Top Gainers [Updated: removed _v3]
+        gainers_res = client.rpc("get_top_gainers", {
             "target_market": market,
             "target_date": date,
             "limit_val": 3

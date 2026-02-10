@@ -176,10 +176,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     id: "arrow",
     enableSorting: false,
-    cell: ({ row }) => {
-      const previousRating = row.getValue("Previous_Rating") as string
-      const currentRating = row.getValue("Technical_Rating") as string
-      
+    cell: () => {
       // Always show arrow as requested
       return (
         <div className="flex items-center justify-center">

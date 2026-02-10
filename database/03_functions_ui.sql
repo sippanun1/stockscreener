@@ -5,12 +5,16 @@
 -- =========================================================================================
 
 -- 1. DROP EXISTING
-DROP FUNCTION IF EXISTS public.get_dashboard_stats_v3(text,date);
+DROP FUNCTION IF EXISTS public.get_dashboard_stats(text,date);
 DROP FUNCTION IF EXISTS public.get_stocks_count_filtered(text,date,text,text,text);
+DROP FUNCTION IF EXISTS public.get_top_gainers(text,date,integer);
+
+-- Drop old versions if they exist to clean up
+DROP FUNCTION IF EXISTS public.get_dashboard_stats_v3(text,date);
 DROP FUNCTION IF EXISTS public.get_top_gainers_v3(text,date,integer);
 
--- 2. DASHBOARD STATS (V3)
-CREATE OR REPLACE FUNCTION public.get_dashboard_stats_v3(
+-- 2. DASHBOARD STATS
+CREATE OR REPLACE FUNCTION public.get_dashboard_stats(
     target_market TEXT DEFAULT NULL,
     target_date DATE DEFAULT NULL
 ) 
@@ -50,7 +54,7 @@ BEGIN
     RETURN result;
 END; $$;
 
--- 3. TOTAL COUNT FILTERED (V3)
+-- 3. TOTAL COUNT FILTERED
 CREATE OR REPLACE FUNCTION public.get_stocks_count_filtered(
     target_market TEXT DEFAULT NULL,
     target_date DATE DEFAULT NULL,
@@ -90,8 +94,8 @@ BEGIN
            OR (target_technical_rating = 'Negative' AND u.technical_rating IN ('Strong Sell', 'Sell')));
 END; $$;
 
--- 4. TOP GAINERS (V3)
-CREATE OR REPLACE FUNCTION public.get_top_gainers_v3(
+-- 4. TOP GAINERS
+CREATE OR REPLACE FUNCTION public.get_top_gainers(
     target_market TEXT DEFAULT NULL,
     target_date DATE DEFAULT NULL,
     limit_val INT DEFAULT 3
@@ -120,7 +124,7 @@ BEGIN
     FilteredStocks AS (
         SELECT u.*
         FROM UniqueStocks u
-        WHERE u.current_price >= 0.1
+        WHERE u.current_price >= 0.2  -- UPDATED: Filter strictness increased from 0.1 to 0.2 per user request
           AND u.technical_rating IN ('Strong Buy', 'Buy')
     ),
     WithHistory AS (
@@ -138,12 +142,17 @@ BEGIN
             ORDER BY p.fetched_date DESC, p.fetched_time DESC
             LIMIT 1
         ) pre ON TRUE
+    ),
+    CalculatedResults AS (
+        SELECT 
+            w.f_symbol, w.f_market, w.f_name,
+            CASE WHEN w.h_price > 0 THEN ((w.f_current_price - w.h_price) / w.h_price * 100) ELSE 0 END as change_percent
+        FROM WithHistory w
+        WHERE w.h_price > 0
     )
     SELECT 
-        w.f_symbol, w.f_market, w.f_name,
-        CASE WHEN w.h_price > 0 THEN ((w.f_current_price - w.h_price) / w.h_price * 100) ELSE 0 END as change_percent
-    FROM WithHistory w
-    WHERE w.h_price > 0
-    ORDER BY change_percent DESC
+        c.f_symbol, c.f_market, c.f_name, c.change_percent
+    FROM CalculatedResults c
+    ORDER BY c.change_percent DESC
     LIMIT limit_val;
 END; $$;

@@ -21,31 +21,32 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     logger.error("❌ Missing SUPABASE_URL or SUPABASE_KEY. Please check backend/.env")
     exit(1)
 
-def export_table_to_csv(table_name: str, output_file: str):
+def export_table_to_csv(table_name: str, output_dir: str):
     """Fetches all data from a table and saves it to a CSV file."""
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     
+    output_file = f"{output_dir}/{table_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     logger.info(f"🚀 Starting export of '{table_name}'...")
     
-    # Get total count first
-    count_res = supabase.table(table_name).select("id", count="exact").limit(1).execute()
-    total_rows = count_res.count if count_res.count else 0
-    logger.info(f"📊 Total rows to export: {total_rows}")
-    
-    if total_rows == 0:
-        logger.warning(f"⚠️ Table '{table_name}' is empty. Nothing to export.")
-        return
-
-    # Use batching to fetch all data
-    batch_size = 1000
-    offset = 0
-    
     try:
+        # Get total count first
+        count_res = supabase.table(table_name).select("id", count="exact").limit(1).execute()
+        total_rows = count_res.count if count_res.count else 0
+        logger.info(f"📊 Total rows to export for {table_name}: {total_rows}")
+        
+        if total_rows == 0:
+            logger.warning(f"⚠️ Table '{table_name}' is empty. Nothing to export.")
+            return
+
+        # Use batching to fetch all data
+        batch_size = 1000
+        offset = 0
+        
         with open(output_file, mode='w', newline='', encoding='utf-8') as f:
             writer = None
             
             while offset < total_rows:
-                logger.info(f"⏳ Fetching rows {offset} to {min(offset + batch_size, total_rows)}...")
+                logger.debug(f"⏳ Fetching rows {offset} to {min(offset + batch_size, total_rows)}...")
                 
                 res = supabase.table(table_name).select("*").order("id", desc=False).range(offset, offset + batch_size - 1).execute()
                 
@@ -60,14 +61,20 @@ def export_table_to_csv(table_name: str, output_file: str):
                 
                 writer.writerows(res.data)
                 offset += len(res.data)
-        logger.info(f"✅ Export complete! Data saved to: {output_file}")
+                
+                # Simple progress log every 5000 rows
+                if offset % 5000 == 0:
+                     logger.info(f"   ... {offset}/{total_rows} rows processed")
+
+        logger.info(f"✅ Export complete! {table_name} saved to: {output_file}")
+        
     except Exception as e:
-        logger.error(f"❌ Error during export: {e}")
+        logger.error(f"❌ Error during export of {table_name}: {e}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Export Supabase table to CSV.")
-    parser.add_argument("--dir", default="..", help="Target directory for export (default: project root next to README.md)")
-    parser.add_argument("--table", default="stock_ratings", help="Table name to export (default: stock_ratings)")
+    parser = argparse.ArgumentParser(description="Export Supabase tables to CSV.")
+    parser.add_argument("--dir", default=".", help="Target directory for export (default: current dir)")
+    parser.add_argument("--table", default="all", help="Table name to export, or 'all' for stock_ratings + signal_returns")
     
     args = parser.parse_args()
     
@@ -76,12 +83,14 @@ if __name__ == "__main__":
     if not os.path.exists(export_dir):
         try:
             os.makedirs(export_dir)
-            logger.info(f"📂 Created external directory: {export_dir}")
+            logger.info(f"📂 Created directory: {export_dir}")
         except Exception as e:
-            logger.warning(f"⚠️ Could not create external folder: {e}. Falling back to local 'exports/'")
-            export_dir = "exports"
-            if not os.path.exists(export_dir):
-                os.makedirs(export_dir)
+            logger.warning(f"⚠️ Could not create folder: {e}. Using current directory.")
+            export_dir = "."
 
-    filename = f"{export_dir}/{args.table}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    export_table_to_csv(args.table, filename)
+    if args.table == 'all':
+        # Export both key tables
+        export_table_to_csv("stock_ratings", export_dir)
+        export_table_to_csv("signal_returns", export_dir)
+    else:
+        export_table_to_csv(args.table, export_dir)

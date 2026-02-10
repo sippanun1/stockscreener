@@ -1,14 +1,15 @@
-
 -- 04_functions_screener.sql
 -- =========================================================================================
--- STEP 4: Complex Screener Logic (V7.2)
+-- STEP 4: Complex Screener Logic (V7.2 - Search Optimized)
 -- =========================================================================================
 
 -- 1. DROP EXISTING
+DROP FUNCTION IF EXISTS public.get_stocks(text,date,text,text,text,text,text,integer,integer);
+-- Drop old versions if they exist to clean up
 DROP FUNCTION IF EXISTS public.get_stocks_v3(text,date,text,text,text,text,text,integer,integer);
 
--- 2. MAIN STOCK TABLE (V7.2 High-Performance Hybrid Search)
-CREATE OR REPLACE FUNCTION public.get_stocks_v3(
+-- 2. MAIN STOCK TABLE (Search Optimized)
+CREATE OR REPLACE FUNCTION public.get_stocks(
     target_market TEXT DEFAULT NULL,
     target_date DATE DEFAULT NULL,
     search_term TEXT DEFAULT NULL,
@@ -30,6 +31,7 @@ RETURNS TABLE (
 LANGUAGE plpgsql AS $$
 DECLARE
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
+    -- Optimize lookback: if searching, look back 365 days; otherwise 30 days is enough for active stocks
     lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 30 END;
 BEGIN
     RETURN QUERY
@@ -56,6 +58,8 @@ BEGIN
         FROM UniqueStocks u
         WHERE u.current_price >= 0.1
           AND u.technical_rating != 'Neutral'
+          -- Relax rating filters when searching to ensure the user finds what they are looking for
+          AND (search_term IS NOT NULL OR (u.previous_rating IS NULL OR u.previous_rating != 'Neutral'))
           AND (target_rating IS NULL OR target_rating = '' OR u.technical_rating = target_rating)
           AND (target_technical_rating IS NULL OR target_technical_rating = ''
                OR (target_technical_rating = 'Positive' AND u.technical_rating IN ('Strong Buy', 'Buy'))
@@ -97,6 +101,13 @@ BEGIN
         c.f_rating_change_date, c.f_fetched_date, c.f_fetched_time
     FROM CalculatedResults c
     ORDER BY 
+        -- If searching, exact symbol match comes first
+        CASE WHEN search_term IS NOT NULL AND search_term != '' THEN 
+            CASE WHEN c.f_symbol ILIKE search_term THEN 0 
+                 WHEN c.f_symbol ILIKE search_term || '%' THEN 1 
+                 ELSE 2 END
+        END ASC,
+        -- Then normal sorting
         CASE WHEN sort_by = 'change' AND sort_order = 'asc' THEN c.f_change END ASC NULLS LAST,
         CASE WHEN sort_by = 'change' AND sort_order = 'desc' THEN c.f_change END DESC NULLS LAST,
         CASE WHEN sort_by = 'changePercent' AND sort_order = 'asc' THEN c.f_change_percent END ASC NULLS LAST,

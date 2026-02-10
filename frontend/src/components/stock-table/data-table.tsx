@@ -58,16 +58,16 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   const limit = currentFilters?.limit || '100';
   params.append('limit', limit); // Fetch initial batch - optimized for LATERAL join performance
   
-  if (currentFilters?.market && currentFilters.market !== 'all') {
-    params.append('market', currentFilters.market);
-  }
-
   // Include search term in API request for server-side filtering
   if (currentFilters?.search && currentFilters.search.trim() !== '') {
     params.append('search', currentFilters.search);
+    // FIX: Do NOT append market filter if searching, to allow finding stocks globally
+  } else if (currentFilters?.market && currentFilters.market !== 'all') {
+    // Only append market if NOT searching
+    params.append('market', currentFilters.market);
   }
 
-  // Include rating filter for accurate count
+  // Include rating filter (Relax logic during search handled by backend or user intent)
   if (currentFilters?.rating) {
     params.append('rating', currentFilters.rating);
   }

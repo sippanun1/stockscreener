@@ -24,15 +24,16 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 def batch_upsert(supabase: Client, table_name: str, batch: List[Dict[Any, Any]], conflict_columns: str):
     """Helper to perform bulk upsert safely."""
     try:
-        # We need to remove 'id' if we want Supabase to auto-generate it or 
-        # keep it if we are restoring exact IDs. Usually better to remove 'id' 
-        # on import unless it's a true restore.
-        # But here, we use UPSERT on conflict_columns anyway.
-        
-        response = supabase.table(table_name).upsert(batch, on_conflict=conflict_columns).execute()
+        if conflict_columns:
+            # Upsert if we have a conflict strategy
+            response = supabase.table(table_name).upsert(batch, on_conflict=conflict_columns).execute()
+        else:
+            # Just Insert if no conflict info (e.g. signal_returns)
+            response = supabase.table(table_name).insert(batch).execute()
+            
         return len(response.data) if response.data else 0
     except Exception as e:
-        logger.error(f"❌ Error during batch upsert: {e}")
+        logger.error(f"❌ Error during batch operation: {e}")
         return 0
 
 def import_csv_to_table(csv_file: str, table_name: str, batch_size: int = 500):
@@ -46,7 +47,19 @@ def import_csv_to_table(csv_file: str, table_name: str, batch_size: int = 500):
     logger.info(f"🚀 Starting import from '{csv_file}' to '{table_name}'...")
     
     total_imported = 0
-    conflict_columns = "symbol, fetched_date, fetched_time, session_type"
+    
+    # Determine conflict columns based on table
+    if table_name == "stock_ratings":
+        # Note: Ideally this needs a UNIQUE index on these columns in DB to work as true UPSERT
+        conflict_columns = "symbol, fetched_date, fetched_time, session_type"
+    elif table_name == "signal_returns":
+        # signal_returns usually has no unique constraint except ID.
+        # If we remove ID, we can't UPSERT by ID. 
+        # So we just INSERT (no conflict handling) to avoid errors.
+        conflict_columns = None 
+    else:
+        # Default fallback
+        conflict_columns = "id"
     
     with open(csv_file, mode='r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
