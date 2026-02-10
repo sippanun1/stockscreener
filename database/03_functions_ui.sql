@@ -27,7 +27,7 @@ BEGIN
     WITH StockCandidates AS (
         SELECT sr.*
         FROM public.stock_ratings sr
-        WHERE sr.fetched_date >= (base_date - INTERVAL '30 days')
+        WHERE sr.fetched_date >= (base_date - INTERVAL '90 days') -- Extended to 90 days
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
@@ -48,7 +48,7 @@ BEGIN
         'date', MAX(u.fetched_date) 
     ) INTO result
     FROM UniqueStocks u
-    WHERE u.current_price >= 0.1
+    WHERE u.current_price >= 0.2 -- UPDATED: Filter strictness increased to 0.2
       AND u.technical_rating != 'Neutral';
     
     RETURN result;
@@ -66,7 +66,7 @@ RETURNS TABLE (total BIGINT)
 LANGUAGE plpgsql AS $$
 DECLARE
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
-    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 30 END;
+    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 90 END; -- Default to 90
 BEGIN
     RETURN QUERY 
     WITH StockCandidates AS (
@@ -86,7 +86,7 @@ BEGIN
     )
     SELECT COUNT(*) 
     FROM UniqueStocks u
-    WHERE u.current_price >= 0.1
+    WHERE u.current_price >= 0.2 -- UPDATED: Filter strictness increased to 0.2
       AND u.technical_rating != 'Neutral'
       AND (target_rating IS NULL OR target_rating = '' OR u.technical_rating = target_rating)
       AND (target_technical_rating IS NULL OR target_technical_rating = ''
@@ -111,7 +111,7 @@ BEGIN
     WITH StockCandidates AS (
         SELECT sr.*
         FROM public.stock_ratings sr
-        WHERE sr.fetched_date >= (base_date - INTERVAL '30 days')
+        WHERE sr.fetched_date >= (base_date - INTERVAL '90 days') -- Extended to 90 days
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
@@ -124,7 +124,7 @@ BEGIN
     FilteredStocks AS (
         SELECT u.*
         FROM UniqueStocks u
-        WHERE u.current_price >= 0.2  -- UPDATED: Filter strictness increased from 0.1 to 0.2 per user request
+        WHERE u.current_price >= 0.2  -- UPDATED: Filter strictness increased from 0.1 to 0.2
           AND u.technical_rating IN ('Strong Buy', 'Buy')
     ),
     WithHistory AS (

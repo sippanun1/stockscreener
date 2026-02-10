@@ -127,7 +127,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const [fetchLimit, setFetchLimit] = useState(100) // Optimized for LATERAL join performance
+  const [fetchLimit, setFetchLimit] = useState(300) // Start with 300 as requested
 
   // Fetch stocks with React Query
   // All filters (market, search, rating) and sorting are sent to API for server-side processing
@@ -183,21 +183,35 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     return filteredData.slice(0, displayCount)
   }, [filteredData, displayCount])
 
-  // Handle scroll to load more
+  // Handle scroll to load more (Infinite Scroll)
   const handleScroll = useCallback(() => {
-    if (!scrollRef.current || loadingMore) return
+    if (!scrollRef.current || loadingMore || loading) return
     
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
-    const nearBottom = scrollTop + clientHeight >= scrollHeight - 200
+    const nearBottom = scrollTop + clientHeight >= scrollHeight - 300 // Trigger 300px before bottom
     
-    if (nearBottom && displayCount < filteredData.length) {
-      setLoadingMore(true)
-      setTimeout(() => {
-        setDisplayCount(prev => Math.min(prev + BATCH_SIZE, filteredData.length))
-        setLoadingMore(false)
-      }, 100)
+    if (nearBottom) {
+        // Case 1: We have more data locally (displayCount < total fetched)
+        if (displayCount < filteredData.length) {
+            setLoadingMore(true)
+            // Small delay to show spinner/prevent main thread blocking
+            setTimeout(() => {
+                setDisplayCount(prev => Math.min(prev + BATCH_SIZE, filteredData.length))
+                setLoadingMore(false)
+            }, 50)
+        } 
+        // Case 2: We reached end of local data, but more exists in DB (fetchLimit < totalInDatabase)
+        // AND we haven't already maxed out our fetch limit logic
+        else if (allData.length === fetchLimit && fetchLimit < totalInDatabase) {
+             // Auto-upgrade fetch limit to get next batch
+             // 300 -> 1000 -> 5000 -> 25000 (Max)
+             const nextLimit = fetchLimit === 300 ? 1000 : fetchLimit === 1000 ? 5000 : 25000;
+             if (nextLimit !== fetchLimit) {
+                 setFetchLimit(nextLimit);
+             }
+        }
     }
-  }, [displayCount, filteredData.length, loadingMore])
+  }, [displayCount, filteredData.length, loadingMore, loading, allData.length, fetchLimit, totalInDatabase])
 
   const table = useReactTable({
     data: currentData,
@@ -349,37 +363,21 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
             </table>
           </div>
           
-          {/* Loading more indicator */}
-          {loadingMore && (
-            <div className="text-center py-4 text-[#7588A3]">
-              Loading more...
-            </div>
-          )}
-          
-          {/* Scroll hint / Load more all */}
-          <div className="flex flex-col items-center py-4 border-t border-[#1E2530] bg-[#0F151F]/50">
-            {displayCount < filteredData.length && !loadingMore && (
-              <div className="text-xs text-[#7588A3] mb-2">
-                Scroll down to see more of the current {allData.length} records
-              </div>
-            )}
-            
-            {allData.length === fetchLimit && !loading && (
-              <button 
-                onClick={() => setFetchLimit(prev => prev === 100 ? 500 : prev === 500 ? 2000 : 10000)}
-                className="px-6 py-2 bg-[#1E2530] hover:bg-[#292D33] text-[#F8FAFC] text-sm font-medium rounded-lg transition-colors border border-[#7588A3]/20"
-              >
-                {fetchLimit === 100 ? 'Load More (500)' : fetchLimit === 500 ? 'Load More (2,000)' : 'Load All Stocks (10,000 max)'}
-              </button>
-            )}
-            
-            {allData.length > 2000 && (
-              <div className="mt-2 text-[10px] text-[#7588A3] opacity-60">
-                Viewing {allData.length} stocks
-              </div>
-            )}
-          </div>
         </div>
+      </div>
+      
+      {/* Infinite Scroll & Loading Indicator */}
+      <div className="flex flex-col items-center py-2 bg-[#0F151F]/50 min-h-[5px]">
+        {/* Loading more indicator */}
+        {loadingMore && (
+            <div className="flex items-center gap-2 text-[#7588A3] text-sm py-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              Loading more stocks...
+            </div>
+        )}
+        
+        {/* Invisible spacer for scroll padding */}
+        {!loadingMore && <div className="h-1 w-full" />}
       </div>
     </div>
   )

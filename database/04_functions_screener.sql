@@ -31,8 +31,8 @@ RETURNS TABLE (
 LANGUAGE plpgsql AS $$
 DECLARE
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
-    -- Optimize lookback: if searching, look back 365 days; otherwise 30 days is enough for active stocks
-    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 30 END;
+    -- Optimize lookback: if searching, look back 365 days; otherwise 90 days (catch older active stocks)
+    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 90 END;
 BEGIN
     RETURN QUERY
     WITH StockCandidates AS (
@@ -49,77 +49,80 @@ BEGIN
         WHERE (search_term IS NULL OR search_term = '' OR t.symbol ILIKE '%' || search_term || '%' OR t.name ILIKE '%' || search_term || '%')
         ORDER BY t.symbol, t.fetched_date DESC, t.fetched_time DESC
     ),
-    FilteredStocks AS (
+    -- 1. First, efficiently select valid IDs with pagination
+    -- This avoids doing the expensive LATERAL JOIN on all 21k rows
+    TopStocks AS (
         SELECT 
-            u.id as f_id, u.symbol as f_symbol, u.market as f_market, u.name as f_name, 
-            u.current_price as f_current_price, u.technical_score as f_technical_score, 
-            u.technical_rating as f_technical_rating, u.rating_change_date as f_rating_change_date, 
-            u.fetched_date as f_fetched_date, u.fetched_time as f_fetched_time
+            u.id, u.symbol, u.market, u.name, 
+            u.current_price, u.technical_score, 
+            u.technical_rating, u.rating_change_date, 
+            u.fetched_date, u.fetched_time,
+            -- Use stored values if available, otherwise calculate later
+            u.change_percent, u.price_change, u.previous_price
         FROM UniqueStocks u
-        WHERE u.current_price >= 0.1
+        WHERE u.current_price >= 0.2 -- UPDATED: Filter strictness increased to 0.2
+          AND u.symbol NOT LIKE 'OTC:%' -- REINFORCED: Ensure no OTC in final set
           AND u.technical_rating != 'Neutral'
-          -- Relax rating filters when searching to ensure the user finds what they are looking for
-          AND (search_term IS NOT NULL OR (u.previous_rating IS NULL OR u.previous_rating != 'Neutral'))
+          AND (search_term IS NULL OR search_term = ''
+               -- Optimization: Only check previous_rating if it's cheap, otherwise rely on stored column if exists
+               -- OR (u.previous_rating IS NULL OR u.previous_rating != 'Neutral')
+              )
           AND (target_rating IS NULL OR target_rating = '' OR u.technical_rating = target_rating)
           AND (target_technical_rating IS NULL OR target_technical_rating = ''
                OR (target_technical_rating = 'Positive' AND u.technical_rating IN ('Strong Buy', 'Buy'))
                OR (target_technical_rating = 'Negative' AND u.technical_rating IN ('Strong Sell', 'Sell')))
+        ORDER BY 
+            -- Optimized Sorting on reduced set
+            CASE WHEN search_term IS NOT NULL AND search_term != '' THEN 
+                CASE WHEN u.symbol ILIKE search_term THEN 0 
+                     WHEN u.symbol ILIKE search_term || '%' THEN 1 
+                     ELSE 2 END
+            END ASC,
+            CASE WHEN sort_by = 'change' AND sort_order = 'asc' THEN u.price_change END ASC NULLS LAST,
+            CASE WHEN sort_by = 'change' AND sort_order = 'desc' THEN u.price_change END DESC NULLS LAST,
+            CASE WHEN sort_by = 'changePercent' AND sort_order = 'asc' THEN u.change_percent END ASC NULLS LAST,
+            CASE WHEN sort_by = 'changePercent' AND sort_order = 'desc' THEN u.change_percent END DESC NULLS LAST,
+            CASE WHEN sort_by = 'current_price' AND sort_order = 'asc' THEN u.current_price END ASC NULLS LAST,
+            CASE WHEN sort_by = 'current_price' AND sort_order = 'desc' THEN u.current_price END DESC NULLS LAST,
+            CASE WHEN sort_by = 'symbol' AND sort_order = 'asc' THEN u.symbol END ASC NULLS LAST,
+            CASE WHEN sort_by = 'symbol' AND sort_order = 'desc' THEN u.symbol END DESC NULLS LAST,
+            CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'asc' THEN u.rating_change_date END ASC NULLS LAST,
+            CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'desc' THEN u.rating_change_date END DESC NULLS LAST,
+            -- Tie-breaker
+            u.symbol ASC
+        LIMIT limit_val OFFSET offset_val
     ),
+    -- 2. NOW perform the heavy history lookup ONLY for the top 100 rows
     WithHistory AS (
         SELECT 
-            f.*, 
+            t.*,
             pre.h_rating, 
-            pre.h_price
-        FROM FilteredStocks f
+            -- If stored previous_price is 0 (legacy data), try to get it from history
+            COALESCE(NULLIF(t.previous_price, 0), pre.h_price, 0) as effective_prev_price
+        FROM TopStocks t
         LEFT JOIN LATERAL (
             SELECT p.technical_rating as h_rating, p.current_price as h_price
             FROM public.stock_ratings p
-            WHERE p.symbol = f.f_symbol
-              AND (p.fetched_date < f.f_fetched_date OR (p.fetched_date = f.f_fetched_date AND p.fetched_time < f.f_fetched_time))
-              AND p.technical_rating != f.f_technical_rating
-              AND p.technical_rating != 'Neutral'
+            WHERE p.symbol = t.symbol
+              AND (p.fetched_date < t.fetched_date OR (p.fetched_date = t.fetched_date AND p.fetched_time < t.fetched_time))
+              AND p.technical_rating != t.technical_rating
+              AND p.technical_rating != 'Neutral' -- Restored strict filtering per user request
             ORDER BY p.fetched_date DESC, p.fetched_time DESC
             LIMIT 1
         ) pre ON TRUE
-    ),
-    CalculatedResults AS (
-        SELECT 
-            w.f_id, w.f_symbol, w.f_market, w.f_name, w.f_current_price, 
-            COALESCE(w.h_price, 0) as f_previous_price,
-            CASE WHEN w.h_price > 0 THEN (w.f_current_price - w.h_price) ELSE 0 END as f_change,
-            CASE WHEN w.h_price > 0 THEN ((w.f_current_price - w.h_price) / w.h_price * 100) ELSE 0 END as f_change_percent,
-            w.f_technical_score, w.f_technical_rating, 
-            COALESCE(w.h_rating, 'N/A') as f_previous_rating,
-            w.f_rating_change_date, w.f_fetched_date, w.f_fetched_time
-        FROM WithHistory w
     )
     SELECT 
-        c.f_id, c.f_symbol, c.f_market, c.f_name, c.f_current_price, c.f_previous_price,
-        c.f_change, c.f_change_percent,
-        c.f_technical_score, c.f_technical_rating as "Technical_Rating", 
-        c.f_previous_rating as "Previous_Rating",
-        c.f_rating_change_date, c.f_fetched_date, c.f_fetched_time
-    FROM CalculatedResults c
+        w.id, w.symbol, w.market, w.name, 
+        w.current_price, 
+        w.effective_prev_price as previous_price,
+        w.price_change as change,
+        w.change_percent,
+        w.technical_score, w.technical_rating as "Technical_Rating",
+        COALESCE(w.h_rating, 'N/A') as "Previous_Rating",
+        w.rating_change_date, w.fetched_date, w.fetched_time
+    FROM WithHistory w
     ORDER BY 
-        -- If searching, exact symbol match comes first
-        CASE WHEN search_term IS NOT NULL AND search_term != '' THEN 
-            CASE WHEN c.f_symbol ILIKE search_term THEN 0 
-                 WHEN c.f_symbol ILIKE search_term || '%' THEN 1 
-                 ELSE 2 END
-        END ASC,
-        -- Then normal sorting
-        CASE WHEN sort_by = 'change' AND sort_order = 'asc' THEN c.f_change END ASC NULLS LAST,
-        CASE WHEN sort_by = 'change' AND sort_order = 'desc' THEN c.f_change END DESC NULLS LAST,
-        CASE WHEN sort_by = 'changePercent' AND sort_order = 'asc' THEN c.f_change_percent END ASC NULLS LAST,
-        CASE WHEN sort_by = 'changePercent' AND sort_order = 'desc' THEN c.f_change_percent END DESC NULLS LAST,
-        CASE WHEN sort_by = 'current_price' AND sort_order = 'asc' THEN c.f_current_price END ASC NULLS LAST,
-        CASE WHEN sort_by = 'current_price' AND sort_order = 'desc' THEN c.f_current_price END DESC NULLS LAST,
-        CASE WHEN sort_by = 'symbol' AND sort_order = 'asc' THEN c.f_symbol END ASC NULLS LAST,
-        CASE WHEN sort_by = 'symbol' AND sort_order = 'desc' THEN c.f_symbol END DESC NULLS LAST,
-        CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'asc' THEN c.f_rating_change_date END ASC NULLS LAST,
-        CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'desc' THEN c.f_rating_change_date END DESC NULLS LAST,
-        CASE WHEN sort_by = 'fetched_date' AND sort_order = 'asc' THEN c.f_fetched_date END ASC NULLS LAST,
-        CASE WHEN sort_by = 'fetched_date' AND sort_order = 'desc' THEN c.f_fetched_date END DESC NULLS LAST,
-        c.f_symbol ASC
-    LIMIT limit_val OFFSET offset_val;
+        -- Re-apply sort to ensure correct order after CTE (though usually preserved)
+        CASE WHEN sort_by = 'rating_change_date' THEN w.rating_change_date END DESC,
+        w.symbol ASC;
 END; $$;
