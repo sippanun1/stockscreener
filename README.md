@@ -29,14 +29,14 @@ npm install
 
 ### 2. 🗄️ Database Initialization (Supabase)
 
-Run the following SQL scripts in your **Supabase SQL Editor** in this exact order:
+Simply copy and run the contents of [`database/full_setup.sql`](database/full_setup.sql) in your **Supabase SQL Editor**.
 
-1.  **Create Tables**: Copy & Run [`database/01_schema.sql`](database/01_schema.sql)
-2.  **Add Indexes**: Copy & Run [`database/02_indexes.sql`](database/02_indexes.sql)
-3.  **UI Functions**: Copy & Run [`database/03_functions_ui.sql`](database/03_functions_ui.sql)
-4.  **Screener Logic**: Copy & Run [`database/04_functions_screener.sql`](database/04_functions_screener.sql)
+This master script handles:
+1.  **Core Schema**: Creates tables.
+2.  **Performance Indexes**: Optimizes sorting and filtering.
+3.  **UI & Screener Functions**: Sets up all necessary backend logic.
 
-*(Note: `05_drop_open_column.sql` is not needed if you started fresh with `01_schema.sql` as it's already updated).*
+*(Note: If you already have the database set up, running this script is safe as it uses `IF NOT EXISTS` and `OR REPLACE`).*
 
 ### 3. � Import Data (Restore Backup)
 
