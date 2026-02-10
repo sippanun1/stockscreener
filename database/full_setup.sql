@@ -78,6 +78,10 @@ DROP FUNCTION IF EXISTS public.get_dashboard_stats(text,date);
 DROP FUNCTION IF EXISTS public.get_stocks_count_filtered(text,date,text,text,text);
 DROP FUNCTION IF EXISTS public.get_top_gainers(text,date,integer);
 
+-- Drop old versions if they exist to clean up
+DROP FUNCTION IF EXISTS public.get_dashboard_stats_v3(text,date);
+DROP FUNCTION IF EXISTS public.get_top_gainers_v3(text,date,integer);
+
 -- DASHBOARD STATS
 CREATE OR REPLACE FUNCTION public.get_dashboard_stats(
     target_market TEXT DEFAULT NULL,
@@ -226,6 +230,8 @@ END; $$;
 -- =========================================================================================
 
 DROP FUNCTION IF EXISTS public.get_stocks(text,date,text,text,text,text,text,integer,integer);
+-- Drop old versions if they exist to clean up
+DROP FUNCTION IF EXISTS public.get_stocks_v3(text,date,text,text,text,text,text,integer,integer);
 
 -- MAIN STOCK TABLE (Search Optimized)
 CREATE OR REPLACE FUNCTION public.get_stocks(
