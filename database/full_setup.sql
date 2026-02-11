@@ -202,7 +202,7 @@ DECLARE
 BEGIN
     RETURN QUERY
     WITH StockCandidates AS (
-        SELECT sr.symbol, sr.market, sr.name, sr.current_price, sr.technical_rating, sr.fetched_date, sr.fetched_time
+        SELECT sr.symbol, sr.market, sr.name, sr.current_price, sr.change_percent, sr.technical_rating, sr.fetched_date, sr.fetched_time
         FROM public.stock_ratings sr
         WHERE sr.fetched_date >= (base_date - INTERVAL '60 days') -- Extended to 60 days
           AND sr.fetched_date <= base_date
