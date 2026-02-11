@@ -293,40 +293,64 @@ BEGIN
         -- Filter moved to StockCandidates for earlier execution
         ORDER BY sc.symbol, sc.fetched_date DESC, sc.fetched_time DESC
     ),
-    TopStocks AS (
+    -- Calculate daily change BEFORE sorting/filtering
+    WithDailyChange AS (
         SELECT 
             u.id, u.symbol, u.market, u.name, 
             u.current_price, u.technical_score, 
             u.technical_rating, u.rating_change_date, 
             u.fetched_date, u.fetched_time,
-            u.change_percent, u.price_change, u.previous_price
+            u.price_change, u.previous_price,
+            prev_close.close_price,
+            CASE 
+                WHEN prev_close.close_price > 0 THEN 
+                    ((u.current_price - prev_close.close_price) / prev_close.close_price * 100)
+                ELSE u.change_percent  -- Fallback to column value
+            END as calculated_change_percent
         FROM UniqueStocks u
-        WHERE u.current_price >= 0.2
-          -- We have already filtered OTC allow early filtering.
-          AND u.technical_rating != 'Neutral'
-          AND (target_rating IS NULL OR target_rating = '' OR u.technical_rating = target_rating)
+        LEFT JOIN LATERAL (
+            SELECT p.current_price as close_price
+            FROM public.stock_ratings p
+            WHERE p.symbol = u.symbol
+              AND (p.fetched_date < u.fetched_date OR (p.fetched_date = u.fetched_date AND p.fetched_time < u.fetched_time))
+              AND p.session_type = 'post_market'
+            ORDER BY p.fetched_date DESC, p.fetched_time DESC
+            LIMIT 1
+        ) prev_close ON TRUE
+    ),
+    TopStocks AS (
+        SELECT 
+            w.id, w.symbol, w.market, w.name, 
+            w.current_price, w.technical_score, 
+            w.technical_rating, w.rating_change_date, 
+            w.fetched_date, w.fetched_time,
+            w.calculated_change_percent, w.price_change, w.previous_price
+        FROM WithDailyChange w
+        WHERE w.current_price >= 0.2
+          AND w.technical_rating != 'Neutral'
+          AND (target_rating IS NULL OR target_rating = '' OR w.technical_rating = target_rating)
           AND (target_technical_rating IS NULL OR target_technical_rating = ''
-               OR (target_technical_rating = 'Positive' AND u.technical_rating IN ('Strong Buy', 'Buy'))
-               OR (target_technical_rating = 'Negative' AND u.technical_rating IN ('Strong Sell', 'Sell')))
+               OR (target_technical_rating = 'Positive' AND w.technical_rating IN ('Strong Buy', 'Buy'))
+               OR (target_technical_rating = 'Negative' AND w.technical_rating IN ('Strong Sell', 'Sell')))
         ORDER BY 
             CASE WHEN search_term IS NOT NULL AND search_term != '' THEN 
-                CASE WHEN u.symbol ILIKE search_term THEN 0 
-                     WHEN u.symbol ILIKE search_term || '%' THEN 1 
+                CASE WHEN w.symbol ILIKE search_term THEN 0 
+                     WHEN w.symbol ILIKE search_term || '%' THEN 1 
                      ELSE 2 END
             END ASC,
-            -- SPECIAL SORT: Top Gainers mode sorts by change_percent DESC
-            CASE WHEN sort_by = 'top_gainers' THEN u.change_percent END DESC NULLS LAST,
-            CASE WHEN sort_by = 'change' AND sort_order = 'asc' THEN u.price_change END ASC NULLS LAST,
-            CASE WHEN sort_by = 'change' AND sort_order = 'desc' THEN u.price_change END DESC NULLS LAST,
-            CASE WHEN sort_by = 'changePercent' AND sort_order = 'asc' THEN u.change_percent END ASC NULLS LAST,
-            CASE WHEN sort_by = 'changePercent' AND sort_order = 'desc' THEN u.change_percent END DESC NULLS LAST,
-            CASE WHEN sort_by = 'current_price' AND sort_order = 'asc' THEN u.current_price END ASC NULLS LAST,
-            CASE WHEN sort_by = 'current_price' AND sort_order = 'desc' THEN u.current_price END DESC NULLS LAST,
-            CASE WHEN sort_by = 'symbol' AND sort_order = 'asc' THEN u.symbol END ASC NULLS LAST,
-            CASE WHEN sort_by = 'symbol' AND sort_order = 'desc' THEN u.symbol END DESC NULLS LAST,
-            CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'asc' THEN u.rating_change_date END ASC NULLS LAST,
-            CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'desc' THEN u.rating_change_date END DESC NULLS LAST,
-            u.symbol ASC
+            -- SPECIAL SORT: Top Gainers mode sorts by calculated daily change
+            CASE WHEN sort_by = 'top_gainers' THEN w.calculated_change_percent END DESC NULLS LAST,
+            CASE WHEN sort_by = 'change' AND sort_order = 'asc' THEN w.price_change END ASC NULLS LAST,
+            CASE WHEN sort_by = 'change' AND sort_order = 'desc' THEN w.price_change END DESC NULLS LAST,
+            CASE WHEN sort_by = 'changePercent' AND sort_order = 'asc' THEN w.calculated_change_percent END ASC NULLS LAST,
+            CASE WHEN sort_by = 'changePercent' AND sort_order = 'desc' THEN w.calculated_change_percent END DESC NULLS LAST,
+            CASE WHEN sort_by = 'current_price' AND sort_order = 'asc' THEN w.current_price END ASC NULLS LAST,
+            CASE WHEN sort_by = 'current_price' AND sort_order = 'desc' THEN w.current_price END DESC NULLS LAST,
+            CASE WHEN sort_by = 'symbol' AND sort_order = 'asc' THEN w.symbol END ASC NULLS LAST,
+            CASE WHEN sort_by = 'symbol' AND sort_order = 'desc' THEN w.symbol END DESC NULLS LAST,
+            CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'asc' THEN w.rating_change_date END ASC NULLS LAST,
+            CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'desc' THEN w.rating_change_date END DESC NULLS LAST,
+            w.symbol ASC
         LIMIT limit_val OFFSET offset_val
     ),
     WithHistory AS (
@@ -335,15 +359,9 @@ BEGIN
             ts.current_price, ts.technical_score, ts.technical_rating, 
             ts.rating_change_date, ts.fetched_date, ts.fetched_time, 
             ts.price_change, ts.previous_price,
+            ts.calculated_change_percent,
             pre.h_rating, 
-            COALESCE(NULLIF(ts.previous_price, 0), pre.h_price, 0) as effective_prev_price,
-            -- Calculate daily change from previous day close (matching get_top_gainers logic)
-            prev_close.close_price,
-            CASE 
-                WHEN prev_close.close_price > 0 THEN 
-                    ((ts.current_price - prev_close.close_price) / prev_close.close_price * 100)
-                ELSE ts.change_percent  -- Fallback to column value if no previous close found
-            END as calculated_change_percent
+            COALESCE(NULLIF(ts.previous_price, 0), pre.h_price, 0) as effective_prev_price
         FROM TopStocks ts
         LEFT JOIN LATERAL (
             SELECT p.technical_rating as h_rating, p.current_price as h_price
@@ -355,27 +373,20 @@ BEGIN
             ORDER BY p.fetched_date DESC, p.fetched_time DESC
             LIMIT 1
         ) pre ON TRUE
-        LEFT JOIN LATERAL (
-            SELECT p.current_price as close_price
-            FROM public.stock_ratings p
-            WHERE p.symbol = ts.symbol
-              AND (p.fetched_date < ts.fetched_date OR (p.fetched_date = ts.fetched_date AND p.fetched_time < ts.fetched_time))
-              AND p.session_type = 'post_market'
-            ORDER BY p.fetched_date DESC, p.fetched_time DESC
-            LIMIT 1
-        ) prev_close ON TRUE
     )
     SELECT 
         w.id, w.symbol, w.market, w.name, 
         w.current_price, 
         w.effective_prev_price as previous_price,
         w.price_change as change,
-        w.calculated_change_percent as change_percent,  -- Use calculated value instead of column
+        w.calculated_change_percent as change_percent,
         w.technical_score, w.technical_rating as "Technical_Rating",
         COALESCE(w.h_rating, 'N/A') as "Previous_Rating",
         w.rating_change_date, w.fetched_date, w.fetched_time
     FROM WithHistory w
     ORDER BY 
+       -- Top Gainers sort (by daily change %)
+       CASE WHEN sort_by = 'top_gainers' THEN w.calculated_change_percent END DESC NULLS LAST,
        CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'desc' THEN w.rating_change_date END DESC NULLS LAST,
        CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'asc' THEN w.rating_change_date END ASC NULLS LAST,
        w.symbol ASC;
