@@ -55,9 +55,10 @@ ON public.stock_ratings (fetched_date DESC, market, technical_rating)
 INCLUDE (symbol, name, current_price, technical_score, rating_change_date)
 WHERE symbol NOT LIKE 'OTC:%';
 
--- Speed up deduplication sorting (DISTINCT ON symbol)
-CREATE INDEX IF NOT EXISTS idx_stock_ratings_symbol_lookup 
-ON public.stock_ratings (symbol);
+-- Speed up deduplication sorting (DISTINCT ON symbol) - CRITICAL for 60-day lookback
+DROP INDEX IF EXISTS idx_stock_ratings_symbol_lookup;
+CREATE INDEX IF NOT EXISTS idx_stock_ratings_latest_lookup 
+ON public.stock_ratings (symbol, fetched_date DESC, fetched_time DESC);
 
 -- Optimize date-based signal change tracking
 CREATE INDEX IF NOT EXISTS idx_stock_ratings_signal_date 
@@ -93,40 +94,16 @@ DECLARE
     result JSON;
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
 BEGIN
-    -- Optimization: Direct aggregation without heavy DISTINCT ON if possible, 
-    -- but to ensure we get the LATEST entry per symbol, we MUST use a window function or distinct on.
-    -- The previous DISTINCT ON (symbol) ORDER BY symbol, fetched_date DESC, fetched_time DESC was slow.
-    -- We can optimize by filtering via the new index first.
-
-    WITH StockCandidates AS (
-        SELECT 
-            sr.technical_rating,
-            sr.current_price,
-            sr.fetched_date
-        FROM public.stock_ratings sr
-        WHERE sr.fetched_date = base_date -- Optimization: Look ONLY at specific date if possible (or small range)
-          -- Note: If data is missing for base_date, we might need lookback, but 90 days wide scan is killing performance.
-          -- Let's try to limit scope to JUST the latest date present in DB if base_date is not found?
-          -- For now, let's Stick to the logic but use the INDEX `idx_stock_ratings_screener_cover` efficiently.
-          AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
-          AND sr.symbol NOT LIKE 'OTC:%'
-          AND sr.current_price >= 0.2
-          AND sr.technical_rating != 'Neutral'
-    ),
-    LatestPerSymbol AS (
-        -- If we assume the data is dense, maybe we don't need distinct on for a single day?
-        -- Actually, a single day might have multiple fetches (pre/post). 
-        -- We just want the latest time.
+    WITH LatestPerSymbol AS (
         SELECT DISTINCT ON (sr.symbol)
             sr.technical_rating,
-            sr.fetched_date
+            sr.fetched_date,
+            sr.current_price
         FROM public.stock_ratings sr
-        WHERE sr.fetched_date >= (base_date - INTERVAL '30 days') -- Reduced lookback from 90 to 30 for speed
+        WHERE sr.fetched_date >= (base_date - INTERVAL '60 days') -- Standardized to 60 days
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
-          AND sr.current_price >= 0.2
-          AND sr.technical_rating != 'Neutral'
         ORDER BY sr.symbol, sr.fetched_date DESC, sr.fetched_time DESC
     )
     SELECT json_build_object(
@@ -139,7 +116,9 @@ BEGIN
         'neutral', COUNT(*) FILTER (WHERE l.technical_rating = 'Neutral'),
         'date', MAX(l.fetched_date) 
     ) INTO result
-    FROM LatestPerSymbol l;
+    FROM LatestPerSymbol l
+    WHERE l.current_price >= 0.2
+      AND l.technical_rating != 'Neutral';
     
     RETURN result;
 END; $$;
@@ -156,8 +135,8 @@ RETURNS TABLE (total BIGINT)
 LANGUAGE plpgsql AS $$
 DECLARE
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
-    -- Reduced default lookback to 30 days for speed, unless searching
-    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 30 END;
+    -- 60 days default lookback, 365 if searching
+    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 60 END;
 BEGIN
     RETURN QUERY 
     WITH UniqueStocks AS (
@@ -198,7 +177,7 @@ BEGIN
     WITH StockCandidates AS (
         SELECT sr.symbol, sr.market, sr.name, sr.current_price, sr.technical_rating, sr.fetched_date, sr.fetched_time
         FROM public.stock_ratings sr
-        WHERE sr.fetched_date >= (base_date - INTERVAL '30 days') -- Reduced to 30
+        WHERE sr.fetched_date >= (base_date - INTERVAL '60 days') -- Extended to 60 days
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
@@ -265,8 +244,8 @@ RETURNS TABLE (
 LANGUAGE plpgsql AS $$
 DECLARE
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
-    -- Optimized lookback
-    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 90 END;
+    -- Optimized lookback with 60 days default
+    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 60 END;
 BEGIN
     RETURN QUERY
     WITH StockCandidates AS (
