@@ -358,7 +358,7 @@
         LatestPerSymbol AS (
             SELECT sr.id, sr.symbol, sr.daily_change_percent, sr.daily_change_amount, 
                    sr.technical_rating, sr.current_price, sr.rating_change_date, sr.market, sr.name,
-                   sr.fetched_date, sr.fetched_time, sr.technical_score, sr.price_change, sr.previous_price
+                   sr.fetched_date, sr.fetched_time, sr.technical_score, sr.prev_close_price
             FROM LatestIds l JOIN public.stock_ratings sr ON sr.id = l.id
             WHERE (p_market IS NULL OR p_market = '' OR sr.market = p_market)
             AND sr.symbol NOT LIKE 'OTC:%'
@@ -412,7 +412,7 @@
         )
         SELECT 
             w.id, w.symbol, w.market, w.name, w.current_price, 
-            COALESCE(NULLIF(w.previous_price, 0), w.h_price, 0), -- Fallback to history only if needed
+            COALESCE(NULLIF(w.prev_close_price, 0), w.h_price, 0), -- Use prev_close_price instead of previous_price
             COALESCE(w.daily_change_amount, 0), 
             COALESCE(w.daily_change_percent, 0),
             w.technical_score, w.technical_rating, 
