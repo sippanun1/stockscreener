@@ -166,6 +166,7 @@ def root():
 
 
 @app.get("/api/stocks")
+@app.get("/api/stocks")
 def get_stocks(
     market: Optional[str] = Query(None, description="Filter by market: US, TH, HK, JP"),
     date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
@@ -176,6 +177,7 @@ def get_stocks(
     sort_order: str = Query('desc', description="Sort order: asc or desc"),
     limit: int = Query(100, ge=1, le=50000, description="Number of results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
+    lookback: Optional[int] = Query(None, description="Lookback days for historical data (Null for infinite)"),
     _auth: bool = Depends(verify_api_key)
 ):
     """
@@ -206,7 +208,8 @@ def get_stocks(
             sort_by=sort_by,
             sort_order=sort_order,
             limit=limit,
-            offset=offset
+            offset=offset,
+            lookback_days=lookback
         )
         
         # Get total count matching the same filters (for "Total Signal" display)
@@ -215,7 +218,8 @@ def get_stocks(
             date=date,
             search=search,
             rating=rating,
-            technical_rating=technical_rating
+            technical_rating=technical_rating,
+            lookback_days=lookback
         )
         
         logger.debug(f"Fetched {len(stocks)} stocks out of {total_count} total (market={market}, date={date}, technical_rating={technical_rating})")

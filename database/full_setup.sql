@@ -353,6 +353,51 @@ BEGIN
         w.rating_change_date, w.fetched_date, w.fetched_time
     FROM WithHistory w
     ORDER BY 
-       CASE WHEN sort_by = 'rating_change_date' THEN w.rating_change_date END DESC,
+       CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'desc' THEN w.rating_change_date END DESC NULLS LAST,
+       CASE WHEN sort_by = 'rating_change_date' AND sort_order = 'asc' THEN w.rating_change_date END ASC NULLS LAST,
        w.symbol ASC;
 END; $$;
+
+-- 5. Automation Triggers (Future Proofing)
+-- =========================================================================================
+
+-- Trigger to automatically calculate 'rating_change_date' on INSERT
+-- This ensures that no matter what script inserts data, the streak logic is always correct.
+CREATE OR REPLACE FUNCTION public.auto_calculate_rating_date()
+RETURNS TRIGGER AS $$
+DECLARE
+    last_rating TEXT;
+    last_change_date DATE;
+BEGIN
+    -- Find the most recent record for this symbol (before the new one)
+    SELECT technical_rating, rating_change_date
+    INTO last_rating, last_change_date
+    FROM public.stock_ratings
+    WHERE symbol = NEW.symbol
+    ORDER BY fetched_date DESC, fetched_time DESC
+    LIMIT 1;
+
+    -- If no previous record, it's a new stock -> Date is today
+    IF last_rating IS NULL THEN
+        NEW.rating_change_date := NEW.fetched_date;
+    
+    -- If rating hasn't changed, keep the old date (Streak continues)
+    ELSIF last_rating = NEW.technical_rating THEN
+        NEW.rating_change_date := last_change_date;
+    
+    -- If rating changed, reset date to today (Streak starts)
+    ELSE
+        NEW.rating_change_date := NEW.fetched_date;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply Trigger
+DROP TRIGGER IF EXISTS trigger_calc_rating_date ON public.stock_ratings;
+CREATE TRIGGER trigger_calc_rating_date
+BEFORE INSERT ON public.stock_ratings
+FOR EACH ROW
+EXECUTE FUNCTION public.auto_calculate_rating_date();
+

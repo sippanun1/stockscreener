@@ -244,7 +244,8 @@ def get_stocks_with_previous_rating(
     sort_by: str = 'fetched_date',
     sort_order: str = 'desc',
     limit: int = 100,
-    offset: int = 0
+    offset: int = 0,
+    lookback_days: Optional[int] = None
 ):
     """
     Get stocks using the Supabase RPC function `get_stocks_with_last_rating`.
@@ -269,7 +270,8 @@ def get_stocks_with_previous_rating(
             "sort_by": sort_by,
             "sort_order": sort_order,
             "limit_val": batch_size,
-            "offset_val": current_offset
+            "offset_val": current_offset,
+            "lookback_days": lookback_days
         }
         
         try:
@@ -312,7 +314,8 @@ def get_stocks_count(
     date: Optional[str] = None,
     search: Optional[str] = None,
     rating: Optional[str] = None,
-    technical_rating: Optional[str] = None
+    technical_rating: Optional[str] = None,
+    lookback_days: Optional[int] = None
 ) -> int:
     """
     Get total count of stocks matching filters.
@@ -327,7 +330,8 @@ def get_stocks_count(
             "target_date": date,
             "search_term": search,
             "target_rating": rating,
-            "target_technical_rating": technical_rating
+            "target_technical_rating": technical_rating,
+            "lookback_days": lookback_days
         }
         
         # Use a dedicated count RPC function for better performance
