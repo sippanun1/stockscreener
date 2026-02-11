@@ -215,15 +215,11 @@ BEGIN
         FROM StockCandidates sc
         ORDER BY sc.symbol, sc.fetched_date DESC, sc.fetched_time DESC
     ),
-    FilteredStocks AS (
-        SELECT * FROM UniqueStocks u
-        WHERE u.technical_rating IN ('Strong Buy', 'Buy')
-    ),
     WithHistory AS (
         SELECT 
             u.symbol, u.market, u.name, u.current_price,
             pre.h_price
-        FROM FilteredStocks u
+        FROM UniqueStocks u
         LEFT JOIN LATERAL (
             SELECT p.current_price as h_price
             FROM public.stock_ratings p
