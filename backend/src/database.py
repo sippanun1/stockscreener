@@ -262,16 +262,16 @@ def get_stocks_with_previous_rating(
         batch_size = min(remaining_limit, 1000)
         
         params = {
-            "target_market": market,
-            "target_date": date,
-            "search_term": search,
-            "target_rating": rating,
-            "target_technical_rating": technical_rating,
-            "sort_by": sort_by,
-            "sort_order": sort_order,
-            "limit_val": batch_size,
-            "offset_val": current_offset,
-            "lookback_days": lookback_days
+            "p_market": market,
+            "p_date": date,
+            "p_search": search,
+            "p_rating": rating,
+            "p_tech_rating": technical_rating,
+            "p_sort_by": sort_by,
+            "p_sort_order": sort_order,
+            "p_limit": batch_size,
+            "p_offset": current_offset,
+            "p_lookback": lookback_days
         }
         
         try:
@@ -283,18 +283,19 @@ def get_stocks_with_previous_rating(
                 
             for row in response.data:
                 all_results.append({
-                    "symbol": row["symbol"],
-                    "market": row["market"],
-                    "name": row["name"],
-                    "current_price": row["current_price"],
-                    "Technical_Rating": row["Technical_Rating"],
-                    "Previous_Rating": row["Previous_Rating"],
-                    "previous_price": row["previous_price"],
-                    "change": row.get("change", 0),
-                    "changePercent": row.get("change_percent", 0),
-                    "rating_change_date": row["rating_change_date"],
-                    "fetched_date": row["fetched_date"],
-                    "fetched_time": row["fetched_time"]
+                    "id": row["res_id"],
+                    "symbol": row["res_symbol"],
+                    "market": row["res_market"],
+                    "name": row["res_name"],
+                    "current_price": row["res_current_price"],
+                    "Technical_Rating": row["res_technical_rating"],
+                    "Previous_Rating": row["res_previous_rating"],
+                    "previous_price": row["res_previous_price"],
+                    "change": row.get("res_change", 0),
+                    "changePercent": row.get("res_change_pct", 0),
+                    "rating_change_date": row["res_rating_change_date"],
+                    "fetched_date": row["res_fetched_date"],
+                    "fetched_time": row["res_fetched_time"]
                 })
             
             if len(response.data) < batch_size:
@@ -326,19 +327,19 @@ def get_stocks_count(
     
     try:
         params = {
-            "target_market": market,
-            "target_date": date,
-            "search_term": search,
-            "target_rating": rating,
-            "target_technical_rating": technical_rating,
-            "lookback_days": lookback_days
+            "p_market": market,
+            "p_date": date,
+            "p_search": search,
+            "p_rating": rating,
+            "p_tech_rating": technical_rating,
+            "p_lookback": lookback_days
         }
         
         # Use a dedicated count RPC function for better performance
         response = client.rpc("get_stocks_count_filtered", params).execute()
         
         if response.data and len(response.data) > 0:
-            return response.data[0].get("total", 0)
+            return response.data[0].get("res_total", 0)
         
         return 0
         
@@ -553,8 +554,8 @@ def get_today_summary(market=None, date=None):
     try:
         # 1. Get Stats (Counts) [Updated: removed _v3]
         stats_res = client.rpc("get_dashboard_stats", {
-            "target_market": market,
-            "target_date": date
+            "p_market": market,
+            "p_date": date
         }).execute()
         
         if not stats_res.data:
@@ -567,9 +568,9 @@ def get_today_summary(market=None, date=None):
             
         # 2. Get Top Gainers [Updated: removed _v3]
         gainers_res = client.rpc("get_top_gainers", {
-            "target_market": market,
-            "target_date": date,
-            "limit_val": 3
+            "p_market": market,
+            "p_date": date,
+            "p_limit": 3
         }).execute()
         top_gainers = gainers_res.data if gainers_res.data else []
 
@@ -598,7 +599,16 @@ def get_today_summary(market=None, date=None):
             
             "change_from_yesterday": 0, 
             "upgrades_change_from_yesterday": 0, 
-            "top_opportunities": top_gainers
+            "top_opportunities": [
+                {
+                    "symbol": g.get("res_symbol"),
+                    "market": g.get("res_market"),
+                    "name": g.get("res_name"),
+                    "current_price": g.get("res_price"),
+                    "change_percent": g.get("res_change_pct"),
+                    "fetched_date": g.get("res_date")
+                } for g in top_gainers
+            ]
         }
     except Exception as e:
         logger.error(f"Error summary: {e}")

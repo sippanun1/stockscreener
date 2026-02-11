@@ -62,8 +62,8 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   if (currentFilters?.search && currentFilters.search.trim() !== '') {
     params.append('search', currentFilters.search);
     // FIX: Do NOT append market filter if searching, to allow finding stocks globally
-  } else if (currentFilters?.market && currentFilters.market !== 'all') {
-    // Only append market if NOT searching
+  } else if (currentFilters?.market && currentFilters.market.toLowerCase() !== 'all' && currentFilters.market !== '') {
+    // Only append market if NOT searching and NOT 'all'
     params.append('market', currentFilters.market);
   }
 
