@@ -49,10 +49,9 @@ def export_table_to_csv(table_name: str, output_dir: str):
                 logger.debug(f"⏳ Fetching rows {offset} to {min(offset + batch_size, total_rows)}...")
                 
                 if table_name == "stock_ratings":
-                    # Explicitly select columns to exclude 'open' if it still exists in DB
-                    # (and ensuring we get a clean export even before running the drop script)
+                    # Corrected selection after cleanup: removed legacy columns
                     res = supabase.table(table_name)\
-                        .select("id,symbol,market,name,current_price,technical_score,technical_rating,fetched_date,fetched_time,session_type,rating_change_date,previous_price,price_change,change_percent")\
+                        .select("id,symbol,market,name,current_price,technical_score,technical_rating,fetched_date,fetched_time,session_type,rating_change_date,daily_change_percent,daily_change_amount,prev_close_price")\
                         .order("id", desc=False)\
                         .range(offset, offset + batch_size - 1)\
                         .execute()

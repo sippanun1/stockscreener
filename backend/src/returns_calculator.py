@@ -25,11 +25,11 @@ def get_next_available_date(symbol: str, start_date: str, n: int = 1):
     return None
 
 def get_price_on_date(symbol: str, date: str):
-    """ดึงราคา open ของหุ้นในวันที่กำหนด"""
+    """ดึงราคาของหุ้นในวันที่กำหนด"""
     client = get_client()
     
     result = client.table("stock_ratings")\
-        .select("open, current_price")\
+        .select("current_price")\
         .eq("symbol", symbol)\
         .eq("fetched_date", date)\
         .order("fetched_time", desc=True)\
@@ -37,7 +37,7 @@ def get_price_on_date(symbol: str, date: str):
         .execute()
     
     if result.data:
-        return result.data[0].get('open') or result.data[0].get('current_price')
+        return result.data[0].get('current_price')
     return None
 
 def calculate_pending_returns():
