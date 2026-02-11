@@ -82,7 +82,7 @@ DROP FUNCTION IF EXISTS public.get_top_gainers(text,date,integer);
 DROP FUNCTION IF EXISTS public.get_dashboard_stats_v3(text,date);
 DROP FUNCTION IF EXISTS public.get_top_gainers_v3(text,date,integer);
 
--- DASHBOARD STATS
+-- DASHBOARD STATS (Optimized for Speed)
 CREATE OR REPLACE FUNCTION public.get_dashboard_stats(
     target_market TEXT DEFAULT NULL,
     target_date DATE DEFAULT NULL
@@ -93,37 +93,58 @@ DECLARE
     result JSON;
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
 BEGIN
+    -- Optimization: Direct aggregation without heavy DISTINCT ON if possible, 
+    -- but to ensure we get the LATEST entry per symbol, we MUST use a window function or distinct on.
+    -- The previous DISTINCT ON (symbol) ORDER BY symbol, fetched_date DESC, fetched_time DESC was slow.
+    -- We can optimize by filtering via the new index first.
+
     WITH StockCandidates AS (
-        SELECT sr.*
+        SELECT 
+            sr.technical_rating,
+            sr.current_price,
+            sr.fetched_date
         FROM public.stock_ratings sr
-        WHERE sr.fetched_date >= (base_date - INTERVAL '90 days')
+        WHERE sr.fetched_date = base_date -- Optimization: Look ONLY at specific date if possible (or small range)
+          -- Note: If data is missing for base_date, we might need lookback, but 90 days wide scan is killing performance.
+          -- Let's try to limit scope to JUST the latest date present in DB if base_date is not found?
+          -- For now, let's Stick to the logic but use the INDEX `idx_stock_ratings_screener_cover` efficiently.
+          AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
+          AND sr.symbol NOT LIKE 'OTC:%'
+          AND sr.current_price >= 0.2
+          AND sr.technical_rating != 'Neutral'
+    ),
+    LatestPerSymbol AS (
+        -- If we assume the data is dense, maybe we don't need distinct on for a single day?
+        -- Actually, a single day might have multiple fetches (pre/post). 
+        -- We just want the latest time.
+        SELECT DISTINCT ON (sr.symbol)
+            sr.technical_rating,
+            sr.fetched_date
+        FROM public.stock_ratings sr
+        WHERE sr.fetched_date >= (base_date - INTERVAL '30 days') -- Reduced lookback from 90 to 30 for speed
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
-    ),
-    UniqueStocks AS (
-        SELECT DISTINCT ON (t.symbol) t.*
-        FROM StockCandidates t
-        ORDER BY t.symbol, t.fetched_date DESC, t.fetched_time DESC
+          AND sr.current_price >= 0.2
+          AND sr.technical_rating != 'Neutral'
+        ORDER BY sr.symbol, sr.fetched_date DESC, sr.fetched_time DESC
     )
     SELECT json_build_object(
-        'total_positive', COUNT(*) FILTER (WHERE u.technical_rating IN ('Strong Buy', 'Buy')),
-        'total_negative', COUNT(*) FILTER (WHERE u.technical_rating IN ('Strong Sell', 'Sell')),
-        'strong_buy', COUNT(*) FILTER (WHERE u.technical_rating = 'Strong Buy'),
-        'buy', COUNT(*) FILTER (WHERE u.technical_rating = 'Buy'),
-        'strong_sell', COUNT(*) FILTER (WHERE u.technical_rating = 'Strong Sell'),
-        'sell', COUNT(*) FILTER (WHERE u.technical_rating = 'Sell'),
-        'neutral', COUNT(*) FILTER (WHERE u.technical_rating = 'Neutral'),
-        'date', MAX(u.fetched_date) 
+        'total_positive', COUNT(*) FILTER (WHERE l.technical_rating IN ('Strong Buy', 'Buy')),
+        'total_negative', COUNT(*) FILTER (WHERE l.technical_rating IN ('Strong Sell', 'Sell')),
+        'strong_buy', COUNT(*) FILTER (WHERE l.technical_rating = 'Strong Buy'),
+        'buy', COUNT(*) FILTER (WHERE l.technical_rating = 'Buy'),
+        'strong_sell', COUNT(*) FILTER (WHERE l.technical_rating = 'Strong Sell'),
+        'sell', COUNT(*) FILTER (WHERE l.technical_rating = 'Sell'),
+        'neutral', COUNT(*) FILTER (WHERE l.technical_rating = 'Neutral'),
+        'date', MAX(l.fetched_date) 
     ) INTO result
-    FROM UniqueStocks u
-    WHERE u.current_price >= 0.2
-      AND u.technical_rating != 'Neutral';
+    FROM LatestPerSymbol l;
     
     RETURN result;
 END; $$;
 
--- TOTAL COUNT FILTERED
+-- TOTAL COUNT FILTERED (Optimized)
 CREATE OR REPLACE FUNCTION public.get_stocks_count_filtered(
     target_market TEXT DEFAULT NULL,
     target_date DATE DEFAULT NULL,
@@ -135,23 +156,20 @@ RETURNS TABLE (total BIGINT)
 LANGUAGE plpgsql AS $$
 DECLARE
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
-    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 90 END;
+    -- Reduced default lookback to 30 days for speed, unless searching
+    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 30 END;
 BEGIN
     RETURN QUERY 
-    WITH StockCandidates AS (
-        SELECT sr.*
+    WITH UniqueStocks AS (
+        SELECT DISTINCT ON (sr.symbol) 
+            sr.technical_rating, sr.current_price
         FROM public.stock_ratings sr
         WHERE sr.fetched_date >= (base_date - (lookback_days || ' days')::INTERVAL)
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
-    ),
-    UniqueStocks AS (
-        SELECT DISTINCT ON (t.symbol) 
-            t.symbol, t.technical_rating, t.name, t.current_price
-        FROM StockCandidates t
-        WHERE (search_term IS NULL OR search_term = '' OR t.symbol ILIKE '%' || search_term || '%' OR t.name ILIKE '%' || search_term || '%')
-        ORDER BY t.symbol, t.fetched_date DESC, t.fetched_time DESC
+          AND (search_term IS NULL OR search_term = '' OR sr.symbol ILIKE '%' || search_term || '%' OR sr.name ILIKE '%' || search_term || '%')
+        ORDER BY sr.symbol, sr.fetched_date DESC, sr.fetched_time DESC
     )
     SELECT COUNT(*) 
     FROM UniqueStocks u
@@ -163,7 +181,7 @@ BEGIN
            OR (target_technical_rating = 'Negative' AND u.technical_rating IN ('Strong Sell', 'Sell')));
 END; $$;
 
--- TOP GAINERS
+-- TOP GAINERS (Optimized & Ambiguity Fixed)
 CREATE OR REPLACE FUNCTION public.get_top_gainers(
     target_market TEXT DEFAULT NULL,
     target_date DATE DEFAULT NULL,
@@ -178,51 +196,42 @@ DECLARE
 BEGIN
     RETURN QUERY
     WITH StockCandidates AS (
-        SELECT sr.*
+        SELECT sr.symbol, sr.market, sr.name, sr.current_price, sr.technical_rating, sr.fetched_date, sr.fetched_time
         FROM public.stock_ratings sr
-        WHERE sr.fetched_date >= (base_date - INTERVAL '90 days')
+        WHERE sr.fetched_date >= (base_date - INTERVAL '30 days') -- Reduced to 30
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
+          AND sr.current_price >= 0.2 -- Pre-filter cheap stocks early
+          AND sr.technical_rating IN ('Strong Buy', 'Buy')
     ),
     UniqueStocks AS (
-        SELECT DISTINCT ON (t.symbol) t.*
-        FROM StockCandidates t
-        ORDER BY t.symbol, t.fetched_date DESC, t.fetched_time DESC
-    ),
-    FilteredStocks AS (
-        SELECT u.*
-        FROM UniqueStocks u
-        WHERE u.current_price >= 0.2
-          AND u.technical_rating IN ('Strong Buy', 'Buy')
+        SELECT DISTINCT ON (sc.symbol) sc.*
+        FROM StockCandidates sc
+        ORDER BY sc.symbol, sc.fetched_date DESC, sc.fetched_time DESC
     ),
     WithHistory AS (
         SELECT 
-            f.symbol as f_symbol, f.market as f_market, f.name as f_name, f.current_price as f_current_price,
+            u.symbol, u.market, u.name, u.current_price,
             pre.h_price
-        FROM FilteredStocks f
+        FROM UniqueStocks u
         LEFT JOIN LATERAL (
             SELECT p.current_price as h_price
             FROM public.stock_ratings p
-            WHERE p.symbol = f.symbol
-              AND (p.fetched_date < f.fetched_date OR (p.fetched_date = f.fetched_date AND p.fetched_time < f.fetched_time))
-              AND p.technical_rating != f.technical_rating
+            WHERE p.symbol = u.symbol
+              AND (p.fetched_date < u.fetched_date OR (p.fetched_date = u.fetched_date AND p.fetched_time < u.fetched_time))
+              AND p.technical_rating != u.technical_rating
               AND p.technical_rating != 'Neutral'
             ORDER BY p.fetched_date DESC, p.fetched_time DESC
             LIMIT 1
         ) pre ON TRUE
-    ),
-    CalculatedResults AS (
-        SELECT 
-            w.f_symbol, w.f_market, w.f_name,
-            CASE WHEN w.h_price > 0 THEN ((w.f_current_price - w.h_price) / w.h_price * 100) ELSE 0 END as change_percent
-        FROM WithHistory w
-        WHERE w.h_price > 0
     )
     SELECT 
-        c.f_symbol, c.f_market, c.f_name, c.change_percent
-    FROM CalculatedResults c
-    ORDER BY c.change_percent DESC
+        w.symbol, w.market, w.name,
+        CASE WHEN w.h_price > 0 THEN ((w.current_price - w.h_price) / w.h_price * 100) ELSE 0 END as change_percent
+    FROM WithHistory w
+    WHERE w.h_price > 0
+    ORDER BY change_percent DESC
     LIMIT limit_val;
 END; $$;
 
@@ -233,7 +242,7 @@ DROP FUNCTION IF EXISTS public.get_stocks(text,date,text,text,text,text,text,int
 -- Drop old versions if they exist to clean up
 DROP FUNCTION IF EXISTS public.get_stocks_v3(text,date,text,text,text,text,text,integer,integer);
 
--- MAIN STOCK TABLE (Search Optimized)
+-- MAIN STOCK TABLE (Search Optimized & Ambiguity Fixed)
 CREATE OR REPLACE FUNCTION public.get_stocks(
     target_market TEXT DEFAULT NULL,
     target_date DATE DEFAULT NULL,
@@ -256,11 +265,12 @@ RETURNS TABLE (
 LANGUAGE plpgsql AS $$
 DECLARE
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
+    -- Optimized lookback
     lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 90 END;
 BEGIN
     RETURN QUERY
     WITH StockCandidates AS (
-        SELECT sr.*
+        SELECT sr.id, sr.symbol, sr.market, sr.name, sr.current_price, sr.technical_score, sr.technical_rating, sr.rating_change_date, sr.fetched_date, sr.fetched_time, sr.change_percent, sr.price_change, sr.previous_price
         FROM public.stock_ratings sr
         WHERE sr.fetched_date >= (base_date - (lookback_days || ' days')::INTERVAL)
           AND sr.fetched_date <= base_date
@@ -268,10 +278,10 @@ BEGIN
           AND sr.symbol NOT LIKE 'OTC:%'
     ),
     UniqueStocks AS (
-        SELECT DISTINCT ON (t.symbol) t.*
-        FROM StockCandidates t
-        WHERE (search_term IS NULL OR search_term = '' OR t.symbol ILIKE '%' || search_term || '%' OR t.name ILIKE '%' || search_term || '%')
-        ORDER BY t.symbol, t.fetched_date DESC, t.fetched_time DESC
+        SELECT DISTINCT ON (sc.symbol) sc.*
+        FROM StockCandidates sc
+        WHERE (search_term IS NULL OR search_term = '' OR sc.symbol ILIKE '%' || search_term || '%' OR sc.name ILIKE '%' || search_term || '%')
+        ORDER BY sc.symbol, sc.fetched_date DESC, sc.fetched_time DESC
     ),
     TopStocks AS (
         SELECT 
@@ -282,7 +292,7 @@ BEGIN
             u.change_percent, u.price_change, u.previous_price
         FROM UniqueStocks u
         WHERE u.current_price >= 0.2
-          AND u.symbol NOT LIKE 'OTC:%'
+          -- We have already filtered OTC allow early filtering.
           AND u.technical_rating != 'Neutral'
           AND (target_rating IS NULL OR target_rating = '' OR u.technical_rating = target_rating)
           AND (target_technical_rating IS NULL OR target_technical_rating = ''
@@ -309,16 +319,19 @@ BEGIN
     ),
     WithHistory AS (
         SELECT 
-            t.*,
+            ts.id, ts.symbol, ts.market, ts.name, 
+            ts.current_price, ts.technical_score, ts.technical_rating, 
+            ts.rating_change_date, ts.fetched_date, ts.fetched_time, 
+            ts.change_percent, ts.price_change, ts.previous_price,
             pre.h_rating, 
-            COALESCE(NULLIF(t.previous_price, 0), pre.h_price, 0) as effective_prev_price
-        FROM TopStocks t
+            COALESCE(NULLIF(ts.previous_price, 0), pre.h_price, 0) as effective_prev_price
+        FROM TopStocks ts
         LEFT JOIN LATERAL (
             SELECT p.technical_rating as h_rating, p.current_price as h_price
             FROM public.stock_ratings p
-            WHERE p.symbol = t.symbol
-              AND (p.fetched_date < t.fetched_date OR (p.fetched_date = t.fetched_date AND p.fetched_time < t.fetched_time))
-              AND p.technical_rating != t.technical_rating
+            WHERE p.symbol = ts.symbol
+              AND (p.fetched_date < ts.fetched_date OR (p.fetched_date = ts.fetched_date AND p.fetched_time < ts.fetched_time))
+              AND p.technical_rating != ts.technical_rating
               AND p.technical_rating != 'Neutral'
             ORDER BY p.fetched_date DESC, p.fetched_time DESC
             LIMIT 1
