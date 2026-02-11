@@ -124,12 +124,15 @@ BEGIN
 END; $$;
 
 -- TOTAL COUNT FILTERED (Optimized)
+DROP FUNCTION IF EXISTS public.get_stocks_count_filtered(text,date,text,text,text); -- Drop old signature if needed strict match? PostgREST handles overloading but better safe.
+
 CREATE OR REPLACE FUNCTION public.get_stocks_count_filtered(
     target_market TEXT DEFAULT NULL,
     target_date DATE DEFAULT NULL,
     search_term TEXT DEFAULT NULL,
     target_rating TEXT DEFAULT NULL,
-    target_technical_rating TEXT DEFAULT NULL
+    target_technical_rating TEXT DEFAULT NULL,
+    lookback_days INT DEFAULT NULL
 )
 RETURNS TABLE (total BIGINT) 
 LANGUAGE plpgsql AS $$
@@ -142,8 +145,7 @@ BEGIN
             sr.technical_rating, sr.current_price
         FROM public.stock_ratings sr
         WHERE 
-          -- Logic: Search = Infinite Lookback, Browse = 60 days
-          (search_term IS NOT NULL AND search_term != '' OR sr.fetched_date >= (base_date - INTERVAL '60 days'))
+          (lookback_days IS NULL OR sr.fetched_date >= (base_date - (lookback_days || ' days')::INTERVAL))
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
@@ -231,7 +233,8 @@ CREATE OR REPLACE FUNCTION public.get_stocks(
     sort_by TEXT DEFAULT 'rating_change_date',
     sort_order TEXT DEFAULT 'desc',
     limit_val INT DEFAULT 100,
-    offset_val INT DEFAULT 0
+    offset_val INT DEFAULT 0,
+    lookback_days INT DEFAULT NULL -- NULL = Infinite (All Time)
 )
 RETURNS TABLE (
     id BIGINT, symbol TEXT, market TEXT, name TEXT,
@@ -250,8 +253,9 @@ BEGIN
         SELECT sr.id, sr.symbol, sr.market, sr.name, sr.current_price, sr.technical_score, sr.technical_rating, sr.rating_change_date, sr.fetched_date, sr.fetched_time, sr.change_percent, sr.price_change, sr.previous_price
         FROM public.stock_ratings sr
         WHERE 
-          -- Logic: If searching, ignore date limit (Infinite Lookback). If browsing, limit to 60 days.
-          (search_term IS NOT NULL AND search_term != '' OR sr.fetched_date >= (base_date - INTERVAL '60 days'))
+          -- Logic: If lookback_days is NULL, we look at ALL history. 
+          -- This is optimized for the index (symbol, fetched_date DESC) as it skips date filtering.
+          (lookback_days IS NULL OR sr.fetched_date >= (base_date - (lookback_days || ' days')::INTERVAL))
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
