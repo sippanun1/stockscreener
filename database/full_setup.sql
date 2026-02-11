@@ -41,6 +41,28 @@ CREATE TABLE IF NOT EXISTS public.signal_returns (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure schema compatibility for signal_returns (if 'entry_date' is missing but 'date' exists or otherwise)
+DO $$ 
+BEGIN 
+    -- Check if entry_date exists, if not, try to rename date or create it
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='signal_returns' AND column_name='entry_date') THEN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='signal_returns' AND column_name='date') THEN
+            ALTER TABLE public.signal_returns RENAME COLUMN date TO entry_date;
+        ELSE
+            ALTER TABLE public.signal_returns ADD COLUMN entry_date DATE;
+        END IF;
+    END IF;
+    
+     -- Check if entry_price exists, if not, try to rename price or create it
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='signal_returns' AND column_name='entry_price') THEN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='signal_returns' AND column_name='price') THEN
+             ALTER TABLE public.signal_returns RENAME COLUMN price TO entry_price;
+        ELSE
+             ALTER TABLE public.signal_returns ADD COLUMN entry_price NUMERIC;
+        END IF;
+    END IF;
+END $$;
+
 -- 2. Performance Optimization Indexes
 -- =========================================================================================
 
