@@ -215,19 +215,28 @@ BEGIN
         FROM StockCandidates sc
         ORDER BY sc.symbol, sc.fetched_date DESC, sc.fetched_time DESC
     ),
+    -- OPTIMIZATION: Use pre-calculated change_percent to get top candidates first
+    -- This avoids LATERAL JOIN on all 21,400 stocks
+    TopCandidates AS (
+        SELECT *
+        FROM UniqueStocks u
+        WHERE u.change_percent > 0  -- Only gainers
+          AND u.current_price >= 0.2  -- Filter cheap stocks
+        ORDER BY u.change_percent DESC
+        LIMIT limit_val * 10  -- Get 10x candidates to account for calculation differences
+    ),
+    -- Now do LATERAL JOIN only on top candidates (much faster!)
     WithHistory AS (
         SELECT 
             u.symbol, u.market, u.name, u.current_price,
             pre.h_price
-        FROM UniqueStocks u
+        FROM TopCandidates u
         LEFT JOIN LATERAL (
             SELECT p.current_price as h_price
             FROM public.stock_ratings p
             WHERE p.symbol = u.symbol
-              -- Look for the most recent record BEFORE the current one (Strictly previous date/time)
-              -- This automatically handles weekends (Fri -> Mon)
               AND (p.fetched_date < u.fetched_date OR (p.fetched_date = u.fetched_date AND p.fetched_time < u.fetched_time))
-              AND p.session_type = 'post_market' -- Ensure we compare against a valid close
+              AND p.session_type = 'post_market'
             ORDER BY p.fetched_date DESC, p.fetched_time DESC
             LIMIT 1
         ) pre ON TRUE
