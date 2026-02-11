@@ -220,9 +220,8 @@ BEGIN
     TopCandidates AS (
         SELECT *
         FROM UniqueStocks u
-        WHERE u.change_percent > 0  -- Only gainers
-          AND u.current_price >= 0.2  -- Filter cheap stocks
-        ORDER BY u.change_percent DESC
+        WHERE u.current_price >= 0.2  -- Filter cheap stocks only
+        ORDER BY COALESCE(u.change_percent, 0) DESC  -- Use pre-calc if available, else 0
         LIMIT limit_val * 10  -- Get 10x candidates to account for calculation differences
     ),
     -- Now do LATERAL JOIN only on top candidates (much faster!)
