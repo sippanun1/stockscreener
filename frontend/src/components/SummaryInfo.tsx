@@ -28,6 +28,7 @@ const getCurrencySymbol = (market: string | undefined) => {
 type SummaryInfoProps = {
   stocks: Stock[];
   onFilterChange?: (technicalRating: string) => void;
+  onSearch?: (term: string) => void;
 };
 
 type SummaryData = {
@@ -62,7 +63,7 @@ const fetchSummary = async (): Promise<SummaryData> => {
   return response.json();
 };
 
-export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
+export default function SummaryInfo({ onFilterChange, onSearch }: SummaryInfoProps) {
   // Fetch summary with React Query (30 minute cache)
   const { data: summary, isLoading: loading } = useQuery({
     queryKey: ['summary'],
@@ -238,7 +239,11 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
             summary.top_opportunities.slice(0, 3).map((stock, index) => (
               <div 
                 key={stock.symbol} 
-                className="grid grid-cols-[18px_1fr_48px_110px] sm:grid-cols-[20px_1fr_55px_120px] gap-1.5 sm:gap-2 items-center py-1.5 border-b border-[#7588A3]/10 last:border-b-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSearch?.(stock.symbol.split(':')[1] || stock.symbol);
+                }}
+                className="grid grid-cols-[18px_1fr_48px_110px] sm:grid-cols-[20px_1fr_55px_120px] gap-1.5 sm:gap-2 items-center py-1.5 border-b border-[#7588A3]/10 last:border-b-0 hover:bg-[#7588A3]/10 transition-colors cursor-pointer"
               >
                 {/* Rank */}
                 <div className="text-center">
@@ -256,7 +261,7 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
                 
                 {/* Exchange */}
                 <div className="text-left">
-                  <div className="text-white text-[10px] sm:text-[11px] font-medium uppercase">
+                  <div className="text-[#7588A3] text-[10px] sm:text-[11px] font-medium uppercase">
                     {stock.symbol.split(':')[0] || stock.market}
                   </div>
                 </div>

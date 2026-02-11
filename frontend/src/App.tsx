@@ -33,22 +33,36 @@ function ScreenerPage() {
 
   const handleSummaryFilterChange = (filterType: string) => {
     if (filterType === "Positive" || filterType === "Negative") {
-      setFilters(prev => ({ ...prev, technicalRating: filterType, currentRating: "", sortBy: undefined }));
+      setFilters(prev => ({ ...prev, technicalRating: filterType, currentRating: "", sortBy: undefined, search: "" }));
     } else if (filterType === "Top Gainers") {
       setFilters(prev => ({ 
         ...prev, 
         technicalRating: "", 
         currentRating: "", 
-        sortBy: "top_gainers" 
+        sortBy: "top_gainers",
+        search: "" 
       }));
     } else {
-      setFilters(prev => ({ ...prev, currentRating: filterType, technicalRating: "", sortBy: undefined }));
+      setFilters(prev => ({ ...prev, currentRating: filterType, technicalRating: "", sortBy: undefined, search: "" }));
     }
+  };
+
+  const handleSearch = (searchTerm: string) => {
+    // Clear other filters to ensure the search term is the primary filter
+    setFilters(prev => ({
+      ...prev,
+      market: "", // Clear market to search globally
+      previousRating: "",
+      currentRating: "",
+      technicalRating: "",
+      search: searchTerm,
+      sortBy: undefined // Reset sort to default
+    }));
   };
 
   return (
     <div className="flex flex-col lg:h-full">
-      <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
+      <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} onSearch={handleSearch} />
       <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
       {/* Mobile: Fixed height table (nested scroll). Desktop: Flex-1 filling remaining space. */}
       <div className="h-[75vh] lg:h-auto lg:flex-1 overflow-hidden min-h-0">

@@ -66,6 +66,9 @@ END $$;
 -- 2. Performance Optimization Indexes
 -- =========================================================================================
 
+-- Enable pg_trgm extension for fast fuzzy search
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- Optimize LATERAL Join Performance
 CREATE INDEX IF NOT EXISTS idx_stock_ratings_lateral_opt 
 ON public.stock_ratings (symbol, fetched_date DESC, fetched_time DESC, technical_rating)
@@ -82,13 +85,13 @@ DROP INDEX IF EXISTS idx_stock_ratings_symbol_lookup;
 CREATE INDEX IF NOT EXISTS idx_stock_ratings_latest_lookup 
 ON public.stock_ratings (symbol, fetched_date DESC, fetched_time DESC);
 
--- Optimize date-based signal change tracking
-CREATE INDEX IF NOT EXISTS idx_stock_ratings_signal_date 
-ON public.stock_ratings (rating_change_date DESC);
+-- Optimize Search Performance (Text Search - Trigram GIN)
+-- This makes ILIKE '%term%' fast!
+CREATE INDEX IF NOT EXISTS idx_stock_ratings_symbol_trgm_gin 
+ON public.stock_ratings USING gin (symbol gin_trgm_ops);
 
--- Optimize Search Performance (Text Search)
-CREATE INDEX IF NOT EXISTS idx_stock_ratings_symbol_trgm 
-ON public.stock_ratings (symbol text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_stock_ratings_name_trgm_gin 
+ON public.stock_ratings USING gin (name gin_trgm_ops);
 
 -- Index for signal_returns lookups
 CREATE INDEX IF NOT EXISTS idx_signal_returns_symbol_date 
@@ -206,25 +209,29 @@ BEGIN
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
           AND sr.current_price >= 0.2 -- Pre-filter cheap stocks early
-          AND sr.technical_rating IN ('Strong Buy', 'Buy')
     ),
     UniqueStocks AS (
         SELECT DISTINCT ON (sc.symbol) sc.*
         FROM StockCandidates sc
         ORDER BY sc.symbol, sc.fetched_date DESC, sc.fetched_time DESC
     ),
+    FilteredStocks AS (
+        SELECT * FROM UniqueStocks u
+        WHERE u.technical_rating IN ('Strong Buy', 'Buy')
+    ),
     WithHistory AS (
         SELECT 
             u.symbol, u.market, u.name, u.current_price,
             pre.h_price
-        FROM UniqueStocks u
+        FROM FilteredStocks u
         LEFT JOIN LATERAL (
             SELECT p.current_price as h_price
             FROM public.stock_ratings p
             WHERE p.symbol = u.symbol
+              -- Look for the most recent record BEFORE the current one (Strictly previous date/time)
+              -- This automatically handles weekends (Fri -> Mon)
               AND (p.fetched_date < u.fetched_date OR (p.fetched_date = u.fetched_date AND p.fetched_time < u.fetched_time))
-              AND p.technical_rating != u.technical_rating
-              AND p.technical_rating != 'Neutral'
+              AND p.session_type = 'post_market' -- Ensure we compare against a valid close
             ORDER BY p.fetched_date DESC, p.fetched_time DESC
             LIMIT 1
         ) pre ON TRUE
@@ -281,11 +288,13 @@ BEGIN
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
+          -- OPTIMIZATION: If searching, filter early using GIN index!
+          AND (search_term IS NULL OR search_term = '' OR sr.symbol ILIKE '%' || search_term || '%' OR sr.name ILIKE '%' || search_term || '%')
     ),
     UniqueStocks AS (
         SELECT DISTINCT ON (sc.symbol) sc.*
         FROM StockCandidates sc
-        WHERE (search_term IS NULL OR search_term = '' OR sc.symbol ILIKE '%' || search_term || '%' OR sc.name ILIKE '%' || search_term || '%')
+        -- Filter moved to StockCandidates for earlier execution
         ORDER BY sc.symbol, sc.fetched_date DESC, sc.fetched_time DESC
     ),
     TopStocks AS (
@@ -309,6 +318,8 @@ BEGIN
                      WHEN u.symbol ILIKE search_term || '%' THEN 1 
                      ELSE 2 END
             END ASC,
+            -- SPECIAL SORT: Top Gainers mode sorts by change_percent DESC
+            CASE WHEN sort_by = 'top_gainers' THEN u.change_percent END DESC NULLS LAST,
             CASE WHEN sort_by = 'change' AND sort_order = 'asc' THEN u.price_change END ASC NULLS LAST,
             CASE WHEN sort_by = 'change' AND sort_order = 'desc' THEN u.price_change END DESC NULLS LAST,
             CASE WHEN sort_by = 'changePercent' AND sort_order = 'asc' THEN u.change_percent END ASC NULLS LAST,
