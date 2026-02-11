@@ -135,15 +135,15 @@ RETURNS TABLE (total BIGINT)
 LANGUAGE plpgsql AS $$
 DECLARE
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
-    -- 60 days default lookback, 365 if searching
-    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 60 END;
 BEGIN
     RETURN QUERY 
     WITH UniqueStocks AS (
         SELECT DISTINCT ON (sr.symbol) 
             sr.technical_rating, sr.current_price
         FROM public.stock_ratings sr
-        WHERE sr.fetched_date >= (base_date - (lookback_days || ' days')::INTERVAL)
+        WHERE 
+          -- Logic: Search = Infinite Lookback, Browse = 60 days
+          (search_term IS NOT NULL AND search_term != '' OR sr.fetched_date >= (base_date - INTERVAL '60 days'))
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
@@ -244,14 +244,14 @@ RETURNS TABLE (
 LANGUAGE plpgsql AS $$
 DECLARE
     base_date DATE := COALESCE(target_date, CURRENT_DATE);
-    -- Optimized lookback with 60 days default
-    lookback_days INT := CASE WHEN (search_term IS NOT NULL AND search_term != '') THEN 365 ELSE 60 END;
 BEGIN
     RETURN QUERY
     WITH StockCandidates AS (
         SELECT sr.id, sr.symbol, sr.market, sr.name, sr.current_price, sr.technical_score, sr.technical_rating, sr.rating_change_date, sr.fetched_date, sr.fetched_time, sr.change_percent, sr.price_change, sr.previous_price
         FROM public.stock_ratings sr
-        WHERE sr.fetched_date >= (base_date - (lookback_days || ' days')::INTERVAL)
+        WHERE 
+          -- Logic: If searching, ignore date limit (Infinite Lookback). If browsing, limit to 60 days.
+          (search_term IS NOT NULL AND search_term != '' OR sr.fetched_date >= (base_date - INTERVAL '60 days'))
           AND sr.fetched_date <= base_date
           AND (target_market IS NULL OR target_market = '' OR sr.market = target_market)
           AND sr.symbol NOT LIKE 'OTC:%'
