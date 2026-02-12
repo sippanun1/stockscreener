@@ -243,24 +243,27 @@ export default function SummaryInfo({ onFilterChange, onSearch }: SummaryInfoPro
                   e.stopPropagation();
                   onSearch?.(stock.symbol.split(':')[1] || stock.symbol);
                 }}
-                className="grid grid-cols-[18px_1fr_48px_110px] sm:grid-cols-[20px_1fr_55px_120px] gap-1.5 sm:gap-2 items-center py-1.5 border-b border-[#7588A3]/10 last:border-b-0 hover:bg-[#7588A3]/10 transition-colors cursor-pointer"
+                className="grid grid-cols-[24px_1fr_95px] sm:grid-cols-[20px_1fr_55px_120px] gap-1.5 sm:gap-2 items-center py-1.5 border-b border-[#7588A3]/10 last:border-b-0 hover:bg-[#7588A3]/10 transition-colors cursor-pointer"
               >
                 {/* Rank */}
-                <div className="text-center">
+                <div className="flex justify-center items-center">
                   <span className="text-[#F8FAFC] text-[10px] sm:text-xs font-semibold">
                     {index + 1}
                   </span>
                 </div>
                 
-                {/* Symbol */}
-                <div className="min-w-0">
+                {/* Symbol & Exchange (Stacked on small mobile) */}
+                <div className="min-w-0 flex flex-col justify-center">
                   <div className="text-[#F8FAFC] text-xs sm:text-sm font-bold truncate">
                     {stock.symbol.split(':')[1] || stock.symbol}
                   </div>
+                  <div className="text-[#7588A3] text-[9px] sm:hidden truncate font-medium uppercase">
+                    {stock.symbol.split(':')[0] || stock.market}
+                  </div>
                 </div>
                 
-                {/* Exchange */}
-                <div className="text-left">
+                {/* Exchange (Separate column only for sm+) */}
+                <div className="hidden sm:block text-left">
                   <div className="text-[#7588A3] text-[10px] sm:text-[11px] font-medium uppercase">
                     {stock.symbol.split(':')[0] || stock.market}
                   </div>
