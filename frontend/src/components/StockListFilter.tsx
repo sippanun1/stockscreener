@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { HiOutlineSearch } from "react-icons/hi";
+import reloadIcon from "@/assets/reload.svg";
 import {
   Select,
   SelectContent,
@@ -138,7 +139,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
             onClick={handleClearFilters}
             className="w-[54px] h-[40px] bg-[#0F151F] rounded-xl hover:bg-[#354052] transition flex items-center justify-center flex-shrink-0"
           >
-            <img src="/src/assets/SVG.svg" alt="reset" />
+            <img src={reloadIcon} alt="reset" />
           </button>
         </div>
       </div>

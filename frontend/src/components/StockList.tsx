@@ -7,6 +7,7 @@ import {
   TableRow,
 } from "flowbite-react";
 import type { Stock } from "../types/stock";
+import arrowIcon from "@/assets/arrow.svg";
 
 type StockTableProps = {
   stocks: Stock[];
@@ -115,7 +116,7 @@ export default function StockTable({ stocks }: StockTableProps) {
               Previous Rating
             </TableHeadCell>
             <TableHeadCell className="p-0 w-[40px]">
-              <img src="/src/assets/arrow.svg" alt="arrow" className="pl-1.5"/>
+              <img src={arrowIcon} alt="arrow" className="pl-1.5"/>
             </TableHeadCell>
             <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
                Current Rating
@@ -184,7 +185,7 @@ export default function StockTable({ stocks }: StockTableProps) {
                 </TableCell>
                 <TableCell className="p-0 w-[40px]">
                   <div className="flex justify-center items-center text-[#F8FAFC] text-xl">
-                   <img src="/src/assets/arrow.svg" alt="arrow" />
+                   <img src={arrowIcon} alt="arrow" />
                   </div>
                 </TableCell>
                 <TableCell>
