@@ -358,7 +358,12 @@
         LatestPerSymbol AS (
             SELECT sr.id, sr.symbol, sr.daily_change_percent, sr.daily_change_amount, 
                    sr.technical_rating, sr.current_price, sr.rating_change_date, sr.market, sr.name,
-                   sr.fetched_date, sr.fetched_time, sr.technical_score, sr.prev_close_price
+                   sr.fetched_date, sr.fetched_time, sr.technical_score, sr.prev_close_price,
+                   -- Extract exchange and symbol parts for proper sorting
+                   -- exchange: everything before ':', fallback to symbol if no ':'
+                   SPLIT_PART(sr.symbol, ':', 1) as exchange,
+                   -- symbol_only: everything after ':', fallback to full symbol if no ':'
+                   COALESCE(NULLIF(SPLIT_PART(sr.symbol, ':', 2), ''), sr.symbol) as symbol_only
             FROM LatestIds l JOIN public.stock_ratings sr ON sr.id = l.id
             WHERE (p_market IS NULL OR p_market = '' OR sr.market = p_market)
             AND sr.symbol NOT LIKE 'OTC:%'
@@ -390,8 +395,10 @@
                 CASE WHEN p_sort_by = 'change' AND p_sort_order = 'desc' THEN daily_change_amount END DESC NULLS LAST,
                 CASE WHEN p_sort_by = 'current_price' AND p_sort_order = 'asc' THEN current_price END ASC NULLS LAST,
                 CASE WHEN p_sort_by = 'current_price' AND p_sort_order = 'desc' THEN current_price END DESC NULLS LAST,
-                CASE WHEN p_sort_by = 'symbol' AND p_sort_order = 'asc' THEN symbol END ASC NULLS LAST,
-                CASE WHEN p_sort_by = 'symbol' AND p_sort_order = 'desc' THEN symbol END DESC NULLS LAST,
+                CASE WHEN p_sort_by = 'symbol' AND p_sort_order = 'asc' THEN symbol_only END ASC NULLS LAST,
+                CASE WHEN p_sort_by = 'symbol' AND p_sort_order = 'desc' THEN symbol_only END DESC NULLS LAST,
+                CASE WHEN p_sort_by = 'exchange' AND p_sort_order = 'asc' THEN exchange END ASC NULLS LAST,
+                CASE WHEN p_sort_by = 'exchange' AND p_sort_order = 'desc' THEN exchange END DESC NULLS LAST,
                 CASE WHEN p_sort_by = 'rating_change_date' AND p_sort_order = 'asc' THEN rating_change_date END ASC NULLS LAST,
                 CASE WHEN p_sort_by = 'rating_change_date' AND p_sort_order = 'desc' THEN rating_change_date END DESC NULLS LAST,
                 symbol ASC
@@ -432,8 +439,10 @@
             CASE WHEN p_sort_by = 'change' AND p_sort_order = 'desc' THEN w.daily_change_amount END DESC NULLS LAST,
             CASE WHEN p_sort_by = 'current_price' AND p_sort_order = 'asc' THEN w.current_price END ASC NULLS LAST,
             CASE WHEN p_sort_by = 'current_price' AND p_sort_order = 'desc' THEN w.current_price END DESC NULLS LAST,
-            CASE WHEN p_sort_by = 'symbol' AND p_sort_order = 'asc' THEN w.symbol END ASC NULLS LAST,
-            CASE WHEN p_sort_by = 'symbol' AND p_sort_order = 'desc' THEN w.symbol END DESC NULLS LAST,
+            CASE WHEN p_sort_by = 'symbol' AND p_sort_order = 'asc' THEN w.symbol_only END ASC NULLS LAST,
+            CASE WHEN p_sort_by = 'symbol' AND p_sort_order = 'desc' THEN w.symbol_only END DESC NULLS LAST,
+            CASE WHEN p_sort_by = 'exchange' AND p_sort_order = 'asc' THEN w.exchange END ASC NULLS LAST,
+            CASE WHEN p_sort_by = 'exchange' AND p_sort_order = 'desc' THEN w.exchange END DESC NULLS LAST,
             CASE WHEN p_sort_by = 'rating_change_date' AND p_sort_order = 'asc' THEN w.rating_change_date END ASC NULLS LAST,
             CASE WHEN p_sort_by = 'rating_change_date' AND p_sort_order = 'desc' THEN w.rating_change_date END DESC NULLS LAST,
             w.symbol ASC;

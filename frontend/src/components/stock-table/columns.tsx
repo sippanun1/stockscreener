@@ -56,6 +56,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "symbol",
     header: "Symbol",
+    sortDescFirst: false, // ↑ = 0→A→Z, ↓ = Z→A→0
     size: 105,
     minSize: 85,
     maxSize: 150,
@@ -77,6 +78,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
     accessorFn: (row) => row.symbol.split(":")[0],
     id: "exchange",
     header: "Exchange",
+    sortDescFirst: false, // ↑ = A→Z, ↓ = Z→A
     size: 60,
     minSize: 50,
     maxSize: 75,

@@ -3,13 +3,24 @@ import React from 'react'
 interface SortArrowsProps {
   sortDirection?: 'asc' | 'desc' | false
   className?: string
+  variant?: 'standard' | 'text'
 }
 
-export const SortArrows: React.FC<SortArrowsProps> = ({ sortDirection, className = '' }) => {
+export const SortArrows: React.FC<SortArrowsProps> = ({ 
+  sortDirection, 
+  className = '', 
+  variant = 'standard' 
+}) => {
   const getArrowColor = (direction: 'up' | 'down') => {
-    // Custom logic: up arrow = descending (มาก→น้อย), down arrow = ascending (น้อย→มาก)
-    if (sortDirection === 'desc' && direction === 'up') return '#F8FAFC'
-    if (sortDirection === 'asc' && direction === 'down') return '#F8FAFC'
+    if (variant === 'text') {
+      // Text logic: Up = A-Z (Asc), Down = Z-A (Desc)
+      if (sortDirection === 'asc' && direction === 'up') return '#F8FAFC'
+      if (sortDirection === 'desc' && direction === 'down') return '#F8FAFC'
+    } else {
+      // Standard/Numeric logic: Up = More (Desc), Down = Less (Asc)
+      if (sortDirection === 'desc' && direction === 'up') return '#F8FAFC'
+      if (sortDirection === 'asc' && direction === 'down') return '#F8FAFC'
+    }
     return '#7588A3'
   }
 

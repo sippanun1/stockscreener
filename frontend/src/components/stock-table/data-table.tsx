@@ -302,6 +302,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                           {header.column.getCanSort() && (
                             <SortArrows 
                               sortDirection={header.column.getIsSorted()}
+                              variant={(header.id === 'symbol' || header.id === 'exchange') ? 'text' : 'standard'}
                             />
                           )}
                         </div>
