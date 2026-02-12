@@ -33,3 +33,4 @@ logs/
 *.csv
 *.zip
 !README.md
+/node_modules/

@@ -2,8 +2,8 @@ name: Daily Signal Processing
 
 on:
   # Run at 23:00 UTC (06:00 ICT) - After all markets close
-  schedule:
-    - cron: '0 23 * * *'  # 6:00 AM ICT daily
+  #schedule:
+  #  - cron: '0 23 * * *'  # 6:00 AM ICT daily
   
   # Allow manual trigger
   workflow_dispatch:

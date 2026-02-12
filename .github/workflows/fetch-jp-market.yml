@@ -2,14 +2,14 @@ name: Fetch Japan Market Data
 
 on:
   # Run at 07:15 ICT (00:15 UTC) and 13:15 ICT (06:15 UTC) - Japan market sessions
-  schedule:
-    - cron: '15 0 * * 1-5'  # 07:15 ICT - Morning
-    - cron: '0 1 * * 1-5'  # 08:00 ICT
-    - cron: '0 2 * * 1-5'  # 09:00 ICT
-    - cron: '0 3 * * 1-5'  # 10:00 ICT
-    - cron: '0 4 * * 1-5'  # 11:00 ICT
-    - cron: '0 5 * * 1-5'  # 12:00 ICT
-    - cron: '15 6 * * 1-5'  # 13:15 ICT - After market closes
+  # schedule:
+  #   - cron: '15 0 * * 1-5'  # 07:15 ICT - Morning
+  #   - cron: '0 1 * * 1-5'  # 08:00 ICT
+  #   - cron: '0 2 * * 1-5'  # 09:00 ICT
+  #   - cron: '0 3 * * 1-5'  # 10:00 ICT
+  #   - cron: '0 4 * * 1-5'  # 11:00 ICT
+  #   - cron: '0 5 * * 1-5'  # 12:00 ICT
+  #   - cron: '15 6 * * 1-5'  # 13:15 ICT - After market closes
   
   # Allow manual trigger
   workflow_dispatch:
