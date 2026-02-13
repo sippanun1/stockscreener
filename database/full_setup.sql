@@ -35,7 +35,7 @@
         prev_close_price NUMERIC
     );
 
-    -- Ensure all columns exist (Migration for existing tables)
+    -- Ensure all columns exist (Comprehensive Migration for all versions)
     ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS open NUMERIC;
     ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS premarket_close NUMERIC;
     ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS premarket_open NUMERIC;
@@ -43,6 +43,16 @@
     ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_open NUMERIC;
     ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS sector TEXT;
     ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS industry TEXT;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS price_change NUMERIC DEFAULT 0;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS change_percent NUMERIC DEFAULT 0;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS daily_change_percent NUMERIC;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS daily_change_amount NUMERIC;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS prev_close_price NUMERIC;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS technical_score NUMERIC;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS rating_change_date DATE;
+
+    -- Force Supabase to refresh its API cache
+    NOTIFY pgrst, 'reload schema';
 
     -- Table for tracking trading performance/returns
     CREATE TABLE IF NOT EXISTS public.signal_returns (
