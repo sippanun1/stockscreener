@@ -159,29 +159,35 @@
     DECLARE
         prev_record RECORD;
     BEGIN
-        SELECT current_price, fetched_date INTO prev_record
+        -- 1. Get Previous Price for consistency
+        SELECT current_price INTO prev_record
         FROM public.stock_ratings
         WHERE symbol = NEW.symbol
         AND (fetched_date < NEW.fetched_date OR (fetched_date = NEW.fetched_date AND fetched_time < NEW.fetched_time))
         AND session_type = 'post_market'
         ORDER BY fetched_date DESC, fetched_time DESC
         LIMIT 1;
-    
+
         IF FOUND THEN
             NEW.prev_close_price := prev_record.current_price;
-            IF prev_record.current_price > 0 THEN
-                NEW.daily_change_percent := ((NEW.current_price - prev_record.current_price) / prev_record.current_price * 100);
-                NEW.daily_change_amount := (NEW.current_price - prev_record.current_price);
-            ELSE
-                NEW.daily_change_percent := 0;
-                NEW.daily_change_amount := 0;
-            END IF;
         ELSE
             NEW.prev_close_price := NULL;
-            NEW.daily_change_percent := 0;
-            NEW.daily_change_amount := 0;
         END IF;
-    
+
+        -- 2. Calculate Metrics ONLY IF NOT PROVIDED
+        -- If API gives us change, trust it (it's from the exchange).
+        -- If API gives 0 or NULL, we TRY to calculate ourselves (fallback).
+        IF NEW.daily_change_percent IS NULL OR NEW.daily_change_amount IS NULL THEN
+            IF NEW.prev_close_price IS NOT NULL AND NEW.prev_close_price > 0 THEN
+                NEW.daily_change_percent := ((NEW.current_price - NEW.prev_close_price) / NEW.prev_close_price * 100);
+                NEW.daily_change_amount := (NEW.current_price - NEW.prev_close_price);
+            ELSE
+                -- No previous history AND no API data -> 0
+                NEW.daily_change_percent := COALESCE(NEW.daily_change_percent, 0);
+                NEW.daily_change_amount := COALESCE(NEW.daily_change_amount, 0);
+            END IF;
+        END IF;
+
         RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;

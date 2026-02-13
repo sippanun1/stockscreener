@@ -109,6 +109,22 @@ export const stockColumns: ColumnDef<Stock>[] = [
     },
   },
   {
+    accessorKey: "sector",
+    header: "Sector",
+    size: 100,
+    minSize: 80,
+    maxSize: 150,
+    cell: ({ row }) => {
+      const sector = row.getValue("sector") as string
+      return (
+        <div className="text-left text-xs sm:text-sm text-[#F8FAFC] truncate" title={sector}>
+          {sector || "-"}
+        </div>
+      )
+    },
+  },
+
+  {
     accessorKey: "change",
     id: "change",
     header: "Change",

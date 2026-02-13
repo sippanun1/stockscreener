@@ -62,7 +62,7 @@ jobs:
           from datetime import datetime
           
           today = datetime.now().strftime('%Y-%m-%d')
-          file_path = Path('data') / f'HK_{today}.json'
+          file_path = Path('src/data') / f'HK_{today}.json'
           
           if file_path.exists():
               with open(file_path) as f:

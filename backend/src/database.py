@@ -94,6 +94,8 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
                 "industry": stock.get("industry"),
                 "technical_score": stock.get("Technical_Score"),
                 "technical_rating": stock.get("Technical_Rating"),
+                "daily_change_percent": stock.get("daily_change_percent"),
+                "daily_change_amount": stock.get("daily_change_amount"),
                 "fetched_date": record_date,
                 "fetched_time": record_time,
                 "session_type": session_type

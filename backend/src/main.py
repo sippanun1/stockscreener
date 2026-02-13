@@ -29,7 +29,9 @@ columns = [
     "sector",
     "industry",
     "Recommend.All",
-    "description"
+    "description",
+    "change",      # Index 11: Percent Change
+    "change_abs"   # Index 12: Absolute Change
 ]
 
 # ================================
@@ -128,16 +130,25 @@ def fetch_market(market_name, url, batch_size=300):
             ]
         }
 
-        r = requests.post(url, data=json.dumps(payload), headers=headers, cookies=cookies)
-        data = r.json().get("data", [])
+        try:
+            r = requests.post(url, data=json.dumps(payload), headers=headers, cookies=cookies)
+            if r.status_code != 200:
+                print(f">> Error fetching {market_name}: Status {r.status_code}")
+                break
+                
+            data = r.json().get("data", [])
 
-        if not data:
-            print(f">> No more data for {market_name} (total {len(all_rows)})")
+            if not data:
+                print(f">> No more data for {market_name} (total {len(all_rows)})")
+                break
+
+            all_rows.extend(data)
+            start += batch_size
+            time.sleep(0.2)
+            
+        except Exception as e:
+            print(f">> Error in request: {e}")
             break
-
-        all_rows.extend(data)
-        start += batch_size
-        time.sleep(0.2)
 
     if not all_rows:
         print(f">> No rows returned for {market_name}")
@@ -177,6 +188,8 @@ def fetch_market(market_name, url, batch_size=300):
             "industry": d[8],  # d[8] is industry
             "Technical_Score": score,
             "Technical_Rating": convert_rating(score),
+            "daily_change_percent": d[11] if len(d) > 11 else 0, # From source
+            "daily_change_amount": d[12] if len(d) > 12 else 0,  # From source
             "fetched_at": fetched_at_str,
             "fetched_at_epoch": fetched_at_epoch
         })
@@ -186,15 +199,24 @@ def fetch_market(market_name, url, batch_size=300):
 # ================================
 # Main fetch function (runs daily)
 # ================================
-def fetch_all_markets():
+def fetch_all_markets(args=None):
     print(f"\n{'='*50}")
     print(f">> Starting daily market fetch at {datetime.now()}")
     print(f"{'='*50}\n")
 
     today = datetime.now().strftime("%Y-%m-%d")
     all_df = []
+    
+    # Determine markets to run
+    markets_to_run = screeners.items()
+    if args and args.market:
+        if args.market in screeners:
+            markets_to_run = [(args.market, screeners[args.market])]
+        else:
+            print(f"Market {args.market} not found. Available: {list(screeners.keys())}")
+            return
 
-    for market, url in screeners.items():
+    for market, url in markets_to_run:
         try:
             df = fetch_market(market, url)
             if df is not None:
@@ -204,13 +226,27 @@ def fetch_all_markets():
                 print(f">> 📦 Buffered {filename} ({len(df)} rows)")
                 
                 # 2. PUSH with RETRY
+                # Only save to DB if NO args or if args.once is True (Manual run)
+                # But actually we always want to save.
                 success = save_to_db_with_retry(df, market, today)
 
                 # 3. CLEANUP or ALERT
                 if success:
-                    if filename.exists():
-                        filename.unlink() 
-                        print(f">> 🧹 Cleaned up buffer file: {filename.name}")
+                    # CLEANUP: Only if NOT in 'once' mode (GitHub Actions needs the file for validation)
+                    # Note: We need access to args here. If args is None, assume we clean?
+                    # Or safer: Check if running via scheduler (args=None)?
+                    # Logic: If args.once is TRUE, DO NOT CLEAN.
+                    should_clean = True
+                    if args and args.once:
+                        should_clean = False
+                    
+                    if should_clean:
+                        if filename.exists():
+                            filename.unlink() 
+                            print(f">> 🧹 Cleaned up buffer file: {filename.name}")
+                    else:
+                        print(f">> ℹ️  File kept for validation: {filename.name}")
+
                 else:
                     # ❌ FAILURE after retries - KEEP FILE & ALERT USER
                     print(f"\n{'!'*50}")
@@ -229,16 +265,6 @@ def fetch_all_markets():
         combined.to_json(combined_filename, orient='records', indent=2)
         print(f"\n>> Saved combined file: {combined_filename}")
         
-        # ⭐ Save to SQLite database
-        # (Already saved incrementally above to prevent data loss)
-        # try:
-        #     import database
-        #     stocks_list = combined.to_dict('records')
-        #     database.save_daily_stocks(stocks_list, today, session_type='post_market')
-        #     print(">> Saved to SQLite database")
-        # except Exception as e:
-        #     print(f">> Error saving to SQLite: {e}")
-        
         print("\n>> DONE - All Markets Fetched Successfully!")
     else:
         print("\n>> No data was fetched")
@@ -249,146 +275,28 @@ def fetch_all_markets():
 # ================================
 # Schedule function
 # ================================
-def schedule_daily_fetch():
-    # Schedule the fetch to run every day at 16:30
-    schedule.every().day.at("16:30").do(fetch_all_markets)
-    
-    print(">> Scheduler started. Next fetch scheduled at 16:30 daily.")
-    
-    # Keep the scheduler running in a separate thread
+def run_scheduler():
+    print(">> 🕒 Scheduler Started. Waiting for 18:00 (Thailand Time)...")
+    # Thailand is UTC+7. Server might be UTC.
+    # 18:00 TH = 11:00 UTC.
+    # Safe bet: Run every hour? No, once a day.
+    # Let's set 11:00 UTC (18:00 BKK)
+    schedule.every().day.at("11:00").do(fetch_all_markets)
+
     while True:
         schedule.run_pending()
         time.sleep(60)
 
-# ================================
-# Run once on startup + schedule
-# ================================
 if __name__ == "__main__":
     import argparse
-    
-    parser = argparse.ArgumentParser(description='Fetch stock market data')
-    parser.add_argument('--market', type=str, help='Specific market to fetch (US, HK, TH, JP)', default=None)
-    parser.add_argument('--once', action='store_true', help='Run once and exit (for GitHub Actions)')
-    parser.add_argument('--preopen', action='store_true', help='Mark this as pre-market data (before market opens)')
-    parser.add_argument('--import-local', action='store_true', help='Import data from local JSON files instead of fetching (Recovery Mode)')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--once", action="store_true", help="Run once now and exit")
+    parser.add_argument("--market", type=str, help="Run specific market (e.g. TH)")
+    parser.add_argument("--preopen", action="store_true", help="Fetch pre-market data (Not implemented yet)")
     args = parser.parse_args()
-    
-    if args.import_local:
-        # ================================
-        # Recovery Mode: Import Local JSONs
-        # ================================
-        print(f"\n{'='*50}")
-        print(f">> 📦 Starting Local Import (Recovery Mode)")
-        print(f"{'='*50}\n")
-        
-        today = datetime.now().strftime("%Y-%m-%d")
-        
-        # Look for files matching pattern: {MARKET}_{TODAY}.json
-        files_found = list(DATA_DIR.glob(f"*_{today}.json"))
-        
-        if not files_found:
-            print(f">> No buffer files found for today ({today}).")
-            sys.exit(0)
-            
-        print(f">> Found {len(files_found)} buffer files.")
-        
-        for json_file in files_found:
-            market_name = json_file.name.split('_')[0]
-            print(f"\n>> Processing {json_file.name}...")
-            
-            try:
-                # Load JSON
-                with open(json_file, 'r') as f:
-                    data = json.load(f)
-                    df = pd.DataFrame(data)
-                
-                print(f">> Loaded {len(df)} rows.")
-                
-                # Push to DB with retry
-                success = save_to_db_with_retry(df, market_name, today)
-                
-                if success:
-                    json_file.unlink()
-                    print(f">> 🧹 Cleaned up buffer file: {json_file.name}")
-                else:
-                    print(f">> ❌ Failed to import {json_file.name}. File kept.")
-                    
-            except Exception as e:
-                print(f">> ⚠️ Error processing {json_file.name}: {e}")
-                
-        print("\n>> Recovery process completed.")
-        sys.exit(0)
-        
-    if args.once or args.market:
-        # Run once mode (for GitHub Actions or specific market)
-        print(f">> Running in once mode{f' for market: {args.market}' if args.market else ''}")
-        
-        if args.market:
-            # Fetch specific market only
-            market = args.market.upper()
-            if market in screeners:
-                today = datetime.now().strftime("%Y-%m-%d")
-                try:
-                    df = fetch_market(market, screeners[market])
-                    if df is not None:
-                        filename = DATA_DIR / f"{market}_{today}.json"
-                        df.to_json(filename, orient='records', indent=2)
-                        print(f">> Saved {filename} ({len(df)} rows)")
-                        
-                        # Save to Database (Supabase or PostgreSQL)
-                        try:
-                            import database
-                            # Clean the data (Replace NaN with None)
-                            df_clean = df.astype(object).where(pd.notnull(df), None)
-                            stocks_list = df_clean.to_dict('records')
-                            # Add fetched_at timestamp
-                            for stock in stocks_list:
-                                stock['fetched_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            session_type = 'pre_market' if args.preopen else 'post_market'
-                            database.save_daily_stocks(stocks_list, today, session_type=session_type)
-                            print(f">> ✅ Saved to database ({session_type} session)")
-                        except Exception as e:
-                            print(f">> ❌ Error saving to Database: {e}")
-                            sys.exit(1) # CRITICAL: Fail the workflow if DB save fails
-                        
-                        # CLEANUP: Only if NOT in 'once' mode (GitHub Actions needs the file for validation)
-                        if not args.once:
-                             if filename.exists():
-                                filename.unlink()
-                                print(f">> 🧹 Cleaned up buffer file: {filename.name}")
-                        else:
-                            print(f">> ℹ️  File kept for validation: {filename.name}")
 
-                        print("\n>> DONE - Market Fetched Successfully!")
-                        sys.exit(0)
-                    else:
-                        print(f">> Error: No data fetched for {market}")
-                        sys.exit(1)
-                except Exception as e:
-                    print(f">> Error fetching {market}: {e}")
-                    sys.exit(1)
-            else:
-                print(f">> Error: Invalid market '{market}'. Choose from: {list(screeners.keys())}")
-                sys.exit(1)
-        else:
-            # Fetch all markets
-            fetch_all_markets()
-            sys.exit(0)
+    if args.once:
+        print(f">> Running in once mode{' for market: ' + args.market if args.market else ''}")
+        fetch_all_markets(args)
     else:
-        # Original scheduler mode (for local development)
-        print(">> Starting Stock Screener API...")
-        
-        # Run once immediately when the script starts
-        fetch_all_markets()
-        
-        # Start the scheduler in a background thread
-        scheduler_thread = threading.Thread(target=schedule_daily_fetch, daemon=True)
-        scheduler_thread.start()
-        
-        # Keep the main thread alive
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print("\n>> Shutting down...")
-
+        run_scheduler()

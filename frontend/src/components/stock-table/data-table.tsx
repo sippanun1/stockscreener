@@ -91,14 +91,19 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   const stocks = result.data.map((s: any) => {
     const currentPrice = Number(s.current_price)
     const previousPrice = s.previous_price ? Number(s.previous_price) : undefined
-    const absoluteChange = previousPrice ? currentPrice - previousPrice : 0
-    const percentChange = previousPrice && previousPrice > 0 ? ((currentPrice - previousPrice) / previousPrice * 100) : 0
+    
+    // Use server-provided values if available (from DB triggers), otherwise fallback to mismatch calculation
+    const absoluteChange = s.change !== undefined ? Number(s.change) : (previousPrice ? currentPrice - previousPrice : 0)
+    const percentChange = s.changePercent !== undefined ? Number(s.changePercent) : (previousPrice && previousPrice > 0 ? ((currentPrice - previousPrice) / previousPrice * 100) : 0)
+    
     const exchange = s.symbol?.split(":")[0] || ""
 
     return {
       market: s.market,
       symbol: s.symbol,
       name: s.name,
+      sector: s.sector,
+      industry: s.industry,
       current_price: currentPrice,
       previous_price: previousPrice,
       change: absoluteChange, // Absolute price change

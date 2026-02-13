@@ -2,6 +2,8 @@ export type Stock = {
   market: string;
   symbol: string;
   name: string;
+  sector?: string;
+  industry?: string;
   current_price: number;
   previous_price?: number;
   yesterday_price?: number;
