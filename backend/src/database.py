@@ -112,111 +112,12 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
     BATCH_SIZE = 1000
     total_saved = 0
     
-    # --- OPTIMIZATION: Fetch Previous Ratings Baseline ---
-    # To correctly set `rating_change_date`, we need to compare with the PREVIOUS record.
-    # Since checking 1-by-1 is slow, we fetch the latest snapshot for this market.
-    
-    prev_ratings_map = {}
-    try:
-        # 1. Identify Market (assume list is consistent)
-        target_market = stocks_list[0].get("market") if stocks_list else None
-        
-        if target_market:
-            # 2. Find latest fetched_date BEFORE today
-            # We want records strictly before the current batch's date (to avoid comparing with self if re-running)
-            target_date_obj = datetime.strptime(default_date, "%Y-%m-%d")
-            
-            # Simple query to find max date < current
-            date_res = client.table("stock_ratings") \
-                .select("fetched_date") \
-                .eq("market", target_market) \
-                .lt("fetched_date", default_date) \
-                .order("fetched_date", desc=True) \
-                .limit(1) \
-                .execute()
-                
-            if date_res.data:
-                baseline_date = date_res.data[0]['fetched_date']
-                logger.info(f"Comparing with baseline date: {baseline_date}")
-                
-                # 3. Fetch all ratings for this baseline date (Handle pagination for >1000 inputs)
-                # We need all stocks to ensure map is complete.
-                all_baseline = []
-                offset = 0
-                while True:
-                    r = client.table("stock_ratings") \
-                        .select("symbol, technical_rating, rating_change_date, current_price") \
-                        .eq("market", target_market) \
-                        .eq("fetched_date", baseline_date) \
-                        .range(offset, offset + 999) \
-                        .execute()
-                    
-                    if not r.data:
-                        break
-                        
-                    all_baseline.extend(r.data)
-                    if len(r.data) < 1000:
-                        break
-                    offset += 1000
-                
-                # 4. Build Map
-                for row in all_baseline:
-                    prev_ratings_map[row['symbol']] = {
-                        "rating": row.get("technical_rating"),
-                        "change_date": row.get("rating_change_date"),
-                        "price": row.get("current_price") or 0.0
-                    }
-                    
-    except Exception as e:
-        logger.warning(f"Could not fetch baseline ratings (First run?): {e}")
-
     try:
         # Loop through records in chunks
         for i in range(0, len(records), BATCH_SIZE):
             batch = records[i : i + BATCH_SIZE]
             
-            # --- LOGIC: Compute rating_change_date & price_change ---
-            for rec in batch:
-                sym = rec["symbol"]
-                curr_rating = rec["technical_rating"]
-                curr_price = float(rec["current_price"] or 0)
-                
-                prev_data = prev_ratings_map.get(sym)
-                
-                # Default values
-                previous_price = 0.0
-                price_change = 0.0
-                change_percent = 0.0
-
-                if prev_data:
-                    prev_rating = prev_data["rating"]
-                    prev_date = prev_data["change_date"]
-                    previous_price = float(prev_data["price"])
-                    
-                    # 1. Rating Logic
-                    if curr_rating == prev_rating:
-                        rec["rating_change_date"] = prev_date if prev_date else rec["fetched_date"]
-                    else:
-                        rec["rating_change_date"] = rec["fetched_date"]
-                        
-                    # 2. Price Change Logic (Current - Previous Close)
-                    if previous_price > 0:
-                        price_change = curr_price - previous_price
-                        change_percent = (price_change / previous_price) * 100
-                    else:
-                        # Fallback to Open if no previous close (or user preference)
-                        # For now, 0 if no history
-                        pass
-                else:
-                    # NEW STOCK: Date is today, Change is 0
-                    rec["rating_change_date"] = rec["fetched_date"]
-                
-                # Store calculated values
-                rec["price_change"] = round(price_change, 2)
-                rec["change_percent"] = round(change_percent, 2)
-                # We can also store previous_price if we added a column for it, but not strictly needed if we have change
-                rec["previous_price"] = previous_price # Optional mapping if DB has column
-            
+            # Upsert batch directly - Database triggers will handle calculations
             response = client.table("stock_ratings").upsert(
                 batch, 
                 on_conflict="symbol, fetched_date, fetched_time, session_type"
