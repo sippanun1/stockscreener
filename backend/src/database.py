@@ -86,9 +86,11 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
                 "name": stock.get("name"),
                 "current_price": stock.get("current_price"),
                 # "premarket_close": stock.get("premarket_close"),  <-- REMOVED: unused/empty
-                # "premarket_open": stock.get("premarket_open"),    <-- REMOVED: unused/empty
+                "premarket_open": stock.get("premarket_open"),
                 # "postmarket_close": stock.get("postmarket_close"),<-- REMOVED: unused/empty
                 # "postmarket_open": stock.get("postmarket_open"),  <-- REMOVED: unused/empty
+                "sector": stock.get("sector"),
+                "industry": stock.get("industry"),
                 "technical_score": stock.get("Technical_Score"),
                 "technical_rating": stock.get("Technical_Rating"),
                 "fetched_date": record_date,

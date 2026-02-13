@@ -26,6 +26,8 @@ columns = [
     "premarket_open",
     "postmarket_close",
     "postmarket_open",
+    "sector",
+    "industry",
     "Recommend.All",
     "description"
 ]
@@ -148,7 +150,7 @@ def fetch_market(market_name, url, batch_size=300):
 
     for row in all_rows:
         d = row["d"]
-        score = d[7]
+        score = d[9]  # Fixed: d[9] is Recommend.All (Technical Score)
 
         # --- FILTERS ---
         # 1. Filter out Penny Stocks (Price < 0.20)
@@ -164,13 +166,15 @@ def fetch_market(market_name, url, batch_size=300):
         out.append({
             "market": market_name,
             "symbol": row["s"],
-            "name": d[8],  # Use description (full company name) instead of d[0] (ticker)
+            "name": d[10],  # d[10] is description (full company name)
             "current_price": d[1],
             "open": d[2],
             "premarket_close": d[3],
             "premarket_open": d[4],
             "postmarket_close": d[5],
             "postmarket_open": d[6],
+            "sector": d[7],  # d[7] is sector
+            "industry": d[8],  # d[8] is industry
             "Technical_Score": score,
             "Technical_Rating": convert_rating(score),
             "fetched_at": fetched_at_str,
