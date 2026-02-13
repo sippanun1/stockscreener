@@ -13,6 +13,13 @@
         market TEXT,
         name TEXT,
         current_price NUMERIC,
+        open NUMERIC,
+        premarket_close NUMERIC,
+        premarket_open NUMERIC,
+        postmarket_close NUMERIC,
+        postmarket_open NUMERIC,
+        sector TEXT,
+        industry TEXT,
         technical_score NUMERIC,
         technical_rating TEXT,
         fetched_date DATE DEFAULT CURRENT_DATE,
@@ -27,6 +34,15 @@
         daily_change_amount NUMERIC,
         prev_close_price NUMERIC
     );
+
+    -- Ensure all columns exist (Migration for existing tables)
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS open NUMERIC;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS premarket_close NUMERIC;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS premarket_open NUMERIC;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_close NUMERIC;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_open NUMERIC;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS sector TEXT;
+    ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS industry TEXT;
 
     -- Table for tracking trading performance/returns
     CREATE TABLE IF NOT EXISTS public.signal_returns (
@@ -92,7 +108,7 @@
     DROP INDEX IF EXISTS idx_stock_ratings_latest_lookup;
     CREATE INDEX idx_stock_ratings_latest_lookup 
     ON public.stock_ratings (symbol, fetched_date DESC, fetched_time DESC)
-    INCLUDE (id, current_price, daily_change_percent, technical_rating, market, name);
+    INCLUDE (id, current_price, daily_change_percent, technical_rating, market, name, sector, industry, open);
 
     -- Optimize Search Performance (Text Search - Trigram GIN)
     CREATE INDEX IF NOT EXISTS idx_stock_ratings_symbol_trgm_gin 
@@ -330,6 +346,13 @@
         res_market TEXT,
         res_name TEXT,
         res_current_price NUMERIC,
+        res_open NUMERIC,
+        res_premarket_close NUMERIC,
+        res_premarket_open NUMERIC,
+        res_postmarket_close NUMERIC,
+        res_postmarket_open NUMERIC,
+        res_sector TEXT,
+        res_industry TEXT,
         res_previous_price NUMERIC,
         res_change NUMERIC,
         res_change_pct NUMERIC,
@@ -358,8 +381,10 @@
         LatestPerSymbol AS (
             SELECT sr.id, sr.symbol, sr.daily_change_percent, sr.daily_change_amount, 
                    sr.technical_rating, sr.current_price, sr.rating_change_date, sr.market, sr.name,
-                   sr.fetched_date, sr.fetched_time, sr.technical_score, sr.prev_close_price,
-                   -- Extract exchange and symbol parts for proper sorting
+                    sr.fetched_date, sr.fetched_time, sr.technical_score, sr.prev_close_price,
+                    sr.open, sr.premarket_close, sr.premarket_open, sr.postmarket_close, sr.postmarket_open,
+                    sr.sector, sr.industry,
+                    -- Extract exchange and symbol parts for proper sorting
                    -- exchange: everything before ':', fallback to symbol if no ':'
                    SPLIT_PART(sr.symbol, ':', 1) as exchange,
                    -- symbol_only: everything after ':', fallback to full symbol if no ':'
@@ -419,6 +444,8 @@
         )
         SELECT 
             w.id, w.symbol, w.market, w.name, w.current_price, 
+            w.open, w.premarket_close, w.premarket_open, w.postmarket_close, w.postmarket_open,
+            w.sector, w.industry,
             COALESCE(NULLIF(w.prev_close_price, 0), w.h_price, 0), -- Use prev_close_price instead of previous_price
             COALESCE(w.daily_change_amount, 0), 
             COALESCE(w.daily_change_percent, 0),

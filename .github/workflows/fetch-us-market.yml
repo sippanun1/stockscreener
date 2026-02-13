@@ -43,8 +43,9 @@ jobs:
         id: fetch
         run: |
           cd backend
-          python main.py --market US --once 2>&1 | tee fetch_log.txt
+          python src/main.py --market US --once 2>&1 | tee fetch_log.txt
         env:
+          PYTHONPATH: src
           TZ: America/New_York
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -91,5 +92,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Fetch Details" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          grep ">>" backend/src/fetch_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs captured" >> $GITHUB_STEP_SUMMARY
+          grep ">>" backend/fetch_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs captured" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

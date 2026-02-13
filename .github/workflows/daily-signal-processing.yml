@@ -34,8 +34,9 @@ jobs:
         id: detect
         run: |
           cd backend
-          python signal_detector.py 2>&1 | tee detect_log.txt
+          python src/signal_detector.py 2>&1 | tee detect_log.txt
         env:
+          PYTHONPATH: src
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       
@@ -43,8 +44,9 @@ jobs:
         id: calculate
         run: |
           cd backend
-          python returns_calculator.py 2>&1 | tee calculate_log.txt
+          python src/returns_calculator.py 2>&1 | tee calculate_log.txt
         env:
+          PYTHONPATH: src
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       
@@ -58,14 +60,14 @@ jobs:
           echo "### 🔍 Signal Detection" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${{ steps.detect.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          tail -20 src/api/detect_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs" >> $GITHUB_STEP_SUMMARY
+          tail -20 backend/detect_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           echo "### 📈 Returns Calculation" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${{ steps.calculate.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          tail -20 src/api/calculate_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs" >> $GITHUB_STEP_SUMMARY
+          tail -20 backend/calculate_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
       
       - name: Notify on failure

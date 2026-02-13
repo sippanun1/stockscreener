@@ -85,10 +85,11 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
                 "market": stock.get("market"),
                 "name": stock.get("name"),
                 "current_price": stock.get("current_price"),
-                # "premarket_close": stock.get("premarket_close"),  <-- REMOVED: unused/empty
+                "open": stock.get("open"),
+                "premarket_close": stock.get("premarket_close"),
                 "premarket_open": stock.get("premarket_open"),
-                # "postmarket_close": stock.get("postmarket_close"),<-- REMOVED: unused/empty
-                # "postmarket_open": stock.get("postmarket_open"),  <-- REMOVED: unused/empty
+                "postmarket_close": stock.get("postmarket_close"),
+                "postmarket_open": stock.get("postmarket_open"),
                 "sector": stock.get("sector"),
                 "industry": stock.get("industry"),
                 "technical_score": stock.get("Technical_Score"),
@@ -290,6 +291,13 @@ def get_stocks_with_previous_rating(
                     "market": row["res_market"],
                     "name": row["res_name"],
                     "current_price": row["res_current_price"],
+                    "open": row.get("res_open"),
+                    "premarket_close": row.get("res_premarket_close"),
+                    "premarket_open": row.get("res_premarket_open"),
+                    "postmarket_close": row.get("res_postmarket_close"),
+                    "postmarket_open": row.get("res_postmarket_open"),
+                    "sector": row.get("res_sector"),
+                    "industry": row.get("res_industry"),
                     "Technical_Rating": row["res_technical_rating"],
                     "Previous_Rating": row["res_previous_rating"],
                     "previous_price": row["res_previous_price"],
