@@ -351,6 +351,14 @@ if __name__ == "__main__":
                             print(f">> ❌ Error saving to Database: {e}")
                             sys.exit(1) # CRITICAL: Fail the workflow if DB save fails
                         
+                        # CLEANUP: Only if NOT in 'once' mode (GitHub Actions needs the file for validation)
+                        if not args.once:
+                             if filename.exists():
+                                filename.unlink()
+                                print(f">> 🧹 Cleaned up buffer file: {filename.name}")
+                        else:
+                            print(f">> ℹ️  File kept for validation: {filename.name}")
+
                         print("\n>> DONE - Market Fetched Successfully!")
                         sys.exit(0)
                     else:
