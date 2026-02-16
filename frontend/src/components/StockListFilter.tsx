@@ -19,14 +19,33 @@ type StockFiltersProps = {
 export default function StockListFilter({ onChange, filteredCount, currentFilters }: StockFiltersProps) {
   const [market, setMarket] = useState<string>("");
   const [currentRating, setCurrentRating] = useState<string>("");
+  const [sector, setSector] = useState<string>("");
+  const [sectors, setSectors] = useState<string[]>([]);
 
   const [search, setSearch] = useState<string>("");
+
+  // Fetch available sectors on mount
+  useEffect(() => {
+    const fetchSectors = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/sectors");
+        if (res.ok) {
+          const data = await res.json();
+          setSectors(data.sectors || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch sectors:", err);
+      }
+    };
+    fetchSectors();
+  }, []);
 
   // Sync local state with external filters (e.g. from SummaryInfo clicks)
   useEffect(() => {
     if (currentFilters) {
       setMarket(currentFilters.market || "");
       setCurrentRating(currentFilters.currentRating || "");
+      setSector(currentFilters.sector || "");
       setSearch(currentFilters.search || "");
     }
   }, [currentFilters]);
@@ -55,26 +74,31 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   const handleMarketSelect = (value: string) => {
     const newMarket = value === "all" ? "" : value;
     setMarket(newMarket);
-    onChange?.({ market: newMarket, currentRating, search });
+    onChange?.({ market: newMarket, currentRating, sector, search });
+  };
+
+  const handleSectorSelect = (value: string) => {
+    const newSector = value === "all" ? "" : value;
+    setSector(newSector);
+    onChange?.({ market, currentRating, sector: newSector, search });
   };
 
   const handleCurrentRatingSelect = (value: string) => {
     const newRating = value === "all" ? "" : value;
     setCurrentRating(newRating);
-    onChange?.({ market, currentRating: newRating, search });
+    onChange?.({ market, currentRating: newRating, sector, search });
   };
-
-
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    onChange?.({ market, currentRating, search: value });
+    onChange?.({ market, currentRating, sector, search: value });
   };
 
   const handleClearFilters = () => {
     setMarket("");
     setCurrentRating("");
-    onChange?.({ market: "", currentRating: "", search: "" });
+    setSector("");
+    onChange?.({ market: "", currentRating: "", sector: "", search: "" });
   };
 
   return (
@@ -95,6 +119,25 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
                 {marketOptions.map((option) => (
                   <SelectItem key={option} value={option} className="text-white hover:text-white focus:text-white hover:bg-[#7588A380] focus:bg-[#7588A380] cursor-pointer px-3 py-2.5 rounded-none">
                     {option}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          {/* Sector Filter */}
+          <Select value={sector || "all"} onValueChange={handleSectorSelect}>
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px] lg:w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
+              <SelectValue>{sector ? sector : "All Sectors"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent position="popper" className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0 max-h-[300px]">
+              <SelectGroup>
+                <SelectItem value="all" className="text-white hover:text-white focus:text-white hover:bg-[#7588A380] focus:bg-[#7588A380] cursor-pointer px-3 py-2.5 rounded-none">
+                  All Sectors
+                </SelectItem>
+                {sectors.map((s) => (
+                  <SelectItem key={s} value={s} className="text-white hover:text-white focus:text-white hover:bg-[#7588A380] focus:bg-[#7588A380] cursor-pointer px-3 py-2.5 rounded-none">
+                    {s}
                   </SelectItem>
                 ))}
               </SelectGroup>

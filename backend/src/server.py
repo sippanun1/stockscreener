@@ -173,6 +173,7 @@ def get_stocks(
     search: Optional[str] = Query(None, description="Search term for symbol or name"),
     rating: Optional[str] = Query(None, description="Filter by rating: Strong Buy, Buy, Sell, Strong Sell"),
     technical_rating: Optional[str] = Query(None, description="Filter by technical rating group: Positive or Negative"),
+    sector: Optional[str] = Query(None, description="Filter by sector"),
     sort_by: str = Query('fetched_date', description="Sort by: symbol, current_price, change, changePercent, fetched_date"),
     sort_order: str = Query('desc', description="Sort order: asc or desc"),
     limit: int = Query(100, ge=1, le=50000, description="Number of results"),
@@ -209,7 +210,8 @@ def get_stocks(
             sort_order=sort_order,
             limit=limit,
             offset=offset,
-            lookback_days=lookback
+            lookback_days=lookback,
+            sector=sector
         )
         
         # Get total count matching the same filters (for "Total Signal" display)
@@ -219,7 +221,8 @@ def get_stocks(
             search=search,
             rating=rating,
             technical_rating=technical_rating,
-            lookback_days=lookback
+            lookback_days=lookback,
+            sector=sector
         )
         
         logger.debug(f"Fetched {len(stocks)} stocks out of {total_count} total (market={market}, date={date}, technical_rating={technical_rating})")
@@ -232,7 +235,8 @@ def get_stocks(
                 "market": market,
                 "date": date,
                 "rating": rating,
-                "technical_rating": technical_rating
+                "technical_rating": technical_rating,
+                "sector": sector
             }
         }
     except Exception as e:
@@ -282,6 +286,17 @@ def get_available_dates(_auth: bool = Depends(verify_api_key)):
     except Exception as e:
         logger.error(f"Error fetching dates: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch dates")
+
+
+@app.get("/api/sectors")
+def get_sectors(_auth: bool = Depends(verify_api_key)):
+    """Get list of all available sectors."""
+    try:
+        sectors = database.get_unique_sectors()
+        return {"sectors": sectors}
+    except Exception as e:
+        logger.error(f"Error fetching sectors: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch sectors")
 
 
 @app.get("/api/stock/{symbol}")

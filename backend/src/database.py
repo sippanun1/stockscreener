@@ -151,7 +151,8 @@ def get_stocks_with_previous_rating(
     sort_order: str = 'desc',
     limit: int = 100,
     offset: int = 0,
-    lookback_days: Optional[int] = None
+    lookback_days: Optional[int] = None,
+    sector: Optional[str] = None
 ):
     """
     Get stocks using the Supabase RPC function `get_stocks_with_last_rating`.
@@ -177,7 +178,8 @@ def get_stocks_with_previous_rating(
             "p_sort_order": sort_order,
             "p_limit": batch_size,
             "p_offset": current_offset,
-            "p_lookback": lookback_days
+            "p_lookback": lookback_days,
+            "p_sector": sector
         }
         
         try:
@@ -229,7 +231,8 @@ def get_stocks_count(
     search: Optional[str] = None,
     rating: Optional[str] = None,
     technical_rating: Optional[str] = None,
-    lookback_days: Optional[int] = None
+    lookback_days: Optional[int] = None,
+    sector: Optional[str] = None
 ) -> int:
     """
     Get total count of stocks matching filters.
@@ -245,7 +248,8 @@ def get_stocks_count(
             "p_search": search,
             "p_rating": rating,
             "p_tech_rating": technical_rating,
-            "p_lookback": lookback_days
+            "p_lookback": lookback_days,
+            "p_sector": sector
         }
         
         # Use a dedicated count RPC function for better performance
@@ -635,4 +639,14 @@ def get_intraday_comparison(date: str, market: Optional[str] = None):
 
     except Exception as e:
         logger.error(f"Intraday Comparison Error: {e}")
+        return []
+
+def get_unique_sectors():
+    """Get list of unique sectors."""
+    client = get_client()
+    try:
+        response = client.rpc("get_sectors").execute()
+        return [row["sector"] for row in response.data] if response.data else []
+    except Exception as e:
+        logger.error(f"Error fetching sectors: {e}")
         return []

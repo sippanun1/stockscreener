@@ -30,6 +30,7 @@ interface Filters {
   technicalRating?: string
   search?: string
   sortBy?: string
+  sector?: string
 }
 
 interface DataTableProps {
@@ -75,6 +76,11 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   // Include technicalRating filter for server-side filtering
   if (currentFilters?.technicalRating) {
     params.append('technical_rating', currentFilters.technicalRating);
+  }
+
+  // Include sector filter
+  if (currentFilters?.sector && currentFilters.sector !== '' && currentFilters.sector !== 'all') {
+    params.append('sector', currentFilters.sector);
   }
 
   // Include sort parameters for server-side sorting
@@ -150,6 +156,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
       limit: fetchLimit, 
       rating: filters?.currentRating,
       technicalRating: filters?.technicalRating,
+      sector: filters?.sector,
       sortBy: sortBy,
       sortOrder: sortOrder
     }],

@@ -17,6 +17,7 @@ function ScreenerPage() {
     previousRating: "",
     currentRating: "",
     technicalRating: "",
+    sector: "",
     date: "",
     search: "",
     sortBy: undefined as string | undefined,
