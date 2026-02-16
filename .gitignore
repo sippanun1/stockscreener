@@ -41,3 +41,4 @@ __pycache__/
 *.pyd
 
 # Node
+/node_modules/
