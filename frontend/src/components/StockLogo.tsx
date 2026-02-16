@@ -7,31 +7,46 @@ interface StockLogoProps {
   className?: string
 }
 
-const getStockLogoUrl = (symbol: string) => {
+// Logo sources configuration
+const getLogoUrl = (source: 'logokit' | 'elbstream', symbol: string) => {
   // Extract ticker and exchange from symbol (e.g. "NASDAQ:NVDA" -> ticker: "NVDA", exchange: "NASDAQ")
   const parts = symbol.split(':')
   const ticker = parts[1] || symbol
   const exchange = parts[0]
   
-  // Format ticker based on exchange for Elbstream API
   let formattedTicker = ticker
   
-  // Hong Kong stocks: add .HK suffix
+  // Format ticker based on exchange
   if (exchange === 'HKEX') {
     formattedTicker = `${ticker}.HK`
   }
-  // Tokyo stocks: add .T suffix
   else if (exchange === 'TSE' || exchange === 'SAPSE') {
     formattedTicker = `${ticker}.T`
   }
-  // Bangkok/Thailand stocks: add .BK suffix
   else if (exchange === 'SET') {
     formattedTicker = `${ticker}.BK`
   }
-  // US stocks: use ticker as-is (AAPL, TSLA, etc.)
+  else if (exchange === 'BSE') {
+      formattedTicker = `${ticker}.BO`
+  }
+  else if (exchange === 'NSE') {
+      formattedTicker = `${ticker}.NS`
+  }
+  else if (exchange === 'LSE') {
+      formattedTicker = `${ticker}.L`
+  }
+  else if (exchange === 'VNI') { 
+      formattedTicker = `${ticker}.vn` // Vietnamese stocks often use just symbol or .vn
+  }
   
-  // Elbstream Logo API - correct endpoint format
-  return `https://api.elbstream.com/logos/symbol/${formattedTicker}?size=64&format=png`
+  if (source === 'logokit') {
+    // LogoKit implementation
+    // Using 48px to look good on retina 24px/32px
+    return `https://img.logokit.com/ticker/${formattedTicker}?size=64`
+  } else {
+    // Elbstream implementation (Existing)
+    return `https://api.elbstream.com/logos/symbol/${formattedTicker}?size=64&format=png`
+  }
 }
 
 // Generate consistent pastel color based on name string
@@ -54,14 +69,20 @@ const getFallbackColor = (name: string) => {
 }
 
 export const StockLogo = ({ symbol, name, className }: StockLogoProps) => {
-  const [error, setError] = useState(false)
+  const [sourceIndex, setSourceIndex] = useState(0) // 0: logokit, 1: elbstream, 2: fallback
+  const sources: ('logokit' | 'elbstream')[] = ['logokit', 'elbstream']
 
-  // Reset error state when symbol changes (important for virtualized tables)
+  // Reset state when symbol changes
   useEffect(() => {
-    setError(false)
+    setSourceIndex(0)
   }, [symbol])
 
-  if (error) {
+  const handleError = () => {
+    setSourceIndex((prev) => prev + 1)
+  }
+
+  // Fallback (Initials)
+  if (sourceIndex >= sources.length) {
     // Use full ticker symbol (e.g. "AJA") instead of initials
     const parts = symbol.split(':')
     const ticker = parts[1] || symbol
@@ -85,12 +106,13 @@ export const StockLogo = ({ symbol, name, className }: StockLogoProps) => {
     )
   }
 
+  // Image Logo
   return (
     <img
-      src={getStockLogoUrl(symbol)}
+      src={getLogoUrl(sources[sourceIndex], symbol)}
       alt={name}
       className={cn("w-8 h-8 rounded-full object-cover bg-white shrink-0", className)}
-      onError={() => setError(true)}
+      onError={handleError}
       loading="lazy"
     />
   )

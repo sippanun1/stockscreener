@@ -125,7 +125,9 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
 
   return {
     stocks: stocks,
-    total: result.total || 0  // Total count from database
+    // Note: total might be slightly higher than visible stocks due to client-side filtering of "Neutral"
+    // until the backend SQL migration is applied.
+    total: result.total || 0  
   }
 }
 
@@ -263,12 +265,13 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
           onScroll={handleScroll}
         >
           {/* Horizontal scroll wrapper for mobile */}
-          <div className="min-w-full w-max lg:w-full">
-            <table className="w-full caption-bottom text-sm" style={{ tableLayout: 'auto' }}>
+          <div className="w-full">
+            <table className="w-full caption-bottom text-sm" style={{ tableLayout: 'fixed' }}>
             <TableHeader className="bg-[#0F151F] sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="border-[#1E2530] hover:bg-[#1E2530]">
                   {headerGroup.headers.map((header) => {
+
                     // Determine alignment based on column
                     const isExchange = header.column.id === 'exchange'
                     const isNumeric = ['current_price', 'change', 'changePercent'].includes(header.column.id)
@@ -280,7 +283,8 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                         ? 'text-right justify-end' 
                         : 'text-center justify-center'
 
-                    // No sticky for symbol column - prevent overlapping
+                    // Sticky Symbol Column - HEADER
+                    // Removed sticky lock as requested.
                     const stickyClass = ""
                     
                     // Reduce padding for numeric columns and exchange to minimize gaps
@@ -296,13 +300,21 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                     } else if (isExchange) {
                       paddingClass = '!pl-2 !pr-1' // Left aligned padding
                     }
+
+                    // Responsive width for Symbol
+                    const widthStyle = isSymbol 
+                      ? { } // Allow class to control width
+                      : { width: header.getSize() }
+                    
+                    // Width 120px
+                    const widthClass = isSymbol ? "w-[120px] min-w-[120px] max-w-[120px] sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]" : ""
                     
                     return (
                       <TableHead
                         key={header.id}
-                        className={`text-[#F8FAFC] text-sm cursor-pointer hover:bg-[#1E2530] font-semibold ${alignClass} ${stickyClass} ${paddingClass} ${!isSymbol ? 'bg-[#0F151F]' : ''}`}
+                        className={`text-[#F8FAFC] text-sm cursor-pointer hover:bg-[#1E2530] font-semibold ${alignClass} ${stickyClass} ${paddingClass} ${widthClass} ${!isSymbol && !stickyClass ? 'bg-[#0F151F]' : ''}`}
                         onClick={header.column.getToggleSortingHandler()}
-                        style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
+                        style={widthStyle}
                       >
                         <div className={`flex items-center gap-1 ${alignClass.split(' ')[1]}`}>
                           {header.isPlaceholder
@@ -314,7 +326,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                           {header.column.getCanSort() && (
                             <SortArrows 
                               sortDirection={header.column.getIsSorted()}
-                              variant={(header.id === 'symbol' || header.id === 'exchange') ? 'text' : 'standard'}
+                              variant={(header.id === 'symbol' || header.id === 'exchange' || header.id === 'sector') ? 'text' : 'standard'}
                             />
                           )}
                         </div>
@@ -338,6 +350,9 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                     {row.getVisibleCells().map((cell) => {
                          const isSymbol = cell.column.id === 'symbol'
                          const isExchange = cell.column.id === 'exchange'
+                         
+                         // Sticky Symbol Column (Row)
+                         // Removed sticky lock as requested.
                          const stickyClass = ""
                          
                          let paddingClass = ''
@@ -353,11 +368,17 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                            paddingClass = '!py-2 !pl-2 !pr-1' // Left aligned padding
                          }
 
+                         // Responsive width usage
+                         const widthStyle = isSymbol 
+                           ? { } 
+                           : { width: cell.column.getSize() }
+                         const widthClass = isSymbol ? "w-[120px] min-w-[120px] max-w-[120px] sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]" : ""
+
                          return (
                           <TableCell 
                             key={cell.id} 
-                            className={`${paddingClass} ${stickyClass}`}
-                            style={{ width: cell.column.getSize() !== 150 ? cell.column.getSize() : undefined }}
+                            className={`${paddingClass} ${stickyClass} ${widthClass}`}
+                            style={widthStyle}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>

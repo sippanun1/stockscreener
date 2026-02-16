@@ -57,18 +57,23 @@ export const stockColumns: ColumnDef<Stock>[] = [
     accessorKey: "symbol",
     header: "Symbol",
     sortDescFirst: false, // ↑ = 0→A→Z, ↓ = Z→A→0
-    size: 105,
-    minSize: 85,
-    maxSize: 150,
+    size: 240,
+    minSize: 200,
+    maxSize: 350,
     cell: ({ row }) => {
       const symbol = row.getValue("symbol") as string
       // Extract clean symbol for display (e.g. "NVDA")
       const displaySymbol = symbol.split(":")[1] || symbol
       return (
-        <div className="flex items-center gap-1 sm:gap-3">
-          <StockLogo symbol={symbol} name={row.original.name} className="w-5 h-5 sm:w-8 sm:h-8 text-[10px] sm:text-xs shrink-0" />
-          <div className="text-[#F8FAFC] font-semibold text-xs sm:text-sm truncate max-w-[55px] sm:max-w-none">
-            {displaySymbol}
+        <div className="flex items-center gap-2.5 sm:gap-4 pl-1">
+          <StockLogo symbol={symbol} name={row.original.name} className="w-6 h-6 sm:w-8 sm:h-8 text-[11px] sm:text-xs shrink-0 rounded-full border border-[#7588A3]/10" />
+          <div className="flex flex-col min-w-0 leading-tight">
+             <div className="text-[#FFFFFF] font-bold text-sm sm:text-[15px] truncate">
+                {displaySymbol}
+             </div>
+             <span className="text-[#7588A3] text-[11px] sm:text-[12px] font-medium truncate mt-0.5 max-w-[130px] sm:max-w-[160px]" title={row.original.name}>
+                {row.original.name}
+             </span>
           </div>
         </div>
       )
@@ -111,9 +116,10 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "sector",
     header: "Sector",
-    size: 100,
-    minSize: 80,
-    maxSize: 150,
+    size: 120,
+    minSize: 90,
+    maxSize: 180,
+    sortDescFirst: false, // ↑ = A→Z, ↓ = Z→A
     cell: ({ row }) => {
       const sector = row.getValue("sector") as string
       return (
@@ -123,6 +129,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       )
     },
   },
+
 
   {
     accessorKey: "change",
@@ -162,7 +169,10 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "Previous_Rating",
     header: "Previous Rating",
-    enableSorting: false,
+    size: 100,
+    minSize: 80,
+    maxSize: 120,
+    enableSorting: false, // User requested disable
     cell: ({ row }) => {
       const previousRating = row.getValue("Previous_Rating") as string
       const currentRating = row.getValue("Technical_Rating") as string
@@ -193,6 +203,9 @@ export const stockColumns: ColumnDef<Stock>[] = [
   },
   {
     id: "arrow",
+    size: 40,
+    minSize: 30,
+    maxSize: 50,
     enableSorting: false,
     cell: () => {
       // Always show arrow as requested
@@ -206,7 +219,10 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "Technical_Rating",
     header: "Current Rating",
-    enableSorting: false,
+    size: 100,
+    minSize: 80,
+    maxSize: 120,
+    enableSorting: false, // User requested disable
     cell: ({ row }) => {
       const rating = row.getValue("Technical_Rating") as string
       return (
@@ -223,6 +239,9 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "rating_change_date",
     header: "Date",
+    size: 100,
+    minSize: 80,
+    maxSize: 120,
     cell: ({ row }) => {
       // Show rating_change_date (when the rating changed to current status)
       const dateString = row.original.rating_change_date as string
@@ -252,6 +271,9 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     id: "actions",
     header: "History",
+    size: 120,
+    minSize: 100,
+    maxSize: 150,
     cell: ({ row }) => {
       return (
         <div className="flex justify-center">
@@ -267,4 +289,3 @@ export const stockColumns: ColumnDef<Stock>[] = [
     },
   },
 ]
-
