@@ -189,20 +189,25 @@ export default function StockDetail() {
   const filterButtons = ["Strong Sell", "Sell", "Buy", "Strong Buy"];
   const isPositiveChange = data.change_percent >= 0;
 
-  // Filter history based on active tab
-  const historyItems = activeTab === "daily" 
+  // Filter history based on active tab AND selected rating
+  const historyItemsAll = activeTab === "daily" 
     ? data.history 
     : (data.intraday_moves || []);
 
-  const hasHistory = historyItems.length > 0;
+  const historyItems = selectedRating 
+    ? historyItemsAll.filter(item => item.to_rating === selectedRating)
+    : historyItemsAll;
+
+  // Limit to latest 10 items
+  const historyItemsDisplayed = historyItems.slice(0, 10);
+
+  const hasHistory = historyItemsDisplayed.length > 0;
 
   // Calculate stats dynamically based on the CURRENT view (historyItems)
   // This ensures Intraday tab shows Intraday stats, and Daily shows Daily stats.
   const currentStats = (() => {
-      // If a rating filter is active, further filter the historyItems
-      const itemsToCalc = selectedRating 
-        ? historyItems.filter(item => item.to_rating === selectedRating)
-        : historyItems;
+      // Use the filtered list for stats as well
+      const itemsToCalc = historyItems; 
 
       const completed = itemsToCalc.filter(item => item.status === "COMPLETED" && item.result !== undefined);
       const total = completed.length;
@@ -400,7 +405,7 @@ export default function StockDetail() {
             {!hasHistory ? (
                <div className="text-center py-12 text-[#94A3B8] bg-[#0F151F] rounded-lg border border-[#1E2530]">No history available for this view.</div>
             ) : (
-              historyItems.map((item, idx) => {
+              historyItemsDisplayed.map((item, idx) => {
                 // Use same threshold as accuracy calculation (0.2%)
                 const isWin = item.result !== undefined && item.result > 0.2;
                 const isLoss = item.result !== undefined && item.result < -0.2;
