@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { HiOutlineSearch } from "react-icons/hi";
-import reloadIcon from "@/assets/reload.svg";
+import { RotateCcw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -180,9 +180,9 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
           </div>
           <button
             onClick={handleClearFilters}
-            className="w-[54px] h-[40px] bg-[#0F151F] rounded-xl hover:bg-[#354052] transition flex items-center justify-center flex-shrink-0"
+            className="w-[54px] h-[40px] bg-[#0F151F] rounded-xl hover:bg-[#354052] transition flex items-center justify-center flex-shrink-0 group"
           >
-            <img src={reloadIcon} alt="reset" />
+            <RotateCcw className="text-[#F8FAFC] w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
           </button>
         </div>
       </div>
