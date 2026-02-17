@@ -46,6 +46,13 @@ ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS daily_change_amount NU
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS prev_close_price NUMERIC;
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS previous_rating TEXT;
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS previous_rating_date DATE;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS fetched_time TIME DEFAULT CURRENT_TIME;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS session_type TEXT DEFAULT 'post_market';
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS open NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS premarket_close NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS premarket_open NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_close NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_open NUMERIC;
 
 -- ULTRA PERFORMANCE TABLE (Stores only the LATEST record per stock for instant UI)
 CREATE TABLE IF NOT EXISTS public.latest_stock_ratings (
@@ -78,6 +85,13 @@ CREATE TABLE IF NOT EXISTS public.latest_stock_ratings (
 -- Ensure previous rating columns exist on latest table
 ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS previous_rating TEXT;
 ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS previous_rating_date DATE;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS fetched_time TIME;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS session_type TEXT;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS open NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS premarket_close NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS premarket_open NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS postmarket_close NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS postmarket_open NUMERIC;
 
 -- Table for tracking trading performance/returns
 CREATE TABLE IF NOT EXISTS public.signal_returns (
