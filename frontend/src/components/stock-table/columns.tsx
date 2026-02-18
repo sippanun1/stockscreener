@@ -168,7 +168,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
   },
   {
     accessorKey: "accuracy_percent",
-    header: "Acc.",
+    header: "Accuracy",
     size: 70,
     minSize: 60,
     maxSize: 90,

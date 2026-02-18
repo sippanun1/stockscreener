@@ -113,7 +113,7 @@ export default function StockTable({ stocks }: StockTableProps) {
               Change%
             </TableHeadCell>
             <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
-              Acc.
+              Accuracy
             </TableHeadCell>
             <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
               Previous Rating
