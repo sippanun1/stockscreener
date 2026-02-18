@@ -76,19 +76,19 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
 
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6 px-4 sm:px-6 lg:px-[53px]">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-3 sm:mb-4 px-4 sm:px-6 lg:px-[53px]">
       {/* Card 1: POSITIVE / BULLISH */}
       <div 
         onClick={() => onFilterChange?.('Positive')}
-        className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col justify-between min-h-[120px] h-auto cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
+        className="bg-[#0F151F] rounded-2xl p-3.5 border border-[#7588A3]/20 flex flex-col justify-between min-h-[110px] h-auto cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
       >
         <div className="flex items-start justify-start mb-2">
-          <div className="text-[#F8FAFC] text-sm sm:text-base font-semibold pt-0.5">
+          <div className="text-[#F8FAFC] text-xs sm:text-sm font-semibold pt-0.5">
             Positive Signals
           </div>
         </div>
         <div className="flex flex-col items-end justify-center flex-1 mb-2">
-          <div className="text-[#F8FAFC] text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-none tabular-nums">
+          <div className="text-[#F8FAFC] text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight leading-none tabular-nums">
             {summary.upgrades.toLocaleString()}
           </div>
           <div className="text-[#7588A3] text-[10px] font-medium mt-1">
@@ -140,15 +140,15 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
       {/* Card 2: NEGATIVE / BEARISH */}
       <div 
         onClick={() => onFilterChange?.('Negative')}
-        className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col justify-between min-h-[120px] h-auto cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
+        className="bg-[#0F151F] rounded-2xl p-3.5 border border-[#7588A3]/20 flex flex-col justify-between min-h-[110px] h-auto cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
       >
         <div className="flex items-start justify-start mb-2">
-          <div className="text-[#F8FAFC] text-sm sm:text-base font-semibold pt-0.5">
+          <div className="text-[#F8FAFC] text-xs sm:text-sm font-semibold pt-0.5">
             Negative Signals
           </div>
         </div>
         <div className="flex flex-col items-end justify-center flex-1 mb-2">
-          <div className="text-[#F8FAFC] text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight leading-none tabular-nums">
+          <div className="text-[#F8FAFC] text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight leading-none tabular-nums">
             {(summary.downgrades || 0).toLocaleString()}
           </div>
           <div className="text-[#7588A3] text-[10px] font-medium mt-1">
@@ -200,7 +200,7 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
       {/* Card 3: TOP GAINERS */}
       <div 
         onClick={() => onFilterChange?.('Top Gainers')}
-        className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col min-h-[120px] h-auto overflow-hidden cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
+        className="bg-[#0F151F] rounded-2xl p-3.5 border border-[#7588A3]/20 flex flex-col min-h-[110px] h-auto overflow-hidden cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
       >
         {/* Title */}
         <div className="text-[#F8FAFC] text-xs sm:text-sm font-bold uppercase mb-2 shrink-0">Top Gainers</div>
@@ -243,7 +243,7 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
        {/* Card 4: TOP ACCURACY */}
        <div 
         onClick={() => onFilterChange?.('Top Accuracy')}
-        className="bg-[#0F151F] rounded-2xl p-4 border border-[#7588A3]/20 flex flex-col min-h-[120px] h-auto overflow-hidden cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
+        className="bg-[#0F151F] rounded-2xl p-3.5 border border-[#7588A3]/20 flex flex-col min-h-[110px] h-auto overflow-hidden cursor-pointer hover:bg-[#0F151F]/80 transition-colors"
       >
         {/* Title */}
         <div className="flex items-baseline gap-1.5 mb-2 shrink-0">
