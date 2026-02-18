@@ -43,27 +43,24 @@ function ScreenerPage() {
         sortBy: "top_gainers",
         search: "" 
       }));
+    } else if (filterType === "Top Accuracy") {
+      setFilters(prev => ({ 
+        ...prev, 
+        technicalRating: "", 
+        currentRating: "", 
+        sortBy: "top_accuracy",
+        search: "" 
+      }));
     } else {
       setFilters(prev => ({ ...prev, currentRating: filterType, technicalRating: "", sortBy: undefined, search: "" }));
     }
   };
 
-  const handleSearch = (searchTerm: string) => {
-    // Clear other filters to ensure the search term is the primary filter
-    setFilters(prev => ({
-      ...prev,
-      market: "", // Clear market to search globally
-      previousRating: "",
-      currentRating: "",
-      technicalRating: "",
-      search: searchTerm,
-      sortBy: undefined // Reset sort to default
-    }));
-  };
+
 
   return (
     <div className="flex flex-col lg:h-full">
-      <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} onSearch={handleSearch} />
+      <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
       <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
       {/* Mobile: Fixed height table (nested scroll). Desktop: Flex-1 filling remaining space. */}
       <div className="h-[75vh] lg:h-auto lg:flex-1 overflow-hidden min-h-0">

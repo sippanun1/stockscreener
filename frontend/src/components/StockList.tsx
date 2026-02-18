@@ -113,6 +113,9 @@ export default function StockTable({ stocks }: StockTableProps) {
               Change%
             </TableHeadCell>
             <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
+              Acc.
+            </TableHeadCell>
+            <TableHeadCell className="text-[#F8FAFC] uppercase text-sm text-center">
               Previous Rating
             </TableHeadCell>
             <TableHeadCell className="p-0 w-[40px]">
@@ -169,6 +172,13 @@ export default function StockTable({ stocks }: StockTableProps) {
                     <div className="text-right w-[100px]">
                       {changePercent > 0 ? "+" : ""}{changePercent.toFixed(2)}%
                     </div>
+                  </div>
+                </TableCell>
+                <TableCell className="text-[#F8FAFC]">
+                  <div className="flex justify-center">
+                     <div className={`text-right w-[100px] ${s.accuracy_percent && s.accuracy_percent >= 50 ? 'text-[#10B981]' : (s.accuracy_percent ? 'text-[#EF4444]' : 'text-[#7588A3]')}`}>
+                       {s.accuracy_percent ? `${s.accuracy_percent.toFixed(0)}%` : "-"}
+                     </div>
                   </div>
                 </TableCell>
 

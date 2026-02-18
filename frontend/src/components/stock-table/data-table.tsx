@@ -120,6 +120,7 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
       previous_rating_date: s.previous_rating_date,
       rating_change_date: s.rating_change_date,
       fetched_date: s.fetched_date,
+      accuracy_percent: s.accuracy_percent,
     }
   })
 
@@ -183,6 +184,8 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   useEffect(() => {
     if (filters?.sortBy === "top_gainers") {
       setSorting([{ id: "changePercent", desc: true }])
+    } else if (filters?.sortBy === "top_accuracy") {
+      setSorting([{ id: "accuracy_percent", desc: true }])
     }
   }, [filters?.sortBy])
 

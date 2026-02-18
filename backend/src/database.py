@@ -210,7 +210,8 @@ def get_stocks_with_previous_rating(
                     "changePercent": row.get("res_change_pct", 0),
                     "rating_change_date": row["res_rating_change_date"],
                     "fetched_date": row["res_fetched_date"],
-                    "fetched_time": row["res_fetched_time"]
+                    "fetched_time": row["res_fetched_time"],
+                    "accuracy_percent": row.get("res_accuracy_percent")
                 })
             
             if len(response.data) < batch_size:
@@ -490,6 +491,13 @@ def get_today_summary(market=None, date=None):
             "p_limit": 3
         }).execute()
         top_gainers = gainers_res.data if gainers_res.data else []
+        
+        # 3. Get Top Accuracy [NEW]
+        accuracy_res = client.rpc("get_top_accuracy_stocks", {
+            "p_market": market,
+            "p_limit": 3
+        }).execute()
+        top_accuracy_stocks = accuracy_res.data if accuracy_res.data else []
 
         # Map SQL keys (e.g. 'strong_buy') to Frontend keys (if needed)
         # SQL returns: strong_buy, buy, strong_sell, sell, total_positive, total_negative, date
@@ -525,6 +533,15 @@ def get_today_summary(market=None, date=None):
                     "change_percent": g.get("res_change_pct"),
                     "fetched_date": g.get("res_date")
                 } for g in top_gainers
+            ],
+            "top_accuracy": [
+                {
+                    "symbol": a.get("res_symbol"),
+                    "market": a.get("res_market"),
+                    "name": a.get("res_name"),
+                    "accuracy": a.get("res_accuracy"),
+                    "total_signals": a.get("res_total_signals")
+                } for a in top_accuracy_stocks
             ]
         }
     except Exception as e:

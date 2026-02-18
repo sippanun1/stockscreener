@@ -35,7 +35,9 @@ CREATE TABLE IF NOT EXISTS public.stock_ratings (
     daily_change_amount NUMERIC,
     prev_close_price NUMERIC,
     previous_rating TEXT,
-    previous_rating_date DATE
+    previous_rating TEXT,
+    previous_rating_date DATE,
+    accuracy_percent NUMERIC
 );
 
 -- Ensure all columns exist for existing databases
@@ -53,6 +55,36 @@ ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS premarket_close NUMERI
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS premarket_open NUMERIC;
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_close NUMERIC;
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_open NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS accuracy_percent NUMERIC;
+
+-- Enhance signal_returns for detailed tracking
+ALTER TABLE public.signal_returns ADD COLUMN IF NOT EXISTS entry_price NUMERIC;
+ALTER TABLE public.signal_returns ADD COLUMN IF NOT EXISTS exit_price NUMERIC;
+ALTER TABLE public.signal_returns ADD COLUMN IF NOT EXISTS rating TEXT;
+ALTER TABLE public.signal_returns ADD COLUMN IF NOT EXISTS prev_rating TEXT;
+ALTER TABLE public.signal_returns ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+
+-- Add usage constraint for UPSERT
+-- Add usage constraint for UPSERT
+DO $$
+BEGIN
+    -- 1. CLEANUP DUPLICATES: Keep only the latest record per symbol/date
+    DELETE FROM public.signal_returns
+    WHERE id IN (
+        SELECT id
+        FROM (
+            SELECT id,
+                   ROW_NUMBER() OVER (PARTITION BY symbol, signal_date ORDER BY created_at DESC, id DESC) as rnum
+            FROM public.signal_returns
+        ) t
+        WHERE t.rnum > 1
+    );
+
+    -- 2. ADD CONSTRAINT
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_signal') THEN
+        ALTER TABLE public.signal_returns ADD CONSTRAINT unique_signal UNIQUE (symbol, signal_date);
+    END IF;
+END $$;
 
 -- ULTRA PERFORMANCE TABLE (Stores only the LATEST record per stock for instant UI)
 CREATE TABLE IF NOT EXISTS public.latest_stock_ratings (
@@ -78,7 +110,10 @@ CREATE TABLE IF NOT EXISTS public.latest_stock_ratings (
     daily_change_percent NUMERIC,
     daily_change_amount NUMERIC,
     previous_rating TEXT,
+    previous_rating TEXT,
     previous_rating_date DATE,
+    accuracy_percent NUMERIC,
+    total_signals INTEGER DEFAULT 0,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -92,6 +127,8 @@ ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS premarket_close
 ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS premarket_open NUMERIC;
 ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS postmarket_close NUMERIC;
 ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS postmarket_open NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS accuracy_percent NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS total_signals INTEGER DEFAULT 0;
 
 -- Table for tracking trading performance/returns
 CREATE TABLE IF NOT EXISTS public.signal_returns (
@@ -125,6 +162,7 @@ CREATE INDEX IF NOT EXISTS idx_latest_daily_change ON public.latest_stock_rating
 CREATE INDEX IF NOT EXISTS idx_latest_rating_date ON public.latest_stock_ratings (rating_change_date DESC);
 CREATE INDEX IF NOT EXISTS idx_latest_symbol_trgm ON public.latest_stock_ratings USING gin (symbol gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_latest_name_trgm ON public.latest_stock_ratings USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_latest_accuracy ON public.latest_stock_ratings (accuracy_percent DESC NULLS LAST);
 
 -- History Table Indexes (For deep search & analytics)
 CREATE INDEX IF NOT EXISTS idx_stock_ratings_symbol_date ON public.stock_ratings (symbol, fetched_date DESC, fetched_time DESC);
@@ -157,6 +195,7 @@ BEGIN
             prev_close_price = NEW.prev_close_price,
             daily_change_percent = NEW.daily_change_percent,
             daily_change_amount = NEW.daily_change_amount,
+            accuracy_percent = NEW.accuracy_percent, -- Sync accuracy
             updated_at = NOW()
         WHERE symbol = NEW.symbol;
         
@@ -168,7 +207,7 @@ BEGIN
                 sector, industry, technical_score, technical_rating,
                 fetched_date, fetched_time, session_type, rating_change_date,
                 prev_close_price, daily_change_percent, daily_change_amount,
-                previous_rating, previous_rating_date,
+                previous_rating, previous_rating_date, accuracy_percent,
                 updated_at
             )
             VALUES (
@@ -177,7 +216,7 @@ BEGIN
                 NEW.sector, NEW.industry, NEW.technical_score, NEW.technical_rating,
                 NEW.fetched_date, NEW.fetched_time, NEW.session_type, NEW.rating_change_date,
                 NEW.prev_close_price, NEW.daily_change_percent, NEW.daily_change_amount,
-                NEW.previous_rating, NEW.previous_rating_date,
+                NEW.previous_rating, NEW.previous_rating_date, NEW.accuracy_percent,
                 NOW()
             );
         END IF;
@@ -190,7 +229,7 @@ BEGIN
             sector, industry, technical_score, technical_rating,
             fetched_date, fetched_time, session_type, rating_change_date,
             prev_close_price, daily_change_percent, daily_change_amount,
-            previous_rating, previous_rating_date,
+            previous_rating, previous_rating_date, accuracy_percent,
             updated_at
         )
         VALUES (
@@ -199,7 +238,7 @@ BEGIN
             NEW.sector, NEW.industry, NEW.technical_score, NEW.technical_rating,
             NEW.fetched_date, NEW.fetched_time, NEW.session_type, NEW.rating_change_date,
             NEW.prev_close_price, NEW.daily_change_percent, NEW.daily_change_amount,
-            NEW.previous_rating, NEW.previous_rating_date,
+            NEW.previous_rating, NEW.previous_rating_date, NEW.accuracy_percent,
             NOW()
         )
         ON CONFLICT (symbol) DO UPDATE SET
@@ -214,6 +253,7 @@ BEGIN
             daily_change_amount = EXCLUDED.daily_change_amount,
             previous_rating = EXCLUDED.previous_rating, -- Update Prev
             previous_rating_date = EXCLUDED.previous_rating_date,
+            accuracy_percent = EXCLUDED.accuracy_percent,
             updated_at = NOW()
         WHERE (EXCLUDED.fetched_date > latest_stock_ratings.fetched_date) 
            OR (EXCLUDED.fetched_date = latest_stock_ratings.fetched_date AND EXCLUDED.fetched_time >= latest_stock_ratings.fetched_time);
@@ -401,7 +441,60 @@ BEGIN
     ORDER BY daily_change_percent DESC LIMIT p_limit;
 END; $$;
 
+ 
+-- TOP ACCURACY STOCKS (All Time)
+DROP FUNCTION IF EXISTS public.get_top_accuracy_stocks(TEXT, INTEGER);
+CREATE OR REPLACE FUNCTION public.get_top_accuracy_stocks(
+    p_market TEXT DEFAULT NULL, 
+    p_limit INTEGER DEFAULT 3
+)
+RETURNS TABLE (
+    res_symbol TEXT, 
+    res_market TEXT, 
+    res_name TEXT, 
+    res_price NUMERIC, 
+    res_change_pct NUMERIC, 
+    res_accuracy NUMERIC,
+    res_total_signals INTEGER
+) LANGUAGE plpgsql AS $$
+BEGIN
+    RETURN QUERY
+    SELECT symbol, market, name, current_price, COALESCE(daily_change_percent, 0), accuracy_percent, total_signals
+    FROM public.latest_stock_ratings l
+    WHERE (p_market IS NULL OR p_market = '' OR l.market = p_market)
+      AND l.symbol NOT LIKE 'OTC:%' 
+      AND l.current_price >= 0.2
+      AND l.accuracy_percent IS NOT NULL 
+      AND l.accuracy_percent > 0
+    ORDER BY accuracy_percent DESC, total_signals DESC, daily_change_percent DESC
+    LIMIT p_limit;
+END; $$;
+
+-- CALCULATE ALL ACCURACIES (Bulk Update)
+CREATE OR REPLACE FUNCTION public.calculate_all_accuracies()
+RETURNS VOID LANGUAGE plpgsql AS $$
+BEGIN
+    WITH SignalStats AS (
+        SELECT 
+            symbol,
+            COUNT(*) as total_signals,
+            COUNT(*) FILTER (WHERE return_1d > 0.2) as wins
+        FROM public.signal_returns
+        WHERE return_1d IS NOT NULL
+        GROUP BY symbol
+    )
+    UPDATE public.latest_stock_ratings l
+    SET 
+        accuracy_percent = (s.wins::numeric / s.total_signals::numeric) * 100,
+        total_signals = s.total_signals
+    FROM SignalStats s
+    WHERE l.symbol = s.symbol AND s.total_signals > 0;
+END; $$;
+
 -- MAIN STOCK LIST (Updated with Neutral Filter)
+-- Drop first to allow return type change
+DROP FUNCTION IF EXISTS public.get_stocks(TEXT, DATE, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, INTEGER, TEXT);
+
 CREATE OR REPLACE FUNCTION public.get_stocks(
     p_market TEXT DEFAULT NULL, p_date DATE DEFAULT NULL, p_search TEXT DEFAULT NULL,
     p_rating TEXT DEFAULT NULL, p_tech_rating TEXT DEFAULT NULL,
@@ -414,7 +507,8 @@ RETURNS TABLE (
     res_open NUMERIC, res_premarket_close NUMERIC, res_premarket_open NUMERIC, res_postmarket_close NUMERIC, res_postmarket_open NUMERIC,
     res_sector TEXT, res_industry TEXT, res_previous_price NUMERIC, res_change NUMERIC, res_change_pct NUMERIC,
     res_technical_score NUMERIC, res_technical_rating TEXT, res_previous_rating TEXT, res_rating_change_date DATE,
-    res_fetched_date DATE, res_fetched_time TIME
+    res_fetched_date DATE, res_fetched_time TIME,
+    res_accuracy_percent NUMERIC -- [NEW]
 ) AS $$
 DECLARE 
     v_base_date DATE := COALESCE(p_date, CURRENT_DATE);
@@ -455,6 +549,12 @@ BEGIN
                 CASE WHEN (p_sort_by = 'Technical_Rating' OR p_sort_by = 'technical_rating') AND p_sort_order = 'desc' THEN technical_rating END DESC NULLS LAST,
                 CASE WHEN (p_sort_by = 'rating_change_date' OR p_sort_by = 'fetched_date') AND p_sort_order = 'asc' THEN rating_change_date END ASC NULLS LAST,
                 CASE WHEN (p_sort_by = 'rating_change_date' OR p_sort_by = 'fetched_date') AND p_sort_order = 'desc' THEN rating_change_date END DESC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'asc' THEN accuracy_percent END ASC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'desc' THEN accuracy_percent END DESC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'asc' THEN total_signals END ASC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'desc' THEN total_signals END DESC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'asc' THEN daily_change_percent END ASC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'desc' THEN daily_change_percent END DESC NULLS LAST,
                 symbol_only ASC
             LIMIT p_limit OFFSET p_offset
         )
@@ -464,7 +564,8 @@ BEGIN
             sector, industry,
             prev_close_price, daily_change_amount, daily_change_percent,
             technical_score, technical_rating, 
-            previous_rating, rating_change_date, fetched_date, fetched_time
+            previous_rating, rating_change_date, fetched_date, fetched_time,
+            accuracy_percent -- [NEW]
         FROM SortedIds;
     ELSE
         RETURN QUERY
@@ -504,12 +605,19 @@ BEGIN
                 CASE WHEN (p_sort_by = 'Technical_Rating' OR p_sort_by = 'technical_rating') AND p_sort_order = 'desc' THEN technical_rating END DESC NULLS LAST,
                 CASE WHEN (p_sort_by = 'rating_change_date' OR p_sort_by = 'fetched_date') AND p_sort_order = 'asc' THEN rating_change_date END ASC NULLS LAST,
                 CASE WHEN (p_sort_by = 'rating_change_date' OR p_sort_by = 'fetched_date') AND p_sort_order = 'desc' THEN rating_change_date END DESC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'asc' THEN accuracy_percent END ASC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'desc' THEN accuracy_percent END DESC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'asc' THEN total_signals END ASC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'desc' THEN total_signals END DESC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'asc' THEN daily_change_percent END ASC NULLS LAST,
+                CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'desc' THEN daily_change_percent END DESC NULLS LAST,
                 symbol_only ASC
             LIMIT p_limit OFFSET p_offset
         )
         SELECT id, symbol, market, name, current_price, open, premarket_close, premarket_open, postmarket_close, postmarket_open,
                sector, industry, prev_close_price, daily_change_amount, daily_change_percent,
-               technical_score, technical_rating, previous_rating, rating_change_date, fetched_date, fetched_time
+               technical_score, technical_rating, previous_rating, rating_change_date, fetched_date, fetched_time,
+               accuracy_percent -- [NEW]
         FROM SortedHistory;
     END IF;
 END; $$ LANGUAGE plpgsql;
@@ -649,7 +757,7 @@ BEGIN
         INSERT INTO public.latest_stock_ratings (
             symbol, id, market, name, current_price, open, premarket_close, premarket_open, postmarket_close, postmarket_open,
             sector, industry, technical_score, technical_rating, fetched_date, fetched_time, session_type,
-            rating_change_date, prev_close_price, daily_change_percent, daily_change_amount, previous_rating, previous_rating_date
+            rating_change_date, prev_close_price, daily_change_percent, daily_change_amount, previous_rating, previous_rating_date, accuracy_percent
         ) VALUES (
             latest_real_rec.symbol, latest_real_rec.id, latest_real_rec.market, latest_real_rec.name, 
             latest_real_rec.current_price, latest_real_rec.open, latest_real_rec.premarket_close, latest_real_rec.premarket_open, latest_real_rec.postmarket_close, latest_real_rec.postmarket_open,
@@ -658,7 +766,7 @@ BEGIN
             latest_real_rec.fetched_date, latest_real_rec.fetched_time, latest_real_rec.session_type,
             latest_valid_rec.rating_change_date, 
             latest_real_rec.prev_close_price, latest_real_rec.daily_change_percent, latest_real_rec.daily_change_amount, 
-            latest_valid_rec.previous_rating, latest_valid_rec.previous_rating_date
+            latest_valid_rec.previous_rating, latest_valid_rec.previous_rating_date, latest_real_rec.accuracy_percent
         )
         ON CONFLICT (symbol) DO UPDATE SET
             id = EXCLUDED.id,
@@ -671,9 +779,121 @@ BEGIN
             daily_change_amount = EXCLUDED.daily_change_amount,
             previous_rating = EXCLUDED.previous_rating,
             previous_rating_date = EXCLUDED.previous_rating_date,
+            accuracy_percent = EXCLUDED.accuracy_percent,
             updated_at = NOW();
     END IF;
 END;
 $$ LANGUAGE plpgsql;
 
 NOTIFY pgrst, 'reload schema';
+
+-- 6. AUTOMATION TRIGGERS (Future Proofing)
+-- =========================================================================================
+
+-- Function to handle NEW signals automatically when stock_ratings is inserted
+CREATE OR REPLACE FUNCTION public.manage_new_signal_entry()
+RETURNS TRIGGER AS $$
+DECLARE
+    last_signal RECORD;
+    prev_rating TEXT;
+BEGIN
+    -- Only care if not Neutral
+    IF NEW.technical_rating != 'Neutral' THEN
+        
+        -- Get the most recent signal for this symbol
+        SELECT * INTO last_signal 
+        FROM public.signal_returns
+        WHERE symbol = NEW.symbol
+        ORDER BY signal_date DESC
+        LIMIT 1;
+
+        -- If no previous signal, or the last signal was "completed" (has exit price),
+        -- OR the rating has changed from the last signal's "to_rating"
+        IF last_signal IS NULL OR last_signal.exit_price IS NOT NULL OR last_signal.to_rating != NEW.technical_rating THEN
+            
+            -- Prepare "from_rating"
+            IF last_signal IS NOT NULL AND last_signal.exit_price IS NULL AND last_signal.to_rating != NEW.technical_rating THEN
+                -- The previous signal is technically "ended" by this new opposite signal (if we treat change as exit)
+                -- But our logic is: Exit is NEXT TRADING DAY.
+                -- Use standard logic: JUST INSERT NEW SIGNAL. logic for closing old signal is time-based (next day).
+                prev_rating := last_signal.to_rating;
+            ELSE
+                -- Fetch previous rating from stock_ratings history if needed, or default 'Neutral'
+                prev_rating := COALESCE(NEW.previous_rating, 'Neutral');
+            END IF;
+
+            -- Check if we already have a signal for this DATE (deduplication)
+            IF NOT EXISTS (SELECT 1 FROM public.signal_returns WHERE symbol = NEW.symbol AND signal_date = NEW.fetched_date) THEN
+                 INSERT INTO public.signal_returns (symbol, signal_date, from_rating, to_rating, signal_entry_price, status)
+                 VALUES (
+                     NEW.symbol, 
+                     NEW.fetched_date, 
+                     prev_rating, 
+                     NEW.technical_rating, 
+                     COALESCE(NEW.open, NEW.current_price),
+                     'active'
+                 );
+            END IF;
+        END IF;
+
+        -- CHECK FOR EXIT of Previous Active Signal
+        -- If there is an active signal from a PREVIOUS date, this row is the EXIT (Next Trading Day)
+        -- (Logic: Iterate pending signals)
+        UPDATE public.signal_returns
+        SET exit_price = COALESCE(NEW.open, NEW.current_price),
+            return_1d = CASE WHEN signal_entry_price > 0 THEN 
+                ((COALESCE(NEW.open, NEW.current_price) - signal_entry_price) / signal_entry_price) * 100 
+                ELSE 0 END,
+            status = 'closed',
+            updated_at = NOW()
+        WHERE symbol = NEW.symbol
+          AND status = 'active'
+          AND signal_date < NEW.fetched_date;
+          
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_manage_signals ON public.stock_ratings;
+CREATE TRIGGER trigger_manage_signals
+    AFTER INSERT ON public.stock_ratings
+    FOR EACH ROW
+    EXECUTE FUNCTION public.manage_new_signal_entry();
+
+
+-- Function to Auto-Update Accuracy on Signal Close
+CREATE OR REPLACE FUNCTION public.auto_update_accuracy()
+RETURNS TRIGGER AS $$
+DECLARE
+    total_sig INT;
+    wins INT;
+    new_accuracy NUMERIC;
+BEGIN
+    -- Only update if return_1d is set (signal closed)
+    IF NEW.return_1d IS NOT NULL THEN
+        SELECT COUNT(*), COUNT(*) FILTER (WHERE return_1d > 0.2)
+        INTO total_sig, wins
+        FROM public.signal_returns
+        WHERE symbol = NEW.symbol
+          AND return_1d IS NOT NULL;
+          
+        IF total_sig > 0 THEN
+            new_accuracy := (wins::numeric / total_sig::numeric) * 100;
+            
+            UPDATE public.latest_stock_ratings
+            SET accuracy_percent = new_accuracy,
+                total_signals = total_sig,
+                updated_at = NOW()
+            WHERE symbol = NEW.symbol;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_accuracy ON public.signal_returns;
+CREATE TRIGGER trigger_update_accuracy
+    AFTER UPDATE OF return_1d ON public.signal_returns
+    FOR EACH ROW
+    EXECUTE FUNCTION public.auto_update_accuracy();

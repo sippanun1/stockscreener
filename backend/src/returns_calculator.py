@@ -64,7 +64,7 @@ def calculate_pending_returns():
                 price = get_price_on_date(symbol, date_1d)
                 if price and entry_price > 0:
                     return_pct = ((price - entry_price) / entry_price) * 100
-                    update_return(signal['id'], '1d', price, return_pct, date_1d)
+                    update_return(signal['id'], '1d', price, return_pct, date_1d, symbol)
         
         # Calculate 10-day return
         if not signal['return_10d']:
@@ -73,7 +73,7 @@ def calculate_pending_returns():
                 price = get_price_on_date(symbol, date_10d)
                 if price and entry_price > 0:
                     return_pct = ((price - entry_price) / entry_price) * 100
-                    update_return(signal['id'], '10d', price, return_pct, date_10d)
+                    update_return(signal['id'], '10d', price, return_pct, date_10d, symbol)
         
         # Calculate 30-day return
         if not signal['return_30d']:
@@ -82,9 +82,9 @@ def calculate_pending_returns():
                 price = get_price_on_date(symbol, date_30d)
                 if price and entry_price > 0:
                     return_pct = ((price - entry_price) / entry_price) * 100
-                    update_return(signal['id'], '30d', price, return_pct, date_30d)
+                    update_return(signal['id'], '30d', price, return_pct, date_30d, symbol)
 
-def update_return(signal_id: int, period: str, price: float, return_pct: float, calc_date: str):
+def update_return(signal_id: int, period: str, price: float, return_pct: float, calc_date: str, symbol: str = None):
     """Update return value ใน database"""
     client = get_client()
     
@@ -97,6 +97,33 @@ def update_return(signal_id: int, period: str, price: float, return_pct: float, 
     
     client.table("signal_returns").update(update_data).eq("id", signal_id).execute()
     logger.info(f"✅ Updated {period} return for signal {signal_id}: {return_pct:.2f}%")
+    
+    # [NEW] Update accuracy if 1d return is set
+    if period == '1d' and symbol:
+        calculate_and_update_accuracy(symbol)
+
+def calculate_and_update_accuracy(symbol: str):
+    """Calculate and update accuracy for a symbol"""
+    client = get_client()
+    try:
+        # Fetch all CLOSED signals (with return_1d)
+        res = client.table("signal_returns").select("return_1d").eq("symbol", symbol).not_.is_("return_1d", "null").order("signal_date", desc=True).limit(50).execute()
+        
+        signals = res.data
+        if not signals:
+            return
+
+        total_signals = len(signals)
+        wins = len([s for s in signals if s['return_1d'] > 0])
+        
+        accuracy = (wins / total_signals) * 100 if total_signals > 0 else 0
+        
+        # Update latest_stock_ratings
+        client.table("latest_stock_ratings").update({"accuracy_percent": accuracy}).eq("symbol", symbol).execute()
+        logger.info(f"Updated accuracy for {symbol}: {accuracy:.1f}%")
+        
+    except Exception as e:
+        logger.error(f"Failed to update accuracy for {symbol}: {e}")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

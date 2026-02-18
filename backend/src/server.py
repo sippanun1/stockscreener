@@ -373,125 +373,79 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
         raw_history = history[::-1]
         chronological_history = [entry for entry in raw_history if entry.get("technical_rating") != "Neutral"]
         
+        # --- UPDATED LOGIC: Fetch Signals from `signal_returns` Source of Truth ---
+        # This ensures the Detail Page matches the Dashboard Table Accuracy.
+        
+        signals_res = database.get_client().table("signal_returns")\
+            .select("*")\
+            .eq("symbol", symbol)\
+            .order("signal_date", desc=True)\
+            .execute()
+            
+        signals_data = signals_res.data or []
         signals = []
         
-        if chronological_history:
-            # We need to treat every signal change as a potential 1-day trade
-            # D1 = The day the rating changed (or started)
-            # D2 = The NEXT available trading day
+        for s in signals_data:
+            # Map DB columns to Frontend 'RatingHistory' type
+            # Robust check: If exit_price is set, it's effectively CLOSED/COMPLETED, even if status says 'active'
+            is_active = s["status"] == "active" and s["exit_price"] is None
             
-            # Start from the first available record
-            for i in range(len(chronological_history)):
-                entry = chronological_history[i]
-                current_rating = entry.get("technical_rating", "Neutral")
-                
-                # We need to determine if this is a "Signal Change"
-                # For the very first record, we assume it's a start
-                is_signal_change = False
-                prev_rating = "Neutral"
-                
-                if i == 0:
-                    is_signal_change = True
-                    # If it's the first record, previous is explicitly unknown/neutral, so we take it.
-                else:
-                    prev_entry = chronological_history[i-1]
-                    prev_rating = prev_entry.get("technical_rating", "Neutral")
-                    if current_rating != prev_rating:
-                        is_signal_change = True
-                
-                # If this is a new signal (Entry Day / D1)
-                if is_signal_change and current_rating != "Neutral":
-                    raw_entry_date = entry.get("fetched_date")
-                    entry_date = raw_entry_date[:10]  # Normalize to YYYY-MM-DD (handle ISO timestamps in DB)
-                    entry_time = entry.get("fetched_time")
-                    # Use Official Open if available, else fallback to current_price (Safe for old data)
-                    entry_price = entry.get("open") or entry.get("current_price", 0)
-                    
-                    # Look for D2 (The next record representing a NEW CALENDAR DAY)
-                    # FIX: Use raw_history (includes Neutrals) to just get the very next trading day
-                    exit_entry = None
-                    
-                    # We need to find where 'entry' is in raw_history to start searching after it
-                    # (Or just search by date since raw_history is sorted)
-                    # raw_history is Newest -> Oldest. 
-                    # We want the record immediately OLDER than current? No, we processed 'chronological_history' which is Oldest -> Newest (reversed at line 297)
-                    # Wait, let's look at line 303: raw_history = history[::-1]  <-- raw_history is OLDEST -> NEWEST.
-                    # So we can just iterate raw_history.
-                    
-                    for candidate in raw_history:
-                        candidate_raw_date = candidate.get("fetched_date")
-                        candidate_date = candidate_raw_date[:10] # Normalize
-                        
-                        # Find the first date strictly greater than entry date
-                        if candidate_date > entry_date:
-                            exit_entry = candidate
-                            break # Found the immediate next trading day
-                    
-                    if exit_entry:
-                        exit_date = exit_entry.get("fetched_date") # Keep original for frontend parsing
-                        # exit_price is the OPEN of the next day (Daily Strategy)
-                        exit_price = exit_entry.get("open") or exit_entry.get("current_price", 0)
-                        
-                        # Calculate Result (D1 -> D2)
-                        profit_percent = 0.0
-                        if entry_price > 0:
-                            profit_percent = ((exit_price - entry_price) / entry_price) * 100
-                            
-                        signals.append({
-                            "date": exit_date, 
-                            "start_date": raw_entry_date,
-                            "start_time": entry_time,
-                            "end_time": exit_entry.get("fetched_time"),
-                            "from_rating": prev_rating if i > 0 else "N/A",
-                            "to_rating": current_rating,
-                            "open_price_d1": entry_price,
-                            "open_price_d2": exit_price,
-                            "days_held": 1,
-                            "result": profit_percent,
-                            "status": "COMPLETED"
-                        })
-                    else:
-                        # This is the LATEST record (Open trade, waiting for tomorrow)
-                        signals.append({
-                            "date": raw_entry_date,
-                            "start_date": raw_entry_date,
-                            "start_time": entry_time,
-                            "end_time": None,
-                            "from_rating": prev_rating if i > 0 else "N/A",
-                            "to_rating": current_rating,
-                            "open_price_d1": entry_price,
-                            "open_price_d2": None,
-                            "days_held": 0,
-                            "result": None,
-                            "status": "OPEN"
-                        })
+            # For 'date' (display date):
+            # If closed, use signal_date (entry) or create a range? 
+            # Frontend expects 'date'. 
+            # If we let frontend handle single date, we pass entry date.
+            
+            signals.append({
+                "date": s["signal_date"], # Entry date
+                "start_date": s["signal_date"],
+                "start_time": None, # Historic signals might not have precise time stored easily
+                "end_time": None,
+                "from_rating": s["from_rating"] or "N/A",
+                "to_rating": s["to_rating"],
+                "open_price_d1": s["signal_entry_price"],
+                "open_price_d2": s["exit_price"],
+                "days_held": 1 if not is_active else 0,
+                "result": s["return_1d"], # Can be null if active
+                "status": "COMPLETED" if not is_active else "OPEN"
+            })
 
-        # Reverse signals back to Newest -> Oldest for display and LIMIT to 10
-        rating_changes = signals[::-1][:10]
+        # Reverse signals back to Newest -> Oldest for display (already desc)
+        # Frontend logic in previous code did `signals[::-1][:10]` which implies `signals` was Oldest->Newest.
+        # But we fetched Descending (Newest->Oldest).
+        # So `signals` is Newest->Oldest.
+        # We need to assign `rating_changes` = signals[:10] directly?
+        # Let's check existing code: `rating_changes = signals[::-1][:10]`
+        # If I provide Newest->Oldest in `signals`, then `signals[::-1]` makes it Oldest->Newest.
+        # Frontend likely expects Newest first for list? 
+        # Actually `history` is usually mapped. 
+        # Let's look at `rating_changes` usage: `history: rating_changes`.
+        # Frontend: `historyItemsDisplayed.map...`
+        # Usually we want Newest on top.
+        # If existing code did `signals.append` (Chronological Old->New), then `signals[::-1]` made it New->Old.
+        # My `signals` is ALREADY New->Old (ordered by desc).
+        # So I just need `rating_changes = signals[:10]`.
         
-        # Calculate Real Stats from these signals (use ALL signals for stats? User said "limit history", ambiguous if stats should reflect all time or just displayed)
-        # Usually stats reflect "All Time" but history list is paginated. 
-        # But if the user wants "limit to 10", maybe they just want to see the last 10.
-        # Let's keep stats based on the *fetched* signals (which is all history) to be accurate.
-        stats_signals = signals
+        rating_changes = signals[:50] # Show more history if available, limit to 50
         
-        completed_signals = [s for s in stats_signals if s["status"] == "COMPLETED"]
+        # Calculate Real Stats from these TRUSTED signals
+        completed_signals = [s for s in signals if s["status"] == "COMPLETED"]
         total_signals = len(completed_signals)
         
         win_rate = 0
         if total_signals > 0:
-            wins = len([s for s in completed_signals if s["result"] > 0.2])
+            # Threshold > 0.2 matches DB logic
+            wins = len([s for s in completed_signals if (s["result"] or 0) > 0.2])
             win_rate = (wins / total_signals) * 100
             
         avg_return = 0
         if total_signals > 0:
-            avg_return = sum(s["result"] for s in completed_signals) / total_signals
+            avg_return = sum((s["result"] or 0) for s in completed_signals) / total_signals
 
         stats = {
             "total_signals": total_signals,
             "win_rate": win_rate,
             "avg_return": avg_return,
-            "best_return": max([s["result"] for s in completed_signals]) if completed_signals else 0
+            "best_return": max([(s["result"] or 0) for s in completed_signals]) if completed_signals else 0
         }
         
         # Calculate accuracy stats per signal type
@@ -501,9 +455,10 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
             if rating not in accuracy_stats:
                 accuracy_stats[rating] = {"wins": 0, "losses": 0}
             
-            if signal["result"] > 0.2:
+            res = signal["result"] or 0
+            if res > 0.2:
                 accuracy_stats[rating]["wins"] += 1
-            elif signal["result"] < -0.2:
+            elif res < -0.2:
                 accuracy_stats[rating]["losses"] += 1
         
         # Calculate REAL price change from history

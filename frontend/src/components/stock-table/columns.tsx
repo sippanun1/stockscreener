@@ -167,6 +167,28 @@ export const stockColumns: ColumnDef<Stock>[] = [
     },
   },
   {
+    accessorKey: "accuracy_percent",
+    header: "Acc.",
+    size: 70,
+    minSize: 60,
+    maxSize: 90,
+    cell: ({ row }) => {
+      const accuracy = row.original.accuracy_percent
+      
+      let color = "text-[#7588A3]"
+      if (accuracy !== undefined && accuracy !== null) {
+          if (accuracy >= 50) color = "text-[#00FFB7]" // Green (Matches Change%)
+          else if (accuracy > 0) color = "text-[#FF3069]" // Red (Matches Change%)
+      }
+      
+      return (
+        <div className={`text-right text-xs sm:text-sm ${color}`}>
+          {accuracy !== undefined && accuracy !== null ? `${accuracy.toFixed(0)}%` : "-"}
+        </div>
+      )
+    },
+  },
+  {
     accessorKey: "Previous_Rating",
     header: "Previous Rating",
     size: 100,

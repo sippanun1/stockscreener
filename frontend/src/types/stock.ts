@@ -16,6 +16,7 @@ export type Stock = {
   rating_change_date?: string;    // Start of current rating
   fetched_date?: string;
   backtest_acc_5d?: number;
+  accuracy_percent?: number; // Total accuracy from all signals
   Yesterday_Rating?: string;
   history?: Array<{
     Technical_Rating: string;
