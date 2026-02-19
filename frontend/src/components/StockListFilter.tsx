@@ -16,6 +16,8 @@ type StockFiltersProps = {
   currentFilters?: any;
 };
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 export default function StockListFilter({ onChange, filteredCount, currentFilters }: StockFiltersProps) {
   const [market, setMarket] = useState<string>("");
   const [currentRating, setCurrentRating] = useState<string>("");
@@ -28,7 +30,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   useEffect(() => {
     const fetchSectors = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/sectors");
+        const res = await fetch(`${API_URL}/api/sectors`);
         if (res.ok) {
           const data = await res.json();
           setSectors(data.sectors || []);
