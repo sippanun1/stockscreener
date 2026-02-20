@@ -57,6 +57,14 @@ ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_close NUMER
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_open NUMERIC;
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS accuracy_percent NUMERIC;
 
+-- ADD MISSING CONSTRAINT FOR UPSERT ON stock_ratings
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_stock_rating') THEN
+        ALTER TABLE public.stock_ratings ADD CONSTRAINT unique_stock_rating UNIQUE (symbol, fetched_date, fetched_time, session_type);
+    END IF;
+END $$;
+
 -- Enhance signal_returns for detailed tracking
 ALTER TABLE public.signal_returns ADD COLUMN IF NOT EXISTS entry_price NUMERIC;
 ALTER TABLE public.signal_returns ADD COLUMN IF NOT EXISTS exit_price NUMERIC;
