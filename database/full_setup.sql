@@ -195,7 +195,7 @@ BEGIN
             prev_close_price = NEW.prev_close_price,
             daily_change_percent = NEW.daily_change_percent,
             daily_change_amount = NEW.daily_change_amount,
-            accuracy_percent = NEW.accuracy_percent, -- Sync accuracy
+            accuracy_percent = COALESCE(NEW.accuracy_percent, (SELECT accuracy_percent FROM public.latest_stock_ratings WHERE symbol = NEW.symbol)), -- Preserve old accuracy
             updated_at = NOW()
         WHERE symbol = NEW.symbol;
         
@@ -253,7 +253,9 @@ BEGIN
             daily_change_amount = EXCLUDED.daily_change_amount,
             previous_rating = EXCLUDED.previous_rating, -- Update Prev
             previous_rating_date = EXCLUDED.previous_rating_date,
-            accuracy_percent = EXCLUDED.accuracy_percent,
+            -- Preserve old accuracy if new data doesn't have it yet
+            accuracy_percent = COALESCE(EXCLUDED.accuracy_percent, latest_stock_ratings.accuracy_percent),
+            total_signals = COALESCE(EXCLUDED.total_signals, latest_stock_ratings.total_signals),
             updated_at = NOW()
         WHERE (EXCLUDED.fetched_date > latest_stock_ratings.fetched_date) 
            OR (EXCLUDED.fetched_date = latest_stock_ratings.fetched_date AND EXCLUDED.fetched_time >= latest_stock_ratings.fetched_time);
@@ -265,7 +267,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trigger_sync_latest_stock_rating ON public.stock_ratings;
 CREATE TRIGGER trigger_sync_latest_stock_rating
-    AFTER INSERT ON public.stock_ratings
+    AFTER INSERT OR UPDATE ON public.stock_ratings  -- Fire on upsert too
     FOR EACH ROW
     EXECUTE FUNCTION public.sync_latest_stock_rating();
 
@@ -297,7 +299,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trigger_calculate_daily_metrics ON public.stock_ratings;
 CREATE TRIGGER trigger_calculate_daily_metrics
-    BEFORE INSERT ON public.stock_ratings
+    BEFORE INSERT OR UPDATE ON public.stock_ratings  -- Fire on upsert too
     FOR EACH ROW
     EXECUTE FUNCTION public.calculate_daily_metrics();
 
@@ -468,6 +470,17 @@ BEGIN
       AND l.accuracy_percent > 0
     ORDER BY accuracy_percent DESC, total_signals DESC, daily_change_percent DESC
     LIMIT p_limit;
+END; $$;
+
+-- GET UNIQUE SECTORS (For Sector Filter Dropdown)
+CREATE OR REPLACE FUNCTION public.get_sectors()
+RETURNS TABLE (sector TEXT) LANGUAGE plpgsql AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT l.sector
+    FROM public.latest_stock_ratings l
+    WHERE l.sector IS NOT NULL AND l.sector != ''
+    ORDER BY l.sector ASC;
 END; $$;
 
 -- CALCULATE ALL ACCURACIES (Bulk Update)
