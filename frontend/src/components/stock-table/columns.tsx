@@ -56,6 +56,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "symbol",
     header: "Symbol",
+    enableSorting: true,
     sortDescFirst: false, // ↑ = 0→A→Z, ↓ = Z→A→0
     size: 240,
     minSize: 200,
@@ -83,6 +84,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
     accessorFn: (row) => row.symbol.split(":")[0],
     id: "exchange",
     header: "Exchange",
+    enableSorting: true,
     sortDescFirst: false, // ↑ = A→Z, ↓ = Z→A
     size: 60,
     minSize: 50,
@@ -99,6 +101,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "current_price",
     header: "Price",
+    enableSorting: true,
     size: 95,
     minSize: 80,
     maxSize: 120,
@@ -116,6 +119,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "sector",
     header: "Sector",
+    enableSorting: true,
     size: 120,
     minSize: 90,
     maxSize: 180,
@@ -169,16 +173,18 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "accuracy_percent",
     header: "Accuracy",
-    size: 70,
-    minSize: 60,
-    maxSize: 90,
+    enableSorting: true,
+    sortDescFirst: true,
+    size: 90,
+    minSize: 80,
+    maxSize: 110,
     cell: ({ row }) => {
-      const accuracy = row.original.accuracy_percent
+      const accuracy = row.getValue("accuracy_percent") as number | undefined | null
       
       let color = "text-[#7588A3]"
       if (accuracy !== undefined && accuracy !== null) {
-          if (accuracy >= 50) color = "text-[#00FFB7]" // Green (Matches Change%)
-          else if (accuracy > 0) color = "text-[#FF3069]" // Red (Matches Change%)
+          if (accuracy >= 50) color = "text-[#00FFB7]"
+          else if (accuracy > 0) color = "text-[#FF3069]"
       }
       
       return (
@@ -261,6 +267,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
   {
     accessorKey: "rating_change_date",
     header: "Date",
+    enableSorting: true,
     size: 100,
     minSize: 80,
     maxSize: 120,

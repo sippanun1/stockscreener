@@ -98,9 +98,10 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
     const currentPrice = Number(s.current_price)
     const previousPrice = s.previous_price ? Number(s.previous_price) : undefined
     
-    // Use server-provided values if available (from DB triggers), otherwise fallback to mismatch calculation
-    const absoluteChange = s.change !== undefined ? Number(s.change) : (previousPrice ? currentPrice - previousPrice : 0)
-    const percentChange = s.changePercent !== undefined ? Number(s.changePercent) : (previousPrice && previousPrice > 0 ? ((currentPrice - previousPrice) / previousPrice * 100) : 0)
+    // Use server-provided values if available, fallback to price difference calculation
+    // NOTE: s.change can be null from production DB — use != null to catch both null and undefined
+    const absoluteChange = (s.change != null) ? Number(s.change) : (previousPrice ? currentPrice - previousPrice : 0)
+    const percentChange = (s.changePercent != null) ? Number(s.changePercent) : (previousPrice && previousPrice > 0 ? ((currentPrice - previousPrice) / previousPrice * 100) : 0)
     
     const exchange = s.symbol?.split(":")[0] || ""
 
@@ -326,10 +327,11 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                                 header.column.columnDef.header,
                                 header.getContext()
                               )}
-                          {header.column.getCanSort() && (
+                          {!['arrow', 'actions', 'Previous_Rating', 'Technical_Rating'].includes(header.column.id) && header.column.columnDef.header && (
                             <SortArrows 
                               sortDirection={header.column.getIsSorted()}
                               variant={(header.id === 'symbol' || header.id === 'exchange' || header.id === 'sector') ? 'text' : 'standard'}
+                              className="shrink-0"
                             />
                           )}
                         </div>
