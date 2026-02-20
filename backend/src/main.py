@@ -96,7 +96,18 @@ def save_to_db_with_retry(df, market, today, retries=3, delay=2):
             print(f">> ✅ Success: Saved {market} to Database")
             return True # Success!
         except Exception as e:
+            error_msg = str(e).lower()
             print(f">> ⚠️ Attempt {attempt}/{retries} failed: {e}")
+            
+            # Add helpful troubleshooting hints for common errors
+            if "name or service not known" in error_msg or "failed to fetch" in error_msg:
+                print(">> 💡 HINT: DNS connection failed. Is your Supabase project PAUSED?")
+                print(">> 💡 HINT: Or is the SUPABASE_URL missing/incorrect in GitHub Action Secrets?")
+            elif "timeout" in error_msg:
+                print(">> 💡 HINT: Database might be waking up or overloaded. Retrying...")
+            elif "authentication" in error_msg or "jwt" in error_msg:
+                print(">> 💡 HINT: Auth failed. Check if SUPABASE_KEY in GitHub Secrets is valid.")
+                
             if attempt < retries:
                 time.sleep(delay)
     
