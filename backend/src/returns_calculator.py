@@ -50,7 +50,13 @@ def calculate_pending_returns():
         .or_("return_1d.is.null,return_10d.is.null,return_30d.is.null")\
         .execute()
     
-    logger.info(f"Found {len(pending.data)} pending signals")
+    total_pending = len(pending.data)
+    print(f">> 📊 Found {total_pending} pending signals to calculate")
+    logger.info(f"Found {total_pending} pending signals")
+
+    updated_1d = 0
+    updated_10d = 0
+    updated_30d = 0
     
     for signal in pending.data:
         symbol = signal['symbol']
@@ -65,6 +71,7 @@ def calculate_pending_returns():
                 if price and entry_price > 0:
                     return_pct = ((price - entry_price) / entry_price) * 100
                     update_return(signal['id'], '1d', price, return_pct, date_1d, symbol)
+                    updated_1d += 1
         
         # Calculate 10-day return
         if not signal['return_10d']:
@@ -74,6 +81,7 @@ def calculate_pending_returns():
                 if price and entry_price > 0:
                     return_pct = ((price - entry_price) / entry_price) * 100
                     update_return(signal['id'], '10d', price, return_pct, date_10d, symbol)
+                    updated_10d += 1
         
         # Calculate 30-day return
         if not signal['return_30d']:
@@ -83,6 +91,9 @@ def calculate_pending_returns():
                 if price and entry_price > 0:
                     return_pct = ((price - entry_price) / entry_price) * 100
                     update_return(signal['id'], '30d', price, return_pct, date_30d, symbol)
+                    updated_30d += 1
+
+    print(f">> ✅ Returns calculated — 1d: {updated_1d}, 10d: {updated_10d}, 30d: {updated_30d}")
 
 def update_return(signal_id: int, period: str, price: float, return_pct: float, calc_date: str, symbol: str = None):
     """Update return value ใน database"""
@@ -96,7 +107,7 @@ def update_return(signal_id: int, period: str, price: float, return_pct: float, 
     }
     
     client.table("signal_returns").update(update_data).eq("id", signal_id).execute()
-    logger.info(f"✅ Updated {period} return for signal {signal_id}: {return_pct:.2f}%")
+    logger.info(f">> ✅ Updated {period} return for signal {signal_id} ({symbol}): {return_pct:.2f}%")
     
     # [NEW] Update accuracy if 1d return is set
     if period == '1d' and symbol:
@@ -120,11 +131,11 @@ def calculate_and_update_accuracy(symbol: str):
         
         # Update latest_stock_ratings
         client.table("latest_stock_ratings").update({"accuracy_percent": accuracy}).eq("symbol", symbol).execute()
-        logger.info(f"Updated accuracy for {symbol}: {accuracy:.1f}%")
+        logger.info(f">> Updated accuracy for {symbol}: {accuracy:.1f}%")
         
     except Exception as e:
-        logger.error(f"Failed to update accuracy for {symbol}: {e}")
+        logger.error(f">> ❌ Failed to update accuracy for {symbol}: {e}")
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     calculate_pending_returns()

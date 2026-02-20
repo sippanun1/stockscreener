@@ -19,20 +19,25 @@ def record_signal_entry(symbol: str, market: str, signal_date: str,
     
     try:
         result = client.table("signal_returns").upsert(record).execute()
-        logger.info(f"✅ Signal recorded: {symbol} {from_rating}→{to_rating} @ {signal_entry_price}")
+        logger.info(f">> ✅ Signal recorded: {symbol} {from_rating}→{to_rating} @ {signal_entry_price}")
         return result
     except Exception as e:
-        logger.error(f"❌ Error recording signal {symbol}: {e}")
+        logger.error(f">> ❌ Error recording signal {symbol}: {e}")
         return None
 
 def detect_rating_changes():
     """หา rating changes จาก stock_ratings และบันทึก"""
     client = get_client()
     
+    print(">> 🔍 Querying stocks with rating changes...")
+    
     # Query stocks ที่มี rating change
     response = client.rpc('get_stocks_with_last_rating', {
         'limit_val': 50000
     }).execute()
+    
+    total_checked = len(response.data) if response.data else 0
+    print(f">> 📊 Total stocks checked: {total_checked}")
     
     count = 0
     for stock in response.data:
@@ -49,9 +54,11 @@ def detect_rating_changes():
             if result:
                 count += 1
     
-    logger.info(f"✅ Detected {count} rating changes")
+    print(f">> ✅ Detected and recorded {count} rating changes")
+    logger.info(f">> ✅ Detected {count} rating changes")
     return count
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     detect_rating_changes()
+

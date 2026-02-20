@@ -2,8 +2,8 @@ name: Daily Signal Processing
 
 on:
   # Run at 23:00 UTC (06:00 ICT) - After all markets close
-  #schedule:
-  #  - cron: '0 23 * * *'  # 6:00 AM ICT daily
+  schedule:
+    - cron: '0 23 * * 1-5'  # 6:00 AM ICT, Mon-Fri
   
   # Allow manual trigger
   workflow_dispatch:
@@ -39,6 +39,7 @@ jobs:
           PYTHONPATH: src
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        continue-on-error: true
       
       - name: Calculate returns
         id: calculate
@@ -49,6 +50,7 @@ jobs:
           PYTHONPATH: src
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        continue-on-error: true
       
       - name: Create summary
         if: always()
@@ -56,18 +58,18 @@ jobs:
           echo "## 📊 Daily Signal Processing" >> $GITHUB_STEP_SUMMARY
           echo "**Time:** $(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "### 🔍 Signal Detection" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${{ steps.detect.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          tail -20 backend/detect_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs" >> $GITHUB_STEP_SUMMARY
+          grep ">>" backend/detect_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs captured" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "### 📈 Returns Calculation" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${{ steps.calculate.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          tail -20 backend/calculate_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs" >> $GITHUB_STEP_SUMMARY
+          grep ">>" backend/calculate_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs captured" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
       
       - name: Notify on failure
