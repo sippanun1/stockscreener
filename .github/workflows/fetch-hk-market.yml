@@ -2,15 +2,15 @@ name: Fetch Hong Kong Market Data
 
 on:
   # Run at 08:45, 11:15, 12:15, 15:15, and 17:15 ICT - Hong Kong market sessions
-  # schedule:
-  #   - cron: '45 1 * * 1-5'  # 08:45 ICT    market opens
-  #   - cron: '30 2 * * 1-5'  # 09:30 ICT
-  #   - cron: '30 3 * * 1-5'  # 10:30 ICT
-  #   - cron: '15 4 * * 1-5'  # 11:15 ICT    After market closes
-  #   - cron: '15 5 * * 1-5'  # 12:15 ICT    market opens
-  #   - cron: '0 6 * * 1-5'  # 13:00 ICT
-  #   - cron: '0 7 * * 1-5'  # 14:00 ICT
-  #   - cron: '15 8 * * 1-5'  # 15:15 ICT    After market closes
+  schedule:
+    - cron: '45 1 * * 1-5'  # 08:45 ICT    market opens
+    - cron: '30 2 * * 1-5'  # 09:30 ICT
+    - cron: '30 3 * * 1-5'  # 10:30 ICT
+    - cron: '15 4 * * 1-5'  # 11:15 ICT    After market closes
+    - cron: '15 5 * * 1-5'  # 12:15 ICT    market opens
+    - cron: '0 6 * * 1-5'  # 13:00 ICT
+    - cron: '0 7 * * 1-5'  # 14:00 ICT
+    - cron: '15 8 * * 1-5'  # 15:15 ICT    After market closes
   
   # Allow manual trigger
   workflow_dispatch:
