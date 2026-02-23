@@ -32,8 +32,8 @@ def detect_rating_changes():
     print(">> 🔍 Querying stocks with rating changes...")
     
     # Query stocks ที่มี rating change
-    response = client.rpc('get_stocks_with_last_rating', {
-        'limit_val': 50000
+    response = client.rpc('get_stocks', {
+        'p_limit': 50000
     }).execute()
     
     total_checked = len(response.data) if response.data else 0
@@ -42,14 +42,14 @@ def detect_rating_changes():
     count = 0
     for stock in response.data:
         # เช็คว่า rating เปลี่ยนหรือไม่
-        if stock.get('previous_rating') and stock['previous_rating'] != stock['technical_rating']:
+        if stock.get('res_previous_rating') and stock['res_previous_rating'] != stock['res_technical_rating']:
             result = record_signal_entry(
-                symbol=stock['symbol'],
-                market=stock['market'],
-                signal_date=stock['rating_change_date'],
-                from_rating=stock['previous_rating'],
-                to_rating=stock['technical_rating'],
-                signal_entry_price=stock['current_price']
+                symbol=stock['res_symbol'],
+                market=stock['res_market'],
+                signal_date=stock['res_rating_change_date'],
+                from_rating=stock['res_previous_rating'],
+                to_rating=stock['res_technical_rating'],
+                signal_entry_price=stock['res_current_price']
             )
             if result:
                 count += 1

@@ -417,24 +417,24 @@ def get_signal_changes(market: Optional[str] = None, date: Optional[str] = None,
     client = get_client()
     try:
         # Use existing RPC that already calculates previous rating!
-        # RPC: get_stocks_with_last_rating
+        # RPC: get_stocks
         params = {
-            "target_market": market,
-            "target_date": date,
-            "search_term": None,
-            "limit_val": 1000, # Cap at 1000 for performance
-            "offset_val": 0
+            "p_market": market,
+            "p_date": date,
+            "p_search": None,
+            "p_limit": 1000, # Cap at 1000 for performance
+            "p_offset": 0
         }
         
-        response = client.rpc("get_stocks_with_last_rating", params).execute()
+        response = client.rpc("get_stocks", params).execute()
         
         if not response.data:
             return []
             
         results = []
         for row in response.data:
-            current = row.get("current_rating")
-            previous = row.get("previous_rating")
+            current = row.get("res_technical_rating")
+            previous = row.get("res_previous_rating")
             
             # Filter for actual changes
             if current and previous and current != previous and current != "Neutral" and previous != "Neutral":
@@ -451,14 +451,14 @@ def get_signal_changes(market: Optional[str] = None, date: Optional[str] = None,
                     continue
                     
                 results.append({
-                    "symbol": row["symbol"],
-                    "market": row["market"],
-                    "name": row["name"],
+                    "symbol": row["res_symbol"],
+                    "market": row["res_market"],
+                    "name": row["res_name"],
                     "current_rating": current,
                     "previous_rating": previous,
-                    "previous_rating_date": row["previous_rating_date"],
+                    "previous_rating_date": row["res_rating_change_date"],
                     "change_type": change_type,
-                    "fetched_date": row["fetched_date"]
+                    "fetched_date": row["res_fetched_date"]
                 })
                 
         return results
@@ -573,11 +573,11 @@ def get_stocks_by_rating(rating: str, date: Optional[str] = None, limit: int = 1
    while remaining_limit > 0:
        batch_size = min(remaining_limit, 1000)
        try:
-           res = client.rpc("get_stocks_with_last_rating", {
-               "target_rating": rating,
-               "target_date": date,
-               "limit_val": batch_size,
-               "offset_val": current_offset
+           res = client.rpc("get_stocks", {
+               "p_rating": rating,
+               "p_date": date,
+               "p_limit": batch_size,
+               "p_offset": current_offset
            }).execute()
            
            if not res.data:
