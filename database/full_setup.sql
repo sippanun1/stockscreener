@@ -529,7 +529,8 @@ RETURNS TABLE (
     res_sector TEXT, res_industry TEXT, res_previous_price NUMERIC, res_change NUMERIC, res_change_pct NUMERIC,
     res_technical_score NUMERIC, res_technical_rating TEXT, res_previous_rating TEXT, res_rating_change_date DATE,
     res_fetched_date DATE, res_fetched_time TIME,
-    res_accuracy_percent NUMERIC -- [NEW]
+    res_accuracy_percent NUMERIC,
+    res_total_signals INTEGER -- [NEW]
 ) AS $$
 DECLARE 
     v_base_date DATE := COALESCE(p_date, CURRENT_DATE);
@@ -586,7 +587,7 @@ BEGIN
             prev_close_price, daily_change_amount, daily_change_percent,
             technical_score, technical_rating, 
             previous_rating, rating_change_date, fetched_date, fetched_time,
-            accuracy_percent -- [NEW]
+            accuracy_percent, total_signals
         FROM SortedIds;
     ELSE
         RETURN QUERY
@@ -638,7 +639,7 @@ BEGIN
         SELECT id, symbol, market, name, current_price, open, premarket_close, premarket_open, postmarket_close, postmarket_open,
                sector, industry, prev_close_price, daily_change_amount, daily_change_percent,
                technical_score, technical_rating, previous_rating, rating_change_date, fetched_date, fetched_time,
-               accuracy_percent -- [NEW]
+               accuracy_percent, total_signals
         FROM SortedHistory;
     END IF;
 END; $$ LANGUAGE plpgsql;

@@ -211,7 +211,8 @@ def get_stocks_with_previous_rating(
                     "rating_change_date": row["res_rating_change_date"],
                     "fetched_date": row["res_fetched_date"],
                     "fetched_time": row["res_fetched_time"],
-                    "accuracy_percent": row.get("res_accuracy_percent")
+                    "accuracy_percent": row.get("res_accuracy_percent"),
+                    "total_signals": row.get("res_total_signals", 0)
                 })
             
             if len(response.data) < batch_size:

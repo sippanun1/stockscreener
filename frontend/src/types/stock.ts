@@ -17,6 +17,7 @@ export type Stock = {
   fetched_date?: string;
   backtest_acc_5d?: number;
   accuracy_percent?: number; // Total accuracy from all signals
+  total_signals?: number;    // Total number of signals computed
   Yesterday_Rating?: string;
   history?: Array<{
     Technical_Rating: string;

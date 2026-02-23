@@ -189,7 +189,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       
       return (
         <div className={`text-right text-xs sm:text-sm ${color}`}>
-          {accuracy !== undefined && accuracy !== null ? `${accuracy.toFixed(0)}%` : "-"}
+          {accuracy !== undefined && accuracy !== null ? `${accuracy.toFixed(0)}% (${row.original.total_signals || 0})` : "-"}
         </div>
       )
     },
