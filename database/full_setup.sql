@@ -453,7 +453,9 @@ END; $$;
 
  
 -- TOP ACCURACY STOCKS (All Time)
-DROP FUNCTION IF EXISTS public.get_top_accuracy_stocks(TEXT, INTEGER);
+DROP FUNCTION IF EXISTS public.get_top_accuracy_stocks(TEXT, INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS public.get_top_accuracy_stocks CASCADE;
+
 CREATE OR REPLACE FUNCTION public.get_top_accuracy_stocks(
     p_market TEXT DEFAULT NULL, 
     p_limit INTEGER DEFAULT 3
@@ -514,7 +516,8 @@ END; $$;
 
 -- MAIN STOCK LIST (Updated with Neutral Filter)
 -- Drop first to allow return type change
-DROP FUNCTION IF EXISTS public.get_stocks(TEXT, DATE, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, INTEGER, TEXT);
+DROP FUNCTION IF EXISTS public.get_stocks(TEXT, DATE, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, INTEGER, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_stocks CASCADE;
 
 CREATE OR REPLACE FUNCTION public.get_stocks(
     p_market TEXT DEFAULT NULL, p_date DATE DEFAULT NULL, p_search TEXT DEFAULT NULL,

@@ -122,6 +122,7 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
       rating_change_date: s.rating_change_date,
       fetched_date: s.fetched_date,
       accuracy_percent: s.accuracy_percent,
+      total_signals: s.total_signals,
     }
   })
 
