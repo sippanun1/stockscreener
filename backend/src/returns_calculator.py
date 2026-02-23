@@ -130,8 +130,11 @@ def calculate_and_update_accuracy(symbol: str):
         accuracy = (wins / total_signals) * 100 if total_signals > 0 else 0
         
         # Update latest_stock_ratings
-        client.table("latest_stock_ratings").update({"accuracy_percent": accuracy}).eq("symbol", symbol).execute()
-        logger.info(f">> Updated accuracy for {symbol}: {accuracy:.1f}%")
+        client.table("latest_stock_ratings").update({
+            "accuracy_percent": accuracy,
+            "total_signals": total_signals
+        }).eq("symbol", symbol).execute()
+        logger.info(f">> Updated accuracy for {symbol}: {accuracy:.1f}% ({total_signals} signals)")
         
     except Exception as e:
         logger.error(f">> ❌ Failed to update accuracy for {symbol}: {e}")
