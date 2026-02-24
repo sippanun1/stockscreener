@@ -176,7 +176,18 @@ CREATE INDEX IF NOT EXISTS idx_latest_accuracy ON public.latest_stock_ratings (a
 CREATE INDEX IF NOT EXISTS idx_stock_ratings_symbol_date ON public.stock_ratings (symbol, fetched_date DESC, fetched_time DESC);
 CREATE INDEX IF NOT EXISTS idx_stock_ratings_fetched_date ON public.stock_ratings (fetched_date DESC);
 
--- 3. Trigger Functions (Automated Calculations on Write)
+-- 3. Utility Functions (For API/Scripts)
+-- =========================================================================================
+
+-- Allows backend scripts to execute raw SQL (e.g., sequence resets) safely
+CREATE OR REPLACE FUNCTION public.exec_sql(query text) 
+RETURNS void AS $$
+BEGIN
+  EXECUTE query;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. Trigger Functions (Automated Calculations on Write)
 -- =========================================================================================
 
 -- Trigger A: Sync to 'latest_stock_ratings' (Achieves INSTANT Loading)
