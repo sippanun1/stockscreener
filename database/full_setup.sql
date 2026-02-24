@@ -489,6 +489,7 @@ BEGIN
       AND l.current_price >= 0.2
       AND l.accuracy_percent IS NOT NULL 
       AND l.accuracy_percent > 0
+      AND l.total_signals > 0
     ORDER BY accuracy_percent DESC, total_signals DESC, daily_change_percent DESC
     LIMIT p_limit;
 END; $$;
