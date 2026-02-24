@@ -933,3 +933,21 @@ CREATE TRIGGER trigger_update_accuracy
     AFTER UPDATE OF return_1d ON public.signal_returns
     FOR EACH ROW
     EXECUTE FUNCTION public.auto_update_accuracy();
+
+-- =========================================================================================
+-- 6. Sequence Maintenance (Auto-Fix ID Collisions)
+-- =========================================================================================
+
+-- Automatically synchronize the auto-increment counters to the current max IDs
+-- This prevents "duplicate key value violates unique constraint" when rows are manually deleted or truncated
+SELECT setval(
+    pg_get_serial_sequence('public.stock_ratings', 'id'), 
+    COALESCE((SELECT MAX(id) FROM public.stock_ratings), 0) + 1, 
+    false
+);
+
+SELECT setval(
+    pg_get_serial_sequence('public.signal_returns', 'id'), 
+    COALESCE((SELECT MAX(id) FROM public.signal_returns), 0) + 1, 
+    false
+);
