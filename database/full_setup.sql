@@ -508,6 +508,13 @@ END; $$;
 CREATE OR REPLACE FUNCTION public.calculate_all_accuracies()
 RETURNS VOID LANGUAGE plpgsql AS $$
 BEGIN
+    -- 1. Reset all accuracies and signals to 0/NULL first
+    -- so that stocks with lost/0 signals don't keep old accuracy ratings
+    UPDATE public.latest_stock_ratings l
+    SET accuracy_percent = NULL,
+        total_signals = 0;
+
+    -- 2. Recalculate based on existing signals
     WITH SignalStats AS (
         SELECT 
             symbol,
