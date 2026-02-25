@@ -155,7 +155,8 @@ CREATE TABLE IF NOT EXISTS public.signal_returns (
     return_30d NUMERIC,
     status TEXT DEFAULT 'active',
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (symbol, signal_date)
 );
 
 -- 2. Performance Optimization Indexes

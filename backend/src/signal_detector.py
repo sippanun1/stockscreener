@@ -18,7 +18,11 @@ def record_signal_entry(symbol: str, market: str, signal_date: str,
     }
     
     try:
-        result = client.table("signal_returns").upsert(record).execute()
+        # Added on_conflict to prevent duplicate key errors during daily re-runs
+        result = client.table("signal_returns").upsert(
+            record,
+            on_conflict="symbol, signal_date"
+        ).execute()
         logger.info(f">> ✅ Signal recorded: {symbol} {from_rating}→{to_rating} @ {signal_entry_price}")
         return result
     except Exception as e:
