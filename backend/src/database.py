@@ -111,8 +111,8 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
         return {"inserted": 0, "updated": 0}
 
     # BATCHING LOGIC to prevent "Payload Too Large"
-    # Reduced to 200 to prevent 'statement timeout' errors due to heavy DB triggers on Upsert
-    BATCH_SIZE = 200
+    # Reduced to 50 to definitively prevent 'statement timeout' errors due to heavy DB triggers on Upsert
+    BATCH_SIZE = 50
     total_saved = 0
     
     try:
