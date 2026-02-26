@@ -35,8 +35,7 @@ CREATE TABLE IF NOT EXISTS public.stock_ratings (
     daily_change_amount NUMERIC,
     prev_close_price NUMERIC,
     previous_rating TEXT,
-    previous_rating_date DATE,
-    accuracy_percent NUMERIC
+    previous_rating_date DATE
 );
 
 -- Ensure all columns exist for existing databases
@@ -54,7 +53,8 @@ ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS premarket_close NUMERI
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS premarket_open NUMERIC;
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_close NUMERIC;
 ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS postmarket_open NUMERIC;
-ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS accuracy_percent NUMERIC;
+-- Note: accuracy_percent was removed from stock_ratings (dead column, never populated).
+-- Accuracy is tracked exclusively on latest_stock_ratings via signal triggers.
 
 -- ADD MISSING CONSTRAINT FOR UPSERT ON stock_ratings
 DO $$
@@ -833,78 +833,86 @@ $$ LANGUAGE plpgsql;
 
 NOTIFY pgrst, 'reload schema';
 
--- 6. AUTOMATION TRIGGERS (Future Proofing)
+-- 6. AUTOMATION TRIGGERS
 -- =========================================================================================
 
--- Function to handle NEW signals automatically when stock_ratings is inserted
-CREATE OR REPLACE FUNCTION public.manage_new_signal_entry()
-RETURNS TRIGGER AS $$
+-- [Bottleneck Fix #5] manage_new_signal_entry has been converted from a row-level trigger
+-- into a BATCH callable function `process_signals_for_date`.
+-- The row-level trigger is DISABLED. The Python script (daily_signal_job.py) calls this 
+-- function ONCE after all ingestion batches are complete. This removes 2 heavy DB
+-- operations (SELECT + INSERT/UPDATE on signal_returns) from every ingested row,
+-- dramatically reducing statement timeout risk.
+
+-- Batch Signal Processor: Call this ONCE per day after all ingestion is done.
+CREATE OR REPLACE FUNCTION public.process_signals_for_date(p_date DATE DEFAULT CURRENT_DATE)
+RETURNS INTEGER LANGUAGE plpgsql AS $$
 DECLARE
+    rec RECORD;
     last_signal RECORD;
     prev_rating TEXT;
+    processed_count INTEGER := 0;
 BEGIN
-    -- Only care if not Neutral
-    IF NEW.technical_rating != 'Neutral' THEN
-        
-        -- Get the most recent signal for this symbol
-        SELECT * INTO last_signal 
+    -- Step 1: Close any active signals where the stock rating has changed since that date.
+    -- This covers the "EXIT" logic: if a stock changed rating today, yesterday's active signal is now closed.
+    UPDATE public.signal_returns sr
+    SET exit_price = COALESCE(l.open, l.current_price),
+        return_1d = CASE WHEN sr.signal_entry_price > 0 THEN
+            ((COALESCE(l.open, l.current_price) - sr.signal_entry_price) / sr.signal_entry_price) * 100
+            ELSE 0 END,
+        status = 'closed',
+        updated_at = NOW()
+    FROM public.latest_stock_ratings l
+    WHERE sr.symbol = l.symbol
+      AND sr.status = 'active'
+      AND sr.signal_date < p_date
+      AND l.technical_rating != 'Neutral';
+
+    -- Step 2: Create new signals for stocks whose rating changed today.
+    FOR rec IN
+        SELECT l.symbol, l.market, l.technical_rating, l.previous_rating,
+               l.rating_change_date, l.open, l.current_price
+        FROM public.latest_stock_ratings l
+        WHERE l.technical_rating != 'Neutral'
+          AND l.rating_change_date = p_date
+    LOOP
+        -- Get last signal for this stock
+        SELECT * INTO last_signal
         FROM public.signal_returns
-        WHERE symbol = NEW.symbol
+        WHERE symbol = rec.symbol
         ORDER BY signal_date DESC
         LIMIT 1;
 
-        -- [Critical Fix #3] Use status = 'active' (not exit_price) as the primary check.
-        -- exit_price is added via ALTER TABLE and may be NULL by coincidence on new rows.
-        IF last_signal IS NULL OR last_signal.status != 'active' OR last_signal.to_rating != NEW.technical_rating THEN
-            
-            -- Prepare "from_rating"
-            IF last_signal IS NOT NULL AND last_signal.status = 'active' AND last_signal.to_rating != NEW.technical_rating THEN
-                -- The previous active signal is being replaced by a new opposite rating.
-                -- Exit is NEXT TRADING DAY so we just record the new one.
+        -- Only insert if no signal already exists for today OR if rating changed
+        IF last_signal IS NULL OR last_signal.status != 'active' OR last_signal.to_rating != rec.technical_rating THEN
+            -- Prepare from_rating
+            IF last_signal IS NOT NULL AND last_signal.status = 'active' AND last_signal.to_rating != rec.technical_rating THEN
                 prev_rating := last_signal.to_rating;
             ELSE
-                -- No prior active signal or first ever signal — use previous_rating from stock history
-                prev_rating := COALESCE(NEW.previous_rating, 'Neutral');
+                prev_rating := COALESCE(rec.previous_rating, 'Neutral');
             END IF;
 
-            -- Check if we already have a signal for this DATE (deduplication)
-            IF NOT EXISTS (SELECT 1 FROM public.signal_returns WHERE symbol = NEW.symbol AND signal_date = NEW.fetched_date) THEN
-                 INSERT INTO public.signal_returns (symbol, signal_date, from_rating, to_rating, signal_entry_price, status)
-                 VALUES (
-                     NEW.symbol, 
-                     NEW.fetched_date, 
-                     prev_rating, 
-                     NEW.technical_rating, 
-                     COALESCE(NEW.open, NEW.current_price),
-                     'active'
-                 );
+            -- Deduplication: don't insert if one already exists for today
+            IF NOT EXISTS (SELECT 1 FROM public.signal_returns WHERE symbol = rec.symbol AND signal_date = p_date) THEN
+                INSERT INTO public.signal_returns (symbol, market, signal_date, from_rating, to_rating, signal_entry_price, status)
+                VALUES (
+                    rec.symbol,
+                    rec.market,
+                    p_date,
+                    prev_rating,
+                    rec.technical_rating,
+                    COALESCE(rec.open, rec.current_price),
+                    'active'
+                );
+                processed_count := processed_count + 1;
             END IF;
         END IF;
+    END LOOP;
 
-        -- CHECK FOR EXIT of Previous Active Signal
-        -- If there is an active signal from a PREVIOUS date, this row is the EXIT (Next Trading Day)
-        -- (Logic: Iterate pending signals)
-        UPDATE public.signal_returns
-        SET exit_price = COALESCE(NEW.open, NEW.current_price),
-            return_1d = CASE WHEN signal_entry_price > 0 THEN 
-                ((COALESCE(NEW.open, NEW.current_price) - signal_entry_price) / signal_entry_price) * 100 
-                ELSE 0 END,
-            status = 'closed',
-            updated_at = NOW()
-        WHERE symbol = NEW.symbol
-          AND status = 'active'
-          AND signal_date < NEW.fetched_date;
-          
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+    RETURN processed_count;
+END; $$;
 
+-- OLD trigger is DISABLED. Replaced by process_signals_for_date() batch function.
 DROP TRIGGER IF EXISTS trigger_manage_signals ON public.stock_ratings;
-CREATE TRIGGER trigger_manage_signals
-    AFTER INSERT ON public.stock_ratings
-    FOR EACH ROW
-    EXECUTE FUNCTION public.manage_new_signal_entry();
 
 
 -- Function to Auto-Update Accuracy on Signal Close

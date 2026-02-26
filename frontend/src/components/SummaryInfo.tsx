@@ -53,8 +53,8 @@ export default function SummaryInfo({ onFilterChange }: SummaryInfoProps) {
   const { data: summary, isLoading: loading } = useQuery({
     queryKey: ['summary'],
     queryFn: fetchSummary,
-    staleTime: 30 * 60 * 1000, // 30 minutes - optimized cache
-    gcTime: 60 * 60 * 1000, // Keep in cache for 60 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes - reduced from 30min to show fresh data after market open
+    gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
     refetchOnWindowFocus: false, // Don't refetch when user returns to tab
     refetchOnMount: false, // Don't refetch if data is fresh
   });

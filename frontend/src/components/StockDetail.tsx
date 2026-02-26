@@ -98,6 +98,9 @@ export default function StockDetail() {
 
   // API base URL from environment variable
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  if (!import.meta.env.VITE_API_URL) {
+    console.error('[StockDetail] VITE_API_URL is not set! Falling back to localhost:8000. This will fail in production.');
+  }
 
   // Fetch stock detail with React Query (1 minute cache)
   const apiSymbol = symbol?.replace('-', ':') || '';
@@ -350,7 +353,12 @@ export default function StockDetail() {
            {/* Accuracy */}
            <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col justify-center items-center shadow-lg group hover:border-[#2D3748] transition-colors">
                <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Accuracy</div>
-               <div className="text-[#00FFB7] text-3xl sm:text-5xl font-bold tracking-tight">{currentStats.winRate.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}%</div>
+               {/* Issue 9 Fix: Show '-' when no completed trades exist, not '0%' */}
+               {currentStats.wins + currentStats.losses === 0 ? (
+                 <div className="text-[#7588A3] text-3xl sm:text-5xl font-bold tracking-tight">-</div>
+               ) : (
+                 <div className="text-[#00FFB7] text-3xl sm:text-5xl font-bold tracking-tight">{currentStats.winRate.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}%</div>
+               )}
            </div>
            
            {/* Total Return */}
