@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS public.stock_ratings (
     daily_change_amount NUMERIC,
     prev_close_price NUMERIC,
     previous_rating TEXT,
-    previous_rating TEXT,
     previous_rating_date DATE,
     accuracy_percent NUMERIC
 );
@@ -825,6 +824,8 @@ BEGIN
             previous_rating = EXCLUDED.previous_rating,
             previous_rating_date = EXCLUDED.previous_rating_date,
             accuracy_percent = EXCLUDED.accuracy_percent,
+            -- [Critical Fix #2] Preserve existing total_signals — never overwrite with NULL
+            total_signals = COALESCE(latest_stock_ratings.total_signals, 0),
             updated_at = NOW();
     END IF;
 END;
@@ -852,18 +853,17 @@ BEGIN
         ORDER BY signal_date DESC
         LIMIT 1;
 
-        -- If no previous signal, or the last signal was "completed" (has exit price),
-        -- OR the rating has changed from the last signal's "to_rating"
-        IF last_signal IS NULL OR last_signal.exit_price IS NOT NULL OR last_signal.to_rating != NEW.technical_rating THEN
+        -- [Critical Fix #3] Use status = 'active' (not exit_price) as the primary check.
+        -- exit_price is added via ALTER TABLE and may be NULL by coincidence on new rows.
+        IF last_signal IS NULL OR last_signal.status != 'active' OR last_signal.to_rating != NEW.technical_rating THEN
             
             -- Prepare "from_rating"
-            IF last_signal IS NOT NULL AND last_signal.exit_price IS NULL AND last_signal.to_rating != NEW.technical_rating THEN
-                -- The previous signal is technically "ended" by this new opposite signal (if we treat change as exit)
-                -- But our logic is: Exit is NEXT TRADING DAY.
-                -- Use standard logic: JUST INSERT NEW SIGNAL. logic for closing old signal is time-based (next day).
+            IF last_signal IS NOT NULL AND last_signal.status = 'active' AND last_signal.to_rating != NEW.technical_rating THEN
+                -- The previous active signal is being replaced by a new opposite rating.
+                -- Exit is NEXT TRADING DAY so we just record the new one.
                 prev_rating := last_signal.to_rating;
             ELSE
-                -- Fetch previous rating from stock_ratings history if needed, or default 'Neutral'
+                -- No prior active signal or first ever signal — use previous_rating from stock history
                 prev_rating := COALESCE(NEW.previous_rating, 'Neutral');
             END IF;
 
