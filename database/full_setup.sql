@@ -273,9 +273,9 @@ BEGIN
             daily_change_amount = EXCLUDED.daily_change_amount,
             previous_rating = EXCLUDED.previous_rating, -- Update Prev
             previous_rating_date = EXCLUDED.previous_rating_date,
-            -- Preserve old accuracy if new data doesn't have it yet
-            accuracy_percent = COALESCE(EXCLUDED.accuracy_percent, latest_stock_ratings.accuracy_percent),
-            total_signals = COALESCE(EXCLUDED.total_signals, latest_stock_ratings.total_signals),
+            -- Preserve old metrics as they are managed by signal triggers, not by daily stock updates
+            accuracy_percent = latest_stock_ratings.accuracy_percent,
+            total_signals = latest_stock_ratings.total_signals,
             updated_at = NOW()
         WHERE (EXCLUDED.fetched_date > latest_stock_ratings.fetched_date) 
            OR (EXCLUDED.fetched_date = latest_stock_ratings.fetched_date AND EXCLUDED.fetched_time >= latest_stock_ratings.fetched_time);
