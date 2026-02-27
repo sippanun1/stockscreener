@@ -831,6 +831,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Helper: Truncate signal_returns (called from rebuild_signals.py)
+CREATE OR REPLACE FUNCTION public.truncate_signal_returns()
+RETURNS VOID LANGUAGE plpgsql AS $$
+BEGIN
+    TRUNCATE TABLE public.signal_returns RESTART IDENTITY;
+END;
+$$;
+
 NOTIFY pgrst, 'reload schema';
 
 -- 6. AUTOMATION TRIGGERS
@@ -844,71 +852,89 @@ NOTIFY pgrst, 'reload schema';
 -- dramatically reducing statement timeout risk.
 
 -- Batch Signal Processor: Call this ONCE per day after all ingestion is done.
+-- Logic: Signal opens on rating change. Holds while same. Closes when rating changes again.
+-- D1 = Open Price on signal_date. D2 = Open Price on the day rating changes.
 CREATE OR REPLACE FUNCTION public.process_signals_for_date(p_date DATE DEFAULT CURRENT_DATE)
 RETURNS INTEGER LANGUAGE plpgsql AS $$
 DECLARE
     rec RECORD;
     last_signal RECORD;
     prev_rating TEXT;
+    today_open NUMERIC;
+    return_pct NUMERIC;
     processed_count INTEGER := 0;
 BEGIN
-    -- Step 1: Close any active signals where the stock rating has changed since that date.
-    -- This covers the "EXIT" logic: if a stock changed rating today, yesterday's active signal is now closed.
-    UPDATE public.signal_returns sr
-    SET exit_price = COALESCE(l.open, l.current_price),
-        return_1d = CASE WHEN sr.signal_entry_price > 0 THEN
-            ((COALESCE(l.open, l.current_price) - sr.signal_entry_price) / sr.signal_entry_price) * 100
-            ELSE 0 END,
-        status = 'closed',
-        updated_at = NOW()
-    FROM public.latest_stock_ratings l
-    WHERE sr.symbol = l.symbol
-      AND sr.status = 'active'
-      AND sr.signal_date < p_date
-      AND l.technical_rating != 'Neutral';
-
-    -- Step 2: Create new signals for stocks whose rating changed today.
+    -- Process every stock that has a rating (non-Neutral) in latest_stock_ratings
     FOR rec IN
         SELECT l.symbol, l.market, l.technical_rating, l.previous_rating,
                l.rating_change_date, l.open, l.current_price
         FROM public.latest_stock_ratings l
         WHERE l.technical_rating != 'Neutral'
-          AND l.rating_change_date = p_date
     LOOP
-        -- Get last signal for this stock
+        -- Get the last known signal for this stock
         SELECT * INTO last_signal
         FROM public.signal_returns
         WHERE symbol = rec.symbol
         ORDER BY signal_date DESC
         LIMIT 1;
 
-        -- Only insert if no signal already exists for today OR if rating changed
-        IF last_signal IS NULL OR last_signal.status != 'active' OR last_signal.to_rating != rec.technical_rating THEN
-            -- Prepare from_rating
+        today_open := COALESCE(rec.open, rec.current_price);
+
+        -- Only act when the rating ACTUALLY CHANGED today
+        -- (i.e. rating_change_date equals the processing date)
+        IF rec.rating_change_date = p_date THEN
+
+            -- Step A: If there is a prior ACTIVE signal, close it using today's open price as D2
             IF last_signal IS NOT NULL AND last_signal.status = 'active' AND last_signal.to_rating != rec.technical_rating THEN
+                IF last_signal.signal_entry_price > 0 AND today_open IS NOT NULL THEN
+                    return_pct := ((today_open - last_signal.signal_entry_price) / last_signal.signal_entry_price) * 100;
+                ELSE
+                    return_pct := 0;
+                END IF;
+
+                UPDATE public.signal_returns
+                SET exit_price = today_open,
+                    return_1d = return_pct,
+                    return_1d_calculated_at = p_date::TEXT,
+                    status = 'closed',
+                    updated_at = NOW()
+                WHERE id = last_signal.id;
+
                 prev_rating := last_signal.to_rating;
-            ELSE
+
+            ELSIF last_signal IS NULL THEN
+                -- Very first signal for this stock
                 prev_rating := COALESCE(rec.previous_rating, 'Neutral');
+            ELSE
+                -- Signal was already closed or same rating — skip
+                CONTINUE;
             END IF;
 
-            -- Deduplication: don't insert if one already exists for today
-            IF NOT EXISTS (SELECT 1 FROM public.signal_returns WHERE symbol = rec.symbol AND signal_date = p_date) THEN
-                INSERT INTO public.signal_returns (symbol, market, signal_date, from_rating, to_rating, signal_entry_price, status)
+            -- Step B: Open a NEW signal with today's open price as D1
+            -- Deduplication: don't re-insert if a signal for today already exists
+            IF NOT EXISTS (
+                SELECT 1 FROM public.signal_returns
+                WHERE symbol = rec.symbol AND signal_date = p_date
+            ) THEN
+                INSERT INTO public.signal_returns
+                    (symbol, market, signal_date, from_rating, to_rating, signal_entry_price, status)
                 VALUES (
                     rec.symbol,
                     rec.market,
                     p_date,
                     prev_rating,
                     rec.technical_rating,
-                    COALESCE(rec.open, rec.current_price),
+                    today_open,
                     'active'
                 );
                 processed_count := processed_count + 1;
             END IF;
+
         END IF;
     END LOOP;
 
     RETURN processed_count;
+
 END; $$;
 
 -- OLD trigger is DISABLED. Replaced by process_signals_for_date() batch function.

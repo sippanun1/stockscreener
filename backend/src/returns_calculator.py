@@ -29,7 +29,7 @@ def get_price_on_date(symbol: str, date: str):
     client = get_client()
     
     result = client.table("stock_ratings")\
-        .select("current_price")\
+        .select("open, current_price")\
         .eq("symbol", symbol)\
         .eq("fetched_date", date)\
         .order("fetched_time", desc=True)\
@@ -37,7 +37,12 @@ def get_price_on_date(symbol: str, date: str):
         .execute()
     
     if result.data:
-        return result.data[0].get('current_price')
+        # Use Open Price for Open-to-Open calculation, fallback to current_price if missing
+        row = result.data[0]
+        open_price = row.get("open")
+        if open_price and open_price > 0:
+            return open_price
+        return row.get("current_price")
     return None
 
 def calculate_pending_returns():
@@ -102,14 +107,19 @@ def update_return(signal_id: int, period: str, price: float, return_pct: float, 
     update_data = {
         f"price_after_{period}": price,
         f"return_{period}": return_pct,
-        f"return_{period}_calculated_at": datetime.now().isoformat(),
+        f"return_{period}_calculated_at": calc_date, # Save the actual trading date used
         "updated_at": datetime.now().isoformat()
     }
+    
+    # [NEW] If 1-day return is calculated, this is the official exit of the trade
+    if period == '1d':
+        update_data["exit_price"] = price
+        update_data["status"] = 'closed'
     
     client.table("signal_returns").update(update_data).eq("id", signal_id).execute()
     logger.info(f">> ✅ Updated {period} return for signal {signal_id} ({symbol}): {return_pct:.2f}%")
     
-    # [NEW] Update accuracy if 1d return is set
+    # Update accuracy if 1d return is set
     if period == '1d' and symbol:
         calculate_and_update_accuracy(symbol)
 
