@@ -373,6 +373,15 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
         raw_history = history[::-1]
         chronological_history = [entry for entry in raw_history if entry.get("technical_rating") != "Neutral"]
         
+        # --- Fetch the ACTUAL accuracy metrics from latest_stock_ratings ---
+        latest_res = database.get_client().table("latest_stock_ratings")\
+            .select("accuracy_percent, total_signals")\
+            .eq("symbol", symbol)\
+            .execute()
+        
+        db_accuracy = latest_res.data[0].get("accuracy_percent") if latest_res.data else None
+        db_total_signals = latest_res.data[0].get("total_signals") if latest_res.data else 0
+        
         # --- UPDATED LOGIC: Fetch Signals from `signal_returns` Source of Truth ---
         # This ensures the Detail Page matches the Dashboard Table Accuracy.
         
@@ -390,14 +399,12 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
             # Robust check: If exit_price is set, it's effectively CLOSED/COMPLETED, even if status says 'active'
             is_active = s["status"] == "active" and s["exit_price"] is None
             
-            # For 'date' (display date):
-            # If closed, use signal_date (entry) or create a range? 
-            # Frontend expects 'date'. 
-            # If we let frontend handle single date, we pass entry date.
+            # Use updated_at as the exit date if the trade is closed
+            exit_date = s["updated_at"][:10] if not is_active and s["updated_at"] else s["signal_date"]
             
             signals.append({
-                "date": s["signal_date"], # Entry date
-                "start_date": s["signal_date"],
+                "date": exit_date, # Exit date
+                "start_date": s["signal_date"], # Entry date
                 "start_time": None, # Historic signals might not have precise time stored easily
                 "end_time": None,
                 "from_rating": s["from_rating"] or "N/A",
@@ -572,6 +579,8 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
             "current_rating": "N/A" if current.get("technical_rating", "N/A") == "Neutral" else current.get("technical_rating", "N/A"),
             "change": change,
             "change_percent": change_percent,
+            "accuracy_percent": db_accuracy,
+            "total_signals": db_total_signals,
             "stats": stats,
             "accuracy_stats": accuracy_stats,
             "intraday_moves": intraday_moves[::-1], # New Intraday Data (Newest First)
