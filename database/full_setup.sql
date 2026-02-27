@@ -543,7 +543,8 @@ CREATE OR REPLACE FUNCTION public.get_stocks(
     p_rating TEXT DEFAULT NULL, p_tech_rating TEXT DEFAULT NULL,
     p_sort_by TEXT DEFAULT 'rating_change_date', p_sort_order TEXT DEFAULT 'desc',
     p_limit INTEGER DEFAULT 50, p_offset INTEGER DEFAULT 0, p_lookback INTEGER DEFAULT 60,
-    p_sector TEXT DEFAULT NULL
+    p_sector TEXT DEFAULT NULL,
+    p_previous_rating TEXT DEFAULT NULL
 )
 RETURNS TABLE (
     res_id BIGINT, res_symbol TEXT, res_market TEXT, res_name TEXT, res_current_price NUMERIC,
@@ -573,6 +574,7 @@ BEGIN
                    OR (p_tech_rating = 'Positive' AND l.technical_rating IN ('Strong Buy', 'Buy'))
                    OR (p_tech_rating = 'Negative' AND l.technical_rating IN ('Strong Sell', 'Sell')))
               AND (p_search IS NULL OR p_search = '' OR l.symbol ILIKE '%' || p_search || '%' OR l.name ILIKE '%' || p_search || '%')
+              AND (p_previous_rating IS NULL OR p_previous_rating = '' OR l.previous_rating = p_previous_rating)
         ), SortedIds AS (
             SELECT * FROM CandidateIds
             ORDER BY

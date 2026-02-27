@@ -21,6 +21,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 export default function StockListFilter({ onChange, filteredCount, currentFilters }: StockFiltersProps) {
   const [market, setMarket] = useState<string>("");
   const [currentRating, setCurrentRating] = useState<string>("");
+  const [previousRating, setPreviousRating] = useState<string>("");
   const [sector, setSector] = useState<string>("");
   const [sectors, setSectors] = useState<string[]>([]);
 
@@ -47,6 +48,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
     if (currentFilters) {
       setMarket(currentFilters.market || "");
       setCurrentRating(currentFilters.currentRating || "");
+      setPreviousRating(currentFilters.previousRating || "");
       setSector(currentFilters.sector || "");
       setSearch(currentFilters.search || "");
     }
@@ -54,6 +56,16 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
 
   const ratingOptions = ["Strong Buy", "Buy", "Sell", "Strong Sell"];
   const marketOptions = ["US", "HK", "TH", "JP", "IN", "VN", "UK"];
+
+  // Rating adjacency: only ±1 step transitions are valid
+  const RATING_ORDER: Record<string, number> = {
+    "Strong Sell": 0, "Sell": 1, "Buy": 2, "Strong Buy": 3
+  };
+
+  const isInvalidCombination = (prevR: string, curR: string) => {
+    if (!prevR || !curR) return false;
+    return Math.abs((RATING_ORDER[prevR] ?? -99) - (RATING_ORDER[curR] ?? -99)) > 1;
+  };
 
 
   const getRatingHoverColor = (rating: string) => {
@@ -88,19 +100,26 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   const handleCurrentRatingSelect = (value: string) => {
     const newRating = value === "all" ? "" : value;
     setCurrentRating(newRating);
-    onChange?.({ market, currentRating: newRating, sector, search });
+    onChange?.({ market, currentRating: newRating, previousRating, sector, search });
+  };
+
+  const handlePreviousRatingSelect = (value: string) => {
+    const newPrev = value === "all" ? "" : value;
+    setPreviousRating(newPrev);
+    onChange?.({ market, currentRating, previousRating: newPrev, sector, search });
   };
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    onChange?.({ market, currentRating, sector, search: value });
+    onChange?.({ market, currentRating, previousRating, sector, search: value });
   };
 
   const handleClearFilters = () => {
     setMarket("");
     setCurrentRating("");
+    setPreviousRating("");
     setSector("");
-    onChange?.({ market: "", currentRating: "", sector: "", search: "" });
+    onChange?.({ market: "", currentRating: "", previousRating: "", sector: "", search: "" });
   };
 
   return (
@@ -146,6 +165,33 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
             </SelectContent>
           </Select>
 
+          {/* Previous Rating */}
+          <Select value={previousRating || "all"} onValueChange={handlePreviousRatingSelect}>
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px] lg:w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
+              <SelectValue>{previousRating ? `Prev: ${previousRating}` : "Previous Rating"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0">
+              <SelectGroup>
+                <SelectItem value="all" className="text-white hover:text-white focus:text-white hover:bg-[#7588A380] focus:bg-[#7588A380] cursor-pointer px-3 py-2.5 rounded-none">
+                  All
+                </SelectItem>
+                {ratingOptions.map((rating) => {
+                  const disabled = currentRating ? isInvalidCombination(rating, currentRating) : false;
+                  return (
+                    <SelectItem
+                      key={rating}
+                      value={rating}
+                      disabled={disabled}
+                      className={`text-white hover:text-white focus:text-white ${disabled ? 'opacity-30 cursor-not-allowed' : `${getRatingHoverColor(rating)} cursor-pointer`} px-3 py-2.5 rounded-none`}
+                    >
+                      {rating}
+                    </SelectItem>
+                  );
+                })}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
           {/* Current Rating */}
           <Select value={currentRating || "all"} onValueChange={handleCurrentRatingSelect}>
             <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px] lg:w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
@@ -156,11 +202,19 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
                 <SelectItem value="all" className="text-white hover:text-white focus:text-white hover:bg-[#7588A380] focus:bg-[#7588A380] cursor-pointer px-3 py-2.5 rounded-none">
                   All
                 </SelectItem>
-                {ratingOptions.map((rating) => (
-                  <SelectItem key={rating} value={rating} className={`text-white hover:text-white focus:text-white ${getRatingHoverColor(rating)} cursor-pointer px-3 py-2.5 rounded-none`}>
-                    {rating}
-                  </SelectItem>
-                ))}
+                {ratingOptions.map((rating) => {
+                  const disabled = previousRating ? isInvalidCombination(previousRating, rating) : false;
+                  return (
+                    <SelectItem
+                      key={rating}
+                      value={rating}
+                      disabled={disabled}
+                      className={`text-white hover:text-white focus:text-white ${disabled ? 'opacity-30 cursor-not-allowed' : `${getRatingHoverColor(rating)} cursor-pointer`} px-3 py-2.5 rounded-none`}
+                    >
+                      {rating}
+                    </SelectItem>
+                  );
+                })}
               </SelectGroup>
             </SelectContent>
           </Select>

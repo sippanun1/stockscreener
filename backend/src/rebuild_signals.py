@@ -59,6 +59,7 @@ def rebuild_all_signals():
     offset = 0
     while True:
         res = client.table("latest_stock_ratings").select("symbol, market")\
+            .order("symbol")\
             .range(offset, offset + page_size - 1).execute()
         if not res.data:
             break
@@ -77,39 +78,80 @@ def rebuild_all_signals():
         symbol = stock["symbol"]
         market = stock["market"]
 
-        # Fetch distinct daily ratings, ordered oldest→newest
-        # Use ONE row per day (max fetched_time = latest intraday reading)
-        history_res = client.table("stock_ratings")\
-            .select("fetched_date, technical_rating, previous_rating, open, current_price")\
-            .eq("symbol", symbol)\
-            .order("fetched_date", desc=False)\
-            .order("fetched_time", desc=True)\
-            .execute()
+        # Reset the HTTP client every 400 stocks to avoid HTTP/2 connection limit
+        if idx % 400 == 0 and idx > 0:
+            import importlib
+            import database as db_module
+            importlib.reload(db_module)
+            client = db_module.get_client()
 
-        if not history_res.data:
-            continue
+        try:
+            # Fetch distinct daily ratings, ordered oldest→newest
+            # Use ONE row per day (max fetched_time = latest intraday reading)
+            history_res = client.table("stock_ratings")\
+                .select("fetched_date, technical_rating, previous_rating, open, current_price")\
+                .eq("symbol", symbol)\
+                .order("fetched_date", desc=False)\
+                .order("fetched_time", desc=True)\
+                .execute()
 
-        # De-duplicate: keep one row per fetched_date (the latest reading of that day)
-        seen_dates = {}
-        for row in history_res.data:
-            d = row["fetched_date"]
-            if d not in seen_dates:
-                seen_dates[d] = row
+            if not history_res.data:
+                continue
 
-        days = list(seen_dates.values())  # already sorted by date asc
+            # De-duplicate: keep one row per fetched_date (the latest reading of that day)
+            seen_dates = {}
+            for row in history_res.data:
+                d = row["fetched_date"]
+                if d not in seen_dates:
+                    seen_dates[d] = row
 
-        active_signal = None  # Track the currently open signal
+            days = list(seen_dates.values())  # already sorted by date asc
 
-        for day in days:
-            date = day["fetched_date"]
-            rating = day["technical_rating"]
-            open_price = day["open"] or day["current_price"]
+            active_signal = None  # Track the currently open signal
 
-            if not rating or rating == "Neutral":
-                # Neutral day - close any active signal (rating gone)
-                if active_signal and open_price:
+            for day in days:
+                date = day["fetched_date"]
+                rating = day["technical_rating"]
+                open_price = day["open"] or day["current_price"]
+
+                if not rating or rating == "Neutral":
+                    # Neutral day - close any active signal (rating gone)
+                    if active_signal and open_price:
+                        entry = active_signal["signal_entry_price"]
+                        ret = ((open_price - entry) / entry * 100) if entry > 0 else 0
+                        client.table("signal_returns").update({
+                            "exit_price": open_price,
+                            "return_1d": ret,
+                            "return_1d_calculated_at": date,
+                            "status": "closed",
+                        }).eq("id", active_signal["id"]).execute()
+                        total_signals_closed += 1
+                        active_signal = None
+                    continue
+
+                if active_signal is None:
+                    # No open signal - open one
+                    ins = client.table("signal_returns").upsert({
+                        "symbol": symbol,
+                        "market": market,
+                        "signal_date": date,
+                        "from_rating": day.get("previous_rating") or "Neutral",
+                        "to_rating": rating,
+                        "signal_entry_price": open_price,
+                        "status": "active",
+                    }, on_conflict="symbol,signal_date").execute()
+                    active_signal = ins.data[0] if ins.data else None
+                    if active_signal:
+                        total_signals_created += 1
+
+                elif active_signal["to_rating"] != rating:
+                    # Rating changed - close old signal, open new one
                     entry = active_signal["signal_entry_price"]
-                    ret = ((open_price - entry) / entry * 100) if entry > 0 else 0
+                    if open_price and entry and entry > 0:
+                        ret = ((open_price - entry) / entry * 100)
+                    else:
+                        ret = 0
+
                     client.table("signal_returns").update({
                         "exit_price": open_price,
                         "return_1d": ret,
@@ -117,54 +159,24 @@ def rebuild_all_signals():
                         "status": "closed",
                     }).eq("id", active_signal["id"]).execute()
                     total_signals_closed += 1
-                    active_signal = None
-                continue
 
-            if active_signal is None:
-                # No open signal - open one
-                ins = client.table("signal_returns").upsert({
-                    "symbol": symbol,
-                    "market": market,
-                    "signal_date": date,
-                    "from_rating": day.get("previous_rating") or "Neutral",
-                    "to_rating": rating,
-                    "signal_entry_price": open_price,
-                    "status": "active",
-                }, on_conflict="symbol,signal_date").execute()
-                active_signal = ins.data[0] if ins.data else None
-                if active_signal:
-                    total_signals_created += 1
+                    # Open new signal
+                    ins = client.table("signal_returns").upsert({
+                        "symbol": symbol,
+                        "market": market,
+                        "signal_date": date,
+                        "from_rating": active_signal["to_rating"],
+                        "to_rating": rating,
+                        "signal_entry_price": open_price,
+                        "status": "active",
+                    }, on_conflict="symbol,signal_date").execute()
+                    active_signal = ins.data[0] if ins.data else None
+                    if active_signal:
+                        total_signals_created += 1
+                # else: same rating, same signal - do nothing
 
-            elif active_signal["to_rating"] != rating:
-                # Rating changed - close old signal, open new one
-                entry = active_signal["signal_entry_price"]
-                if open_price and entry and entry > 0:
-                    ret = ((open_price - entry) / entry * 100)
-                else:
-                    ret = 0
-
-                client.table("signal_returns").update({
-                    "exit_price": open_price,
-                    "return_1d": ret,
-                    "return_1d_calculated_at": date,
-                    "status": "closed",
-                }).eq("id", active_signal["id"]).execute()
-                total_signals_closed += 1
-
-                # Open new signal
-                ins = client.table("signal_returns").upsert({
-                    "symbol": symbol,
-                    "market": market,
-                    "signal_date": date,
-                    "from_rating": active_signal["to_rating"],
-                    "to_rating": rating,
-                    "signal_entry_price": open_price,
-                    "status": "active",
-                }, on_conflict="symbol,signal_date").execute()
-                active_signal = ins.data[0] if ins.data else None
-                if active_signal:
-                    total_signals_created += 1
-            # else: same rating, same signal - do nothing
+        except Exception as e:
+            logger.warning(f"  Failed processing {symbol}: {e}. Skipping.")
 
         if (idx + 1) % 100 == 0:
             print(f"  Processed {idx+1}/{len(stocks)} stocks | "

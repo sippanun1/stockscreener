@@ -153,7 +153,8 @@ def get_stocks_with_previous_rating(
     limit: int = 100,
     offset: int = 0,
     lookback_days: Optional[int] = None,
-    sector: Optional[str] = None
+    sector: Optional[str] = None,
+    previous_rating: Optional[str] = None
 ):
     """
     Get stocks using the Supabase RPC function `get_stocks_with_last_rating`.
@@ -180,7 +181,8 @@ def get_stocks_with_previous_rating(
             "p_limit": batch_size,
             "p_offset": current_offset,
             "p_lookback": lookback_days,
-            "p_sector": sector
+            "p_sector": sector,
+            "p_previous_rating": previous_rating
         }
         
         try:

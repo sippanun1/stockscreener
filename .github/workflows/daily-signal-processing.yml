@@ -30,22 +30,11 @@ jobs:
           cd backend
           pip install -r requirements.txt
       
-      - name: Detect new signals
-        id: detect
+      - name: Process Daily Signals
+        id: process
         run: |
           cd backend
-          python src/signal_detector.py 2>&1 | tee detect_log.txt
-        env:
-          PYTHONPATH: src
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        continue-on-error: true
-      
-      - name: Calculate returns
-        id: calculate
-        run: |
-          cd backend
-          python src/returns_calculator.py 2>&1 | tee calculate_log.txt
+          python src/daily_signal_job.py 2>&1 | tee process_log.txt
         env:
           PYTHONPATH: src
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -59,18 +48,12 @@ jobs:
           echo "**Time:** $(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          echo "### 🔍 Signal Detection" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** ${{ steps.detect.outcome }}" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Signal Processing" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.process.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          grep ">>" backend/detect_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs captured" >> $GITHUB_STEP_SUMMARY
+          grep "INFO" backend/process_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs captured" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          echo "### 📈 Returns Calculation" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** ${{ steps.calculate.outcome }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          grep ">>" backend/calculate_log.txt >> $GITHUB_STEP_SUMMARY || echo "No logs captured" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
       
       - name: Notify on failure
         if: failure()

@@ -24,6 +24,8 @@ type StockDetailData = {
   symbol: string;
   name: string;
   market: string;
+  sector?: string;
+  industry?: string;
   current_price: number;
   current_rating: string;
   change: number;
@@ -197,7 +199,8 @@ export default function StockDetail() {
     ? data.history 
     : (data.intraday_moves || []);
 
-  const historyItems = selectedRating 
+  // Filter by rating (to_rating)
+  const historyItems = selectedRating
     ? historyItemsAll.filter(item => item.to_rating === selectedRating)
     : historyItemsAll;
 
@@ -258,6 +261,22 @@ export default function StockDetail() {
                {data.symbol.split(":")[1] || data.symbol}
              </h1>
              <p className="text-[#94A3B8] text-lg font-medium tracking-wide">{data.name}</p>
+              
+             {/* Sector & Industry - Professional Badges */}
+             {(data.sector || data.industry) && (
+               <div className="flex flex-wrap items-center gap-2 mt-2">
+                 {data.sector && data.sector !== "-" && (
+                   <span className="px-3 py-1 rounded bg-[#1E2530]/80 text-[#94A3B8] text-[11px] font-medium tracking-wide border border-[#354052]/30">
+                     {data.sector}
+                   </span>
+                 )}
+                 {data.industry && data.industry !== "-" && (
+                   <span className="px-3 py-1 rounded bg-[#1E2530]/80 text-[#94A3B8] text-[11px] font-medium tracking-wide border border-[#354052]/30 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px] sm:max-w-xs">
+                     {data.industry}
+                   </span>
+                 )}
+               </div>
+             )}
            </div>
          </div>
  
@@ -333,7 +352,9 @@ export default function StockDetail() {
                 return (
                 <button
                     key={filter}
-                    onClick={() => setSelectedRating(isSelected ? null : filter)}
+                    onClick={() => {
+                        setSelectedRating(isSelected ? null : filter);
+                    }}
                     className={`px-4 sm:px-6 py-2 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wide border transition-all duration-200 whitespace-nowrap shadow-sm flex-shrink-0 ${
                     isSelected 
                         ? isSell 
@@ -348,7 +369,9 @@ export default function StockDetail() {
             })}
         </div>
        </div>
- 
+
+
+
        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
            {/* Accuracy */}
            <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col justify-center items-center shadow-lg group hover:border-[#2D3748] transition-colors">
@@ -438,15 +461,30 @@ export default function StockDetail() {
                          dateDisplay = item.start_date;
                      }
                   } else {
-                     // Completed trade: Show range, e.g. "Jan 19-20, 2026"
+                     // Completed trade: Show range if different days, single date if same day
                      try {
                         if (item.start_date && (item as any).date) {
-                           const d1 = parseISO(item.start_date);
-                           const d2 = parseISO((item as any).date);
-                           dateDisplay = `${format(d1, "MMM dd")}-${format(d2, "dd, yyyy")}`;
+                           // If dates are exactly the same string, just show one date
+                           if (item.start_date === (item as any).date) {
+                               const d1 = parseISO(item.start_date);
+                               dateDisplay = format(d1, "MMM dd, yyyy");
+                           } else {
+                               const d1 = parseISO(item.start_date);
+                               const d2 = parseISO((item as any).date);
+                               // Check if it's the same month/year to format nicer
+                               if (d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear()) {
+                                   dateDisplay = `${format(d1, "MMM dd")}-${format(d2, "dd, yyyy")}`;
+                               } else if (d1.getFullYear() === d2.getFullYear()) {
+                                   dateDisplay = `${format(d1, "MMM dd")}-${format(d2, "MMM dd, yyyy")}`;
+                               } else {
+                                   dateDisplay = `${format(d1, "MMM dd, yyyy")} - ${format(d2, "MMM dd, yyyy")}`;
+                               }
+                           }
                         }
                      } catch(e) {
-                          dateDisplay = formatDateRange(item.start_date, (item as any).date);
+                          const sd = item.start_date || "";
+                          const ed = (item as any).date || "";
+                          dateDisplay = sd === ed ? sd : formatDateRange(sd, ed);
                      }
                   }
                 } else {

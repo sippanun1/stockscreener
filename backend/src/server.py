@@ -174,6 +174,7 @@ def get_stocks(
     rating: Optional[str] = Query(None, description="Filter by rating: Strong Buy, Buy, Sell, Strong Sell"),
     technical_rating: Optional[str] = Query(None, description="Filter by technical rating group: Positive or Negative"),
     sector: Optional[str] = Query(None, description="Filter by sector"),
+    previous_rating: Optional[str] = Query(None, description="Filter by previous rating: Strong Buy, Buy, Sell, Strong Sell"),
     sort_by: str = Query('fetched_date', description="Sort by: symbol, current_price, change, changePercent, fetched_date"),
     sort_order: str = Query('desc', description="Sort order: asc or desc"),
     limit: int = Query(100, ge=1, le=50000, description="Number of results"),
@@ -211,7 +212,8 @@ def get_stocks(
             limit=limit,
             offset=offset,
             lookback_days=lookback,
-            sector=sector
+            sector=sector,
+            previous_rating=previous_rating
         )
         
         # Get total count matching the same filters (for "Total Signal" display)
@@ -399,8 +401,8 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
             # Robust check: If exit_price is set, it's effectively CLOSED/COMPLETED, even if status says 'active'
             is_active = s["status"] == "active" and s["exit_price"] is None
             
-            # Use updated_at as the exit date if the trade is closed
-            exit_date = s["updated_at"][:10] if not is_active and s["updated_at"] else s["signal_date"]
+            # Use return_1d_calculated_at as the true exit date if the trade is closed
+            exit_date = s["return_1d_calculated_at"][:10] if not is_active and s["return_1d_calculated_at"] else s["signal_date"]
             
             signals.append({
                 "date": exit_date, # Exit date
@@ -575,6 +577,8 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
             "symbol": symbol,
             "name": current.get("name") or (symbol.split(":")[1] if ":" in symbol else symbol),
             "market": current.get("market") or (symbol.split(":")[0] if ":" in symbol else ""),
+            "sector": current.get("sector") or "-",
+            "industry": current.get("industry") or "-",
             "current_price": current.get("current_price", 0),
             "current_rating": "N/A" if current.get("technical_rating", "N/A") == "Neutral" else current.get("technical_rating", "N/A"),
             "change": change,

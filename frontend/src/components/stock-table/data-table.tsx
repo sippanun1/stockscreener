@@ -28,6 +28,7 @@ interface Filters {
   market?: string
   currentRating?: string
   technicalRating?: string
+  previousRating?: string
   search?: string
   sortBy?: string
   sector?: string
@@ -81,6 +82,11 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   // Include sector filter
   if (currentFilters?.sector && currentFilters.sector !== '' && currentFilters.sector !== 'all') {
     params.append('sector', currentFilters.sector);
+  }
+
+  // Include previous_rating filter
+  if (currentFilters?.previousRating && currentFilters.previousRating !== '') {
+    params.append('previous_rating', currentFilters.previousRating);
   }
 
   // Include sort parameters for server-side sorting
