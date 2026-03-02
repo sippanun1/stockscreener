@@ -120,19 +120,15 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
         for i in range(0, len(records), BATCH_SIZE):
             batch = records[i : i + BATCH_SIZE]
             
-            # Upsert batch directly - Database triggers will handle calculations
-            response = client.table("stock_ratings").upsert(
-                batch, 
-                on_conflict="symbol, fetched_date, fetched_time, session_type"
-            ).execute()
+            # [Smart Filtering #1] Use RPC instead of direct table upsert
+            # This allows SQL to decide if a historical record is worth saving (Rating/Price change)
+            # while always updating the Latest summary.
+            response = client.rpc("upsert_stock_data", {"p_records": batch}).execute()
             
-            # Count inserted/updated
-            if response.data:
-                total_saved += len(response.data)
-                
-            print(f">> 📦 Batch {i//BATCH_SIZE + 1} saved: {len(batch)} records")
+            total_saved += len(batch)
+            print(f">> 📦 Batch {i//BATCH_SIZE + 1} processed: {len(batch)} records")
 
-        print(f">> ✅ Total Saved: {total_saved} stocks to Supabase ({session_type})")
+        print(f">> ✅ Total Processed: {total_saved} stocks via Smart Upsert ({session_type})")
         return {"inserted": total_saved, "updated": 0}
 
     except Exception as e:

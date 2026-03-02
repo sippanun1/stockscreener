@@ -283,11 +283,80 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- SMART UPSERT: Deduplicates history while keeping Latest updated
+CREATE OR REPLACE FUNCTION public.upsert_stock_data(p_records JSONB)
+RETURNS VOID LANGUAGE plpgsql AS $$
+DECLARE
+    v_rec RECORD;
+    v_latest RECORD;
+    v_should_record_history BOOLEAN;
+BEGIN
+    FOR v_rec IN SELECT * FROM jsonb_to_recordset(p_records) AS (
+        symbol TEXT, market TEXT, name TEXT, current_price NUMERIC, 
+        open NUMERIC, premarket_close NUMERIC, premarket_open NUMERIC,
+        postmarket_close NUMERIC, postmarket_open NUMERIC, 
+        sector TEXT, industry TEXT, technical_score NUMERIC,
+        technical_rating TEXT, fetched_date DATE, fetched_time TIME, 
+        session_type TEXT, daily_change_percent NUMERIC, daily_change_amount NUMERIC
+    ) LOOP
+        -- 1. Get current state from latest_stock_ratings
+        SELECT * INTO v_latest 
+        FROM public.latest_stock_ratings 
+        WHERE symbol = v_rec.symbol;
+
+        -- 2. Determine if we should insert into history (stock_ratings)
+        -- Records history ONLY IF: Rating changes OR Price moves > 1% OR New Day
+        v_should_record_history := (v_latest IS NULL)
+            OR (v_latest.technical_rating != v_rec.technical_rating)
+            OR (ABS(v_rec.current_price - v_latest.current_price) / NULLIF(v_latest.current_price, 0) > 0.01)
+            OR (v_rec.fetched_date > v_latest.fetched_date);
+
+        IF v_should_record_history THEN
+            INSERT INTO public.stock_ratings (
+                symbol, market, name, current_price, open,
+                premarket_close, premarket_open, postmarket_close, postmarket_open,
+                sector, industry, technical_score, technical_rating,
+                fetched_date, fetched_time, session_type,
+                daily_change_percent, daily_change_amount
+            ) VALUES (
+                v_rec.symbol, v_rec.market, v_rec.name, v_rec.current_price, v_rec.open,
+                v_rec.premarket_close, v_rec.premarket_open, v_rec.postmarket_close, v_rec.postmarket_open,
+                v_rec.sector, v_rec.industry, v_rec.technical_score, v_rec.technical_rating,
+                v_rec.fetched_date, v_rec.fetched_time, v_rec.session_type,
+                v_rec.daily_change_percent, v_rec.daily_change_amount
+            );
+        END IF;
+
+        -- 3. ALWAYS update latest_stock_ratings (Summary Table)
+        INSERT INTO public.latest_stock_ratings (
+            symbol, market, name, current_price, open,
+            premarket_close, premarket_open, postmarket_close, postmarket_open,
+            sector, industry, technical_score, technical_rating,
+            fetched_date, fetched_time, session_type,
+            daily_change_percent, daily_change_amount,
+            updated_at
+        ) VALUES (
+            v_rec.symbol, v_rec.market, v_rec.name, v_rec.current_price, v_rec.open,
+            v_rec.premarket_close, v_rec.premarket_open, v_rec.postmarket_close, v_rec.postmarket_open,
+            v_rec.sector, v_rec.industry, v_rec.technical_score, v_rec.technical_rating,
+            v_rec.fetched_date, v_rec.fetched_time, v_rec.session_type,
+            v_rec.daily_change_percent, v_rec.daily_change_amount,
+            NOW()
+        )
+        ON CONFLICT (symbol) DO UPDATE SET
+            current_price = EXCLUDED.current_price,
+            technical_score = EXCLUDED.technical_score,
+            technical_rating = EXCLUDED.technical_rating,
+            fetched_date = EXCLUDED.fetched_date,
+            fetched_time = EXCLUDED.fetched_time,
+            daily_change_percent = EXCLUDED.daily_change_percent,
+            daily_change_amount = EXCLUDED.daily_change_amount,
+            updated_at = NOW();
+    END LOOP;
+END; $$;
+
+-- REDUNDANT Trigger is DISABLED (Logic moved to upsert_stock_data RPC)
 DROP TRIGGER IF EXISTS trigger_sync_latest_stock_rating ON public.stock_ratings;
-CREATE TRIGGER trigger_sync_latest_stock_rating
-    AFTER INSERT OR UPDATE ON public.stock_ratings  -- Fire on upsert too
-    FOR EACH ROW
-    EXECUTE FUNCTION public.sync_latest_stock_rating();
 
 -- Trigger B: Auto Calculate Metrics (Change %, Amount)
 CREATE OR REPLACE FUNCTION public.calculate_daily_metrics()
@@ -872,7 +941,7 @@ BEGIN
         FROM public.latest_stock_ratings l
         WHERE l.technical_rating != 'Neutral'
     LOOP
-        -- Get the last known signal for this stock
+        -- Get the last known signal for this stock (ignoring the 'active' vs 'closed' transition for a moment)
         SELECT * INTO last_signal
         FROM public.signal_returns
         WHERE symbol = rec.symbol
@@ -882,10 +951,10 @@ BEGIN
         today_open := COALESCE(rec.open, rec.current_price);
 
         -- Only act when the rating ACTUALLY CHANGED today
-        -- (i.e. rating_change_date equals the processing date)
+        -- Note: With bridging, we check if today's rating is different from the last signal's to_rating
         IF rec.rating_change_date = p_date THEN
 
-            -- Step A: If there is a prior ACTIVE signal, close it using today's open price as D2
+            -- Step A: If there is an ACTIVE signal that differs from our new rating, close it
             IF last_signal IS NOT NULL AND last_signal.status = 'active' AND last_signal.to_rating != rec.technical_rating THEN
                 IF last_signal.signal_entry_price > 0 AND today_open IS NOT NULL THEN
                     return_pct := ((today_open - last_signal.signal_entry_price) / last_signal.signal_entry_price) * 100;
@@ -901,36 +970,38 @@ BEGIN
                     updated_at = NOW()
                 WHERE id = last_signal.id;
 
+                -- Bridging: The new signal's 'from_rating' should be the one we just closed
                 prev_rating := last_signal.to_rating;
-
-                -- Very first signal for this stock. Avoid 'Neutral'.
+            ELSE
+                -- If we are here, it means either rating_change_date is today but it might be the 1st signal,
+                -- or there's no active signal to close.
                 prev_rating := CASE 
                     WHEN rec.previous_rating = 'Neutral' OR rec.previous_rating IS NULL THEN 'N/A'
                     ELSE rec.previous_rating 
                 END;
-            ELSE
-                -- Signal was already closed or same rating — skip
-                CONTINUE;
             END IF;
 
-            -- Step B: Open a NEW signal with today's open price as D1
-            -- Deduplication: don't re-insert if a signal for today already exists
+            -- Step B: Open a NEW signal IF it's a true transition (and not already created today)
+            -- Avoid duplicate signals for the same stock on the same day
             IF NOT EXISTS (
                 SELECT 1 FROM public.signal_returns
                 WHERE symbol = rec.symbol AND signal_date = p_date
             ) THEN
-                INSERT INTO public.signal_returns
-                    (symbol, market, signal_date, from_rating, to_rating, signal_entry_price, status)
-                VALUES (
-                    rec.symbol,
-                    rec.market,
-                    p_date,
-                    prev_rating,
-                    rec.technical_rating,
-                    today_open,
-                    'active'
-                );
-                processed_count := processed_count + 1;
+                -- Only insert if the new rating is different from the last closed signal (Bridging)
+                IF last_signal IS NULL OR last_signal.to_rating != rec.technical_rating THEN
+                    INSERT INTO public.signal_returns
+                        (symbol, market, signal_date, from_rating, to_rating, signal_entry_price, status)
+                    VALUES (
+                        rec.symbol,
+                        rec.market,
+                        p_date,
+                        prev_rating,
+                        rec.technical_rating,
+                        today_open,
+                        'active'
+                    );
+                    processed_count := processed_count + 1;
+                END IF;
             END IF;
 
         END IF;
