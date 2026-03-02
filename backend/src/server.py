@@ -377,12 +377,16 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
         
         # --- Fetch the ACTUAL accuracy metrics from latest_stock_ratings ---
         latest_res = database.get_client().table("latest_stock_ratings")\
-            .select("accuracy_percent, total_signals")\
+            .select("accuracy_percent, total_signals, sector, industry")\
             .eq("symbol", symbol)\
             .execute()
         
         db_accuracy = latest_res.data[0].get("accuracy_percent") if latest_res.data else None
         db_total_signals = latest_res.data[0].get("total_signals") if latest_res.data else 0
+        
+        # Override sector and industry from the latest view directly (more reliable than history)
+        db_sector = latest_res.data[0].get("sector") if latest_res.data and latest_res.data[0].get("sector") else None
+        db_industry = latest_res.data[0].get("industry") if latest_res.data and latest_res.data[0].get("industry") else None
         
         # --- UPDATED LOGIC: Fetch Signals from `signal_returns` Source of Truth ---
         # This ensures the Detail Page matches the Dashboard Table Accuracy.
@@ -396,13 +400,22 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
         signals_data = signals_res.data or []
         signals = []
         
-        for s in signals_data:
+        for i, s in enumerate(signals_data):
+            # Skip Neutral signals (either entry or exit)
+            if s.get("to_rating") == "Neutral" or s.get("from_rating") == "Neutral":
+                continue
+
             # Map DB columns to Frontend 'RatingHistory' type
             # Robust check: If exit_price is set, it's effectively CLOSED/COMPLETED, even if status says 'active'
             is_active = s["status"] == "active" and s["exit_price"] is None
             
-            # Use return_1d_calculated_at as the true exit date if the trade is closed
-            exit_date = s["return_1d_calculated_at"][:10] if not is_active and s["return_1d_calculated_at"] else s["signal_date"]
+            # The signals are ordered newest->oldest. 
+            # So the exit date for signal [i] is the entry date of the next chronologically (which is signal [i-1]).
+            if not is_active and i > 0:
+                exit_date = signals_data[i-1]["signal_date"]
+            else:
+                # Fallback: if it's still active or somehow the newest record has no newer record to draw an exit date from.
+                exit_date = s.get("return_1d_calculated_at")[:10] if not is_active and s.get("return_1d_calculated_at") else s["signal_date"]
             
             signals.append({
                 "date": exit_date, # Exit date
@@ -428,6 +441,7 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
         # Frontend likely expects Newest first for list? 
         # Actually `history` is usually mapped. 
         # Let's look at `rating_changes` usage: `history: rating_changes`.
+
         # Frontend: `historyItemsDisplayed.map...`
         # Usually we want Newest on top.
         # If existing code did `signals.append` (Chronological Old->New), then `signals[::-1]` made it New->Old.
@@ -461,6 +475,8 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
         accuracy_stats = {}
         for signal in completed_signals:
             rating = signal["to_rating"]
+            if rating == "Neutral":
+                continue
             if rating not in accuracy_stats:
                 accuracy_stats[rating] = {"wins": 0, "losses": 0}
             
@@ -558,7 +574,7 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
                  to_rating = rec["technical_rating"]
                  
                  # Only show as an OPEN record if it's a CHANGE from yesterday or a fresh signal
-                 if to_rating != "Neutral" and from_rating.lower() != to_rating.lower():
+                 if to_rating != "Neutral" and from_rating != "Neutral" and from_rating.lower() != to_rating.lower():
                      intraday_moves.append({
                         "date": rec["fetched_date"],
                         "start_time": rec["fetched_time"],
@@ -573,12 +589,25 @@ def get_stock_detail(symbol: str, _auth: bool = Depends(verify_api_key)):
 
         logger.debug(f"Fetched detail for {symbol}: {total_signals} signals")
 
+        # Scan history for the first available sector and industry (in case recent rows are null)
+        sector_val = db_sector or "-"
+        industry_val = db_industry or "-"
+        
+        if sector_val == "-" or industry_val == "-":
+            for h in history:
+                if sector_val == "-" and h.get("sector") and h.get("sector") != "-":
+                    sector_val = h.get("sector")
+                if industry_val == "-" and h.get("industry") and h.get("industry") != "-":
+                    industry_val = h.get("industry")
+                if sector_val != "-" and industry_val != "-":
+                    break
+
         return {
             "symbol": symbol,
             "name": current.get("name") or (symbol.split(":")[1] if ":" in symbol else symbol),
             "market": current.get("market") or (symbol.split(":")[0] if ":" in symbol else ""),
-            "sector": current.get("sector") or "-",
-            "industry": current.get("industry") or "-",
+            "sector": sector_val,
+            "industry": industry_val,
             "current_price": current.get("current_price", 0),
             "current_rating": "N/A" if current.get("technical_rating", "N/A") == "Neutral" else current.get("technical_rating", "N/A"),
             "change": change,

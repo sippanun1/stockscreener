@@ -21,6 +21,7 @@ function ScreenerPage() {
     date: "",
     search: "",
     sortBy: undefined as string | undefined,
+    favoritesOnly: false,
   });
   const [filteredCount, setFilteredCount] = useState(0);
 

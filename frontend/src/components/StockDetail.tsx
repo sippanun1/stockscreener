@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { StockLogo } from "./StockLogo";
-import { ArrowRight, ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowRight, ArrowLeft, TrendingUp, TrendingDown, Star } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { useFavorites } from "../hooks/useFavorites";
+import TradingViewWidget from "./TradingViewWidget";
 
 
 type RatingHistory = {
@@ -97,6 +99,9 @@ export default function StockDetail() {
   const navigate = useNavigate();
   const [selectedRating, setSelectedRating] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"daily" | "intraday">("daily");
+  
+  // Hooks must be called at the top level, before any early returns.
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   // API base URL from environment variable
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -195,9 +200,9 @@ export default function StockDetail() {
   const isPositiveChange = data.change_percent >= 0;
 
   // Filter history based on active tab AND selected rating
-  const historyItemsAll = activeTab === "daily" 
+  const historyItemsAll = (activeTab === "daily" 
     ? data.history 
-    : (data.intraday_moves || []);
+    : (data.intraday_moves || [])).filter(item => item.to_rating !== "Neutral" && item.from_rating !== "Neutral");
 
   // Filter by rating (to_rating)
   const historyItems = selectedRating
@@ -257,9 +262,24 @@ export default function StockDetail() {
              className="w-16 h-16 sm:w-[72px] sm:h-[72px] text-2xl" 
            />
            <div>
-             <h1 className="text-white text-3xl sm:text-[40px] font-bold tracking-tight leading-none mb-1">
-               {data.symbol.split(":")[1] || data.symbol}
-             </h1>
+             <div className="flex items-center gap-3 mb-1">
+               <h1 className="text-white text-3xl sm:text-[40px] font-bold tracking-tight leading-none">
+                 {data.symbol.split(":")[1] || data.symbol}
+               </h1>
+               <button 
+                 onClick={() => toggleFavorite(data.symbol)}
+                 className="p-1.5 hover:bg-[#1E2530] rounded-full transition-colors mt-1 flex items-center justify-center group"
+                 title={isFavorite(data.symbol) ? "Remove from Watchlist" : "Add to Watchlist"}
+               >
+                 <Star 
+                   className={`w-6 h-6 sm:w-8 sm:h-8 transition-all ${
+                     isFavorite(data.symbol) 
+                       ? "fill-[#FBBF24] text-[#FBBF24] scale-110 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" 
+                       : "text-[#94A3B8] group-hover:text-white"
+                   }`} 
+                 />
+               </button>
+             </div>
              <p className="text-[#94A3B8] text-lg font-medium tracking-wide">{data.name}</p>
               
              {/* Sector & Industry - Professional Badges */}
@@ -307,6 +327,16 @@ export default function StockDetail() {
          </div>
        </div>
  
+       {/* TRADINGVIEW WIDGET SECTION */}
+       <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] mb-6 shadow-sm overflow-hidden flex flex-col h-[500px]">
+         <div className="flex items-center justify-between mb-4">
+           <h2 className="text-white text-xl font-bold tracking-tight">Technical Chart</h2>
+         </div>
+         <div className="w-full flex-grow rounded-xl overflow-hidden bg-[#000000]">
+            <TradingViewWidget symbol={data.symbol} />
+         </div>
+       </div>
+
        {/* CONTROLS ROW: Toggles & Filters */}
        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
          

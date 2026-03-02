@@ -43,6 +43,8 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
     fetchSectors();
   }, []);
 
+  const [showFavorites, setShowFavorites] = useState<boolean>(false);
+
   // Sync local state with external filters (e.g. from SummaryInfo clicks)
   useEffect(() => {
     if (currentFilters) {
@@ -51,6 +53,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
       setPreviousRating(currentFilters.previousRating || "");
       setSector(currentFilters.sector || "");
       setSearch(currentFilters.search || "");
+      setShowFavorites(currentFilters.favoritesOnly || false);
     }
   }, [currentFilters]);
 
@@ -111,7 +114,13 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    onChange?.({ market, currentRating, previousRating, sector, search: value });
+    onChange?.({ market, currentRating, previousRating, sector, search: value, favoritesOnly: showFavorites });
+  };
+
+  const handleFavoritesToggle = () => {
+    const newShowFavorites = !showFavorites;
+    setShowFavorites(newShowFavorites);
+    onChange?.({ market, currentRating, previousRating, sector, search, favoritesOnly: newShowFavorites });
   };
 
   const handleClearFilters = () => {
@@ -119,7 +128,8 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
     setCurrentRating("");
     setPreviousRating("");
     setSector("");
-    onChange?.({ market: "", currentRating: "", previousRating: "", sector: "", search: "" });
+    setShowFavorites(false);
+    onChange?.({ market: "", currentRating: "", previousRating: "", sector: "", search: "", favoritesOnly: false });
   };
 
   return (
@@ -218,10 +228,21 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
               </SelectGroup>
             </SelectContent>
           </Select>
-
+          
+          {/* Action Toggle (Favorites) */}
+          <button
+             onClick={handleFavoritesToggle}
+             className={`h-[40px] px-4 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 border ${
+                showFavorites 
+                ? "bg-yellow-400/10 text-yellow-400 border-yellow-400/30 hover:bg-yellow-400/20" 
+                : "bg-[#0F151F] text-[#F8FAFC] border-transparent hover:bg-[#354052]/80"
+             }`}
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={showFavorites ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+             Watchlist
+          </button>
 
         </div>
-
         {/* Right side - Search & Clear */}
         <div className="flex items-center gap-2 sm:gap-4 w-full lg:w-auto">
           <div className="relative flex-1 lg:flex-none">

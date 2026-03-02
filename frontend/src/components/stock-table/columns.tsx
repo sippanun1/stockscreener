@@ -5,6 +5,8 @@ import type { ColumnDef } from "@tanstack/react-table"
 import type { Stock } from "@/types/stock"
 import { StockLogo } from "@/components/StockLogo"
 import { LongArrowRight } from "@/components/LongArrowRight"
+import { Star } from "lucide-react"
+import { useFavorites } from "@/hooks/useFavorites"
 
 const getRatingTextColor = (rating: string | undefined) => {
   if (!rating) return "text-[#7588A3]"
@@ -13,8 +15,6 @@ const getRatingTextColor = (rating: string | undefined) => {
       return "text-[#00FFB7]"
     case "Buy":
       return "text-[#00FFB7]"
-    case "Neutral":
-      return "text-[#FFFFFF]"
     case "Sell":
       return "text-[#FF3069]"
     case "Strong Sell":
@@ -65,19 +65,8 @@ export const stockColumns: ColumnDef<Stock>[] = [
       const symbol = row.getValue("symbol") as string
       // Extract clean symbol for display (e.g. "NVDA")
       const displaySymbol = symbol.split(":")[1] || symbol
-      return (
-        <div className="flex items-center gap-2.5 sm:gap-4 pl-1">
-          <StockLogo symbol={symbol} name={row.original.name} className="w-6 h-6 sm:w-8 sm:h-8 text-[11px] sm:text-xs shrink-0 rounded-full border border-[#7588A3]/10" />
-          <div className="flex flex-col min-w-0 leading-tight">
-             <div className="text-[#FFFFFF] font-bold text-sm sm:text-[15px] truncate">
-                {displaySymbol}
-             </div>
-             <span className="text-[#7588A3] text-[11px] sm:text-[12px] font-medium truncate mt-0.5 max-w-[130px] sm:max-w-[160px]" title={row.original.name}>
-                {row.original.name}
-             </span>
-          </div>
-        </div>
-      )
+      
+      return <SymbolCell symbol={symbol} displaySymbol={displaySymbol} name={row.original.name} />
     },
   },
   {
@@ -214,7 +203,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
         )
       }
       
-      const displayRating = (!previousRating || previousRating === "N/A" || previousRating === "") 
+      const displayRating = (!previousRating || previousRating === "N/A" || previousRating === "" || previousRating === "Neutral") 
         ? "N/A" 
         : previousRating
 
@@ -318,3 +307,31 @@ export const stockColumns: ColumnDef<Stock>[] = [
     },
   },
 ]
+
+export function SymbolCell({ symbol, displaySymbol, name }: { symbol: string, displaySymbol: string, name: string }) {
+  const { toggleFavorite, isFavorite } = useFavorites();
+  const isFav = isFavorite(symbol);
+
+  return (
+    <div className="flex items-center gap-2.5 sm:gap-4 pl-1">
+      <button 
+        onClick={(e) => {
+          e.stopPropagation(); // prevent row click navigation
+          toggleFavorite(symbol);
+        }}
+        className={`shrink-0 hover:scale-110 transition-transform ${isFav ? 'text-yellow-400' : 'text-[#354052] hover:text-[#7588A3]'}`}
+      >
+        <Star className={`w-4 h-4 sm:w-5 sm:h-5 ${isFav ? 'fill-yellow-400' : ''}`} />
+      </button>
+      <StockLogo symbol={symbol} name={name} className="w-6 h-6 sm:w-8 sm:h-8 text-[11px] sm:text-xs shrink-0 rounded-full border border-[#7588A3]/10" />
+      <div className="flex flex-col min-w-0 leading-tight">
+         <div className="text-[#FFFFFF] font-bold text-sm sm:text-[15px] truncate">
+            {displaySymbol}
+         </div>
+         <span className="text-[#7588A3] text-[11px] sm:text-[12px] font-medium truncate mt-0.5 max-w-[110px] sm:max-w-[140px]" title={name}>
+            {name}
+         </span>
+      </div>
+    </div>
+  )
+}

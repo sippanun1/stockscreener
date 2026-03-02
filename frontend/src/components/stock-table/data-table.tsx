@@ -32,6 +32,7 @@ interface Filters {
   search?: string
   sortBy?: string
   sector?: string
+  favoritesOnly?: boolean
 }
 
 interface DataTableProps {
@@ -140,7 +141,10 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   }
 }
 
+import { useFavorites } from "@/hooks/useFavorites"
+
 export function DataTable({ columns, filters, onFilteredCountChange }: DataTableProps) {
+  const { favorites, isFavorite } = useFavorites();
   const [displayCount, setDisplayCount] = useState(BATCH_SIZE)
   const [loadingMore, setLoadingMore] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([{ id: "rating_change_date", desc: true }])
@@ -182,11 +186,14 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const allData = data?.stocks || []
   const totalInDatabase = data?.total || 0
 
-  // ALL filters are now handled server-side for better performance
-  // No client-side filtering needed
+  // Filter by favorites locally if active, since the backend doesn't know about local storage
   const filteredData = useMemo(() => {
-    return allData
-  }, [allData])
+    let result = allData;
+    if (filters?.favoritesOnly) {
+      result = result.filter(stock => isFavorite(stock.symbol));
+    }
+    return result;
+  }, [allData, filters?.favoritesOnly, favorites])
 
   // React to sortBy filter changes
   useEffect(() => {
@@ -198,10 +205,12 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   }, [filters?.sortBy])
 
   // Notify parent of filtered count changes
-  // All filtering is server-side now, so always use totalInDatabase
   useEffect(() => {
-    onFilteredCountChange?.(totalInDatabase)
-  }, [totalInDatabase, onFilteredCountChange])
+    // If not filtering by favorites, we use the server's total count
+    // If filtering by favorites, we can only report the length of what we have locally filtered
+    const count = filters?.favoritesOnly ? filteredData.length : totalInDatabase;
+    onFilteredCountChange?.(count)
+  }, [totalInDatabase, filteredData.length, filters?.favoritesOnly, onFilteredCountChange])
 
   // Slice data for display
   const currentData = useMemo(() => {
