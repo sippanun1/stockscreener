@@ -712,6 +712,8 @@ BEGIN
                 CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'desc' THEN total_signals END DESC NULLS LAST,
                 CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'asc' THEN daily_change_percent END ASC NULLS LAST,
                 CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'desc' THEN daily_change_percent END DESC NULLS LAST,
+                CASE WHEN p_sort_by = 'breakout_score' AND p_sort_order = 'asc' THEN breakout_score END ASC NULLS LAST,
+                CASE WHEN p_sort_by = 'breakout_score' AND p_sort_order = 'desc' THEN breakout_score END DESC NULLS LAST,
                 symbol_only ASC
             LIMIT p_limit OFFSET p_offset
         )
@@ -769,6 +771,8 @@ BEGIN
                 CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'desc' THEN total_signals END DESC NULLS LAST,
                 CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'asc' THEN daily_change_percent END ASC NULLS LAST,
                 CASE WHEN (p_sort_by = 'accuracy' OR p_sort_by = 'accuracy_percent') AND p_sort_order = 'desc' THEN daily_change_percent END DESC NULLS LAST,
+                CASE WHEN p_sort_by = 'breakout_score' AND p_sort_order = 'asc' THEN breakout_score END ASC NULLS LAST,
+                CASE WHEN p_sort_by = 'breakout_score' AND p_sort_order = 'desc' THEN breakout_score END DESC NULLS LAST,
                 symbol_only ASC
             LIMIT p_limit OFFSET p_offset
         )
