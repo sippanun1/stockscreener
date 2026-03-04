@@ -180,6 +180,7 @@ def get_stocks(
     limit: int = Query(100, ge=1, le=50000, description="Number of results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     lookback: Optional[int] = Query(None, description="Lookback days for historical data (Null for infinite)"),
+    min_breakout_score: Optional[int] = Query(None, ge=0, le=4, description="Min breakout score (0-4). 3 or 4 = hot stocks"),
     _auth: bool = Depends(verify_api_key)
 ):
     """
@@ -226,6 +227,10 @@ def get_stocks(
             lookback_days=lookback,
             sector=sector
         )
+
+        # Apply breakout score filter (Python-side)
+        if min_breakout_score is not None:
+            stocks = [s for s in stocks if (s.get("breakout_score") or 0) >= min_breakout_score]
         
         logger.debug(f"Fetched {len(stocks)} stocks out of {total_count} total (market={market}, date={date}, technical_rating={technical_rating})")
         

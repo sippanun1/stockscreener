@@ -157,6 +157,26 @@ ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS postmarket_open
 ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS accuracy_percent NUMERIC;
 ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS total_signals INTEGER DEFAULT 0;
 
+-- Breakout Score Columns (stock_ratings history table)
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS ema14 NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS ema20 NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS rsi14 NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS high_52w NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS volume NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS avg_volume_10d NUMERIC;
+ALTER TABLE public.stock_ratings ADD COLUMN IF NOT EXISTS breakout_score INTEGER;
+
+-- Breakout Score Columns (latest_stock_ratings fast-access table)
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS ema14 NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS ema20 NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS rsi14 NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS high_52w NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS volume NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS avg_volume_10d NUMERIC;
+ALTER TABLE public.latest_stock_ratings ADD COLUMN IF NOT EXISTS breakout_score INTEGER;
+
+-- Index for fast breakout score filtering
+CREATE INDEX IF NOT EXISTS idx_latest_breakout_score ON public.latest_stock_ratings (breakout_score DESC NULLS LAST);
 
 -- 2. Performance Optimization Indexes
 -- =========================================================================================
@@ -297,7 +317,10 @@ BEGIN
         postmarket_close NUMERIC, postmarket_open NUMERIC, 
         sector TEXT, industry TEXT, technical_score NUMERIC,
         technical_rating TEXT, fetched_date DATE, fetched_time TIME, 
-        session_type TEXT, daily_change_percent NUMERIC, daily_change_amount NUMERIC
+        session_type TEXT, daily_change_percent NUMERIC, daily_change_amount NUMERIC,
+        -- Breakout Score columns
+        ema14 NUMERIC, ema20 NUMERIC, rsi14 NUMERIC, high_52w NUMERIC,
+        volume NUMERIC, avg_volume_10d NUMERIC, breakout_score INTEGER
     ) LOOP
         -- 1. Get current state from latest_stock_ratings
         SELECT * INTO v_latest 
@@ -317,13 +340,16 @@ BEGIN
                 premarket_close, premarket_open, postmarket_close, postmarket_open,
                 sector, industry, technical_score, technical_rating,
                 fetched_date, fetched_time, session_type,
-                daily_change_percent, daily_change_amount
+                daily_change_percent, daily_change_amount,
+                ema14, ema20, rsi14, high_52w, volume, avg_volume_10d, breakout_score
             ) VALUES (
                 v_rec.symbol, v_rec.market, v_rec.name, v_rec.current_price, v_rec.open,
                 v_rec.premarket_close, v_rec.premarket_open, v_rec.postmarket_close, v_rec.postmarket_open,
                 v_rec.sector, v_rec.industry, v_rec.technical_score, v_rec.technical_rating,
                 v_rec.fetched_date, v_rec.fetched_time, v_rec.session_type,
-                v_rec.daily_change_percent, v_rec.daily_change_amount
+                v_rec.daily_change_percent, v_rec.daily_change_amount,
+                v_rec.ema14, v_rec.ema20, v_rec.rsi14, v_rec.high_52w,
+                v_rec.volume, v_rec.avg_volume_10d, v_rec.breakout_score
             );
         END IF;
 
@@ -334,6 +360,7 @@ BEGIN
             sector, industry, technical_score, technical_rating,
             fetched_date, fetched_time, session_type,
             daily_change_percent, daily_change_amount,
+            ema14, ema20, rsi14, high_52w, volume, avg_volume_10d, breakout_score,
             updated_at
         ) VALUES (
             v_rec.symbol, v_rec.market, v_rec.name, v_rec.current_price, v_rec.open,
@@ -341,6 +368,8 @@ BEGIN
             v_rec.sector, v_rec.industry, v_rec.technical_score, v_rec.technical_rating,
             v_rec.fetched_date, v_rec.fetched_time, v_rec.session_type,
             v_rec.daily_change_percent, v_rec.daily_change_amount,
+            v_rec.ema14, v_rec.ema20, v_rec.rsi14, v_rec.high_52w,
+            v_rec.volume, v_rec.avg_volume_10d, v_rec.breakout_score,
             NOW()
         )
         ON CONFLICT (symbol) DO UPDATE SET
@@ -351,6 +380,13 @@ BEGIN
             fetched_time = EXCLUDED.fetched_time,
             daily_change_percent = EXCLUDED.daily_change_percent,
             daily_change_amount = EXCLUDED.daily_change_amount,
+            ema14 = EXCLUDED.ema14,
+            ema20 = EXCLUDED.ema20,
+            rsi14 = EXCLUDED.rsi14,
+            high_52w = EXCLUDED.high_52w,
+            volume = EXCLUDED.volume,
+            avg_volume_10d = EXCLUDED.avg_volume_10d,
+            breakout_score = EXCLUDED.breakout_score,
             updated_at = NOW();
     END LOOP;
 END; $$;
@@ -622,7 +658,8 @@ RETURNS TABLE (
     res_technical_score NUMERIC, res_technical_rating TEXT, res_previous_rating TEXT, res_rating_change_date DATE,
     res_fetched_date DATE, res_fetched_time TIME,
     res_accuracy_percent NUMERIC,
-    res_total_signals INTEGER -- [NEW]
+    res_total_signals INTEGER,
+    res_breakout_score INTEGER
 ) AS $$
 DECLARE 
     v_base_date DATE := COALESCE(p_date, CURRENT_DATE);
@@ -680,7 +717,8 @@ BEGIN
             prev_close_price, daily_change_amount, daily_change_percent,
             technical_score, technical_rating, 
             previous_rating, rating_change_date, fetched_date, fetched_time,
-            accuracy_percent, total_signals
+            accuracy_percent, total_signals,
+            breakout_score
         FROM SortedIds;
     ELSE
         RETURN QUERY
@@ -732,7 +770,8 @@ BEGIN
         SELECT id, symbol, market, name, current_price, open, premarket_close, premarket_open, postmarket_close, postmarket_open,
                sector, industry, prev_close_price, daily_change_amount, daily_change_percent,
                technical_score, technical_rating, previous_rating, rating_change_date, fetched_date, fetched_time,
-               accuracy_percent, total_signals
+               accuracy_percent, total_signals,
+               breakout_score
         FROM SortedHistory;
     END IF;
 END; $$ LANGUAGE plpgsql;

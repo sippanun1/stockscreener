@@ -44,6 +44,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   }, []);
 
   const [showFavorites, setShowFavorites] = useState<boolean>(false);
+  const [showBreakout, setShowBreakout] = useState<boolean>(false);
 
   // Sync local state with external filters (e.g. from SummaryInfo clicks)
   useEffect(() => {
@@ -54,6 +55,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
       setSector(currentFilters.sector || "");
       setSearch(currentFilters.search || "");
       setShowFavorites(currentFilters.favoritesOnly || false);
+      setShowBreakout(currentFilters.breakoutOnly || false);
     }
   }, [currentFilters]);
 
@@ -114,13 +116,19 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    onChange?.({ market, currentRating, previousRating, sector, search: value, favoritesOnly: showFavorites });
+    onChange?.({ market, currentRating, previousRating, sector, search: value, favoritesOnly: showFavorites, breakoutOnly: showBreakout });
   };
 
   const handleFavoritesToggle = () => {
     const newShowFavorites = !showFavorites;
     setShowFavorites(newShowFavorites);
-    onChange?.({ market, currentRating, previousRating, sector, search, favoritesOnly: newShowFavorites });
+    onChange?.({ market, currentRating, previousRating, sector, search, favoritesOnly: newShowFavorites, breakoutOnly: showBreakout });
+  };
+
+  const handleBreakoutToggle = () => {
+    const next = !showBreakout;
+    setShowBreakout(next);
+    onChange?.({ market, currentRating, previousRating, sector, search, favoritesOnly: showFavorites, breakoutOnly: next });
   };
 
   const handleClearFilters = () => {
@@ -129,7 +137,8 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
     setPreviousRating("");
     setSector("");
     setShowFavorites(false);
-    onChange?.({ market: "", currentRating: "", previousRating: "", sector: "", search: "", favoritesOnly: false });
+    setShowBreakout(false);
+    onChange?.({ market: "", currentRating: "", previousRating: "", sector: "", search: "", favoritesOnly: false, breakoutOnly: false });
   };
 
   return (
@@ -240,6 +249,18 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
           >
              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={showFavorites ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
              Watchlist
+          </button>
+
+          {/* Breakout Filter */}
+          <button
+             onClick={handleBreakoutToggle}
+             className={`h-[40px] px-4 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1.5 border ${
+                showBreakout
+                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25"
+                : "bg-[#0F151F] text-[#F8FAFC] border-transparent hover:bg-[#354052]/80"
+             }`}
+          >
+             🚀 Breakout
           </button>
 
         </div>

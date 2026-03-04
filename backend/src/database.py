@@ -98,7 +98,15 @@ def save_daily_stocks(stocks_list: list, date: Optional[str] = None, session_typ
                 "daily_change_amount": stock.get("daily_change_amount"),
                 "fetched_date": record_date,
                 "fetched_time": record_time,
-                "session_type": session_type
+                "session_type": session_type,
+                # --- Breakout Score Fields ---
+                "ema14": stock.get("ema14"),
+                "ema20": stock.get("ema20"),
+                "rsi14": stock.get("rsi14"),
+                "high_52w": stock.get("high_52w"),
+                "volume": stock.get("volume"),
+                "avg_volume_10d": stock.get("avg_volume_10d"),
+                "breakout_score": stock.get("breakout_score"),
             }
             records.append(record)
         except Exception as e:
@@ -211,7 +219,8 @@ def get_stocks_with_previous_rating(
                     "fetched_date": row["res_fetched_date"],
                     "fetched_time": row["res_fetched_time"],
                     "accuracy_percent": row.get("res_accuracy_percent"),
-                    "total_signals": row.get("res_total_signals", 0)
+                    "total_signals": row.get("res_total_signals", 0),
+                    "breakout_score": row.get("res_breakout_score"),
                 })
             
             if len(response.data) < batch_size:

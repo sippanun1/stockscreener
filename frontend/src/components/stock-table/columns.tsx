@@ -184,6 +184,31 @@ export const stockColumns: ColumnDef<Stock>[] = [
     },
   },
   {
+    accessorKey: "breakout_score",
+    header: "Breakout",
+    enableSorting: true,
+    sortDescFirst: true,
+    size: 80,
+    minSize: 70,
+    maxSize: 100,
+    cell: ({ row }) => {
+      const score = row.getValue("breakout_score") as number | undefined | null;
+      if (score === undefined || score === null) {
+        return <div className="text-[#354052] text-center text-xs">—</div>
+      }
+      const label = `${score}/4`
+      let className = "text-center text-xs font-bold"
+      if (score === 4) className += " text-yellow-400"
+      else if (score === 3) className += " text-emerald-400"
+      else className += " text-[#354052]"
+      return (
+        <div className={className}>
+          {score >= 3 ? "🔥" : ""}{label}
+        </div>
+      )
+    },
+  },
+  {
     accessorKey: "Previous_Rating",
     header: "Previous Rating",
     size: 100,

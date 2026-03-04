@@ -19,6 +19,8 @@ export type Stock = {
   accuracy_percent?: number; // Total accuracy from all signals
   total_signals?: number;    // Total number of signals computed
   Yesterday_Rating?: string;
+  // Breakout Score Fields
+  breakout_score?: number;        // 0-4 score based on 4 breakout conditions
   history?: Array<{
     Technical_Rating: string;
     fetched_at: string;

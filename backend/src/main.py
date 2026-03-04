@@ -19,20 +19,74 @@ DATA_DIR.mkdir(exist_ok=True)
 # Columns that work across all markets
 # ================================
 columns = [
-    "name",
-    "close",
-    "open",
-    "premarket_close",
-    "premarket_open",
-    "postmarket_close",
-    "postmarket_open",
-    "sector",
-    "industry",
-    "Recommend.All",
-    "description",
-    "change",      # Index 11: Percent Change
-    "change_abs"   # Index 12: Absolute Change
+    "name",           # Index 0
+    "close",          # Index 1 - current price
+    "open",           # Index 2
+    "premarket_close", # Index 3
+    "premarket_open",  # Index 4
+    "postmarket_close",# Index 5
+    "postmarket_open", # Index 6
+    "sector",          # Index 7
+    "industry",        # Index 8
+    "Recommend.All",   # Index 9 - technical score
+    "description",     # Index 10 - company name
+    "change",          # Index 11: Percent Change
+    "change_abs",      # Index 12: Absolute Change
+    # --- Breakout Score Columns ---
+    "EMA14",                   # Index 13
+    "EMA20",                   # Index 14
+    "RSI14",                   # Index 15
+    "High.All",                # Index 16 - 52-week high
+    "volume",                  # Index 17
+    "average_volume_10d_calc", # Index 18
 ]
+
+
+# ================================
+# Breakout Score Calculator
+# ================================
+def compute_breakout_score(price, ema14, ema20, rsi14, high_52w, volume, avg_volume_10d):
+    """
+    Compute Breakout Entry score (0-4) based on 4 conditions:
+    1. Price > EMA14 AND EMA20
+    2. RSI14 > 50
+    3. Price closed above 52-week high (breakout)
+    4. Volume > 10-day average volume
+    """
+    score = 0
+    details = {}
+
+    # Condition 1: Price above both EMA14 and EMA20
+    cond1 = (
+        price is not None and ema14 is not None and ema20 is not None
+        and price > ema14 and price > ema20
+    )
+    details["price_above_ema"] = bool(cond1)
+    if cond1:
+        score += 1
+
+    # Condition 2: RSI14 > 50
+    cond2 = (rsi14 is not None and rsi14 > 50)
+    details["rsi_above_50"] = bool(cond2)
+    if cond2:
+        score += 1
+
+    # Condition 3: Price broke and closed above 52-week high
+    cond3 = (price is not None and high_52w is not None and high_52w > 0 and price >= high_52w)
+    details["broke_52w_high"] = bool(cond3)
+    if cond3:
+        score += 1
+
+    # Condition 4: Today volume > 10-day average volume
+    cond4 = (
+        volume is not None and avg_volume_10d is not None
+        and avg_volume_10d > 0 and volume > avg_volume_10d
+    )
+    details["volume_above_avg"] = bool(cond4)
+    if cond4:
+        score += 1
+
+    return score, details
 
 # ================================
 # TradingView Markets
@@ -185,11 +239,25 @@ def fetch_market(market_name, url, batch_size=300):
         if "OTC" in raw_symbol or "PINK" in raw_symbol:
             continue
 
+        # --- Extract Breakout Columns (safe with fallback None) ---
+        current_price = d[1]
+        ema14         = d[13] if len(d) > 13 else None
+        ema20         = d[14] if len(d) > 14 else None
+        rsi14         = d[15] if len(d) > 15 else None
+        high_52w      = d[16] if len(d) > 16 else None
+        volume        = d[17] if len(d) > 17 else None
+        avg_vol_10d   = d[18] if len(d) > 18 else None
+
+        # --- Compute Breakout Score ---
+        b_score, b_details = compute_breakout_score(
+            current_price, ema14, ema20, rsi14, high_52w, volume, avg_vol_10d
+        )
+
         out.append({
             "market": market_name,
             "symbol": row["s"],
             "name": d[10],  # d[10] is description (full company name)
-            "current_price": d[1],
+            "current_price": current_price,
             "open": d[2],
             "premarket_close": d[3],
             "premarket_open": d[4],
@@ -201,6 +269,16 @@ def fetch_market(market_name, url, batch_size=300):
             "Technical_Rating": convert_rating(score),
             "daily_change_percent": d[11] if len(d) > 11 else 0, # From source
             "daily_change_amount": d[12] if len(d) > 12 else 0,  # From source
+            # --- Breakout Fields ---
+            "ema14": ema14,
+            "ema20": ema20,
+            "rsi14": rsi14,
+            "high_52w": high_52w,
+            "volume": volume,
+            "avg_volume_10d": avg_vol_10d,
+            "breakout_score": b_score,
+            # Store details as compact JSON string for optional inspection
+            "breakout_details": b_details,
             "fetched_at": fetched_at_str,
             "fetched_at_epoch": fetched_at_epoch
         })

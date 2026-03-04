@@ -33,6 +33,7 @@ interface Filters {
   sortBy?: string
   sector?: string
   favoritesOnly?: boolean
+  breakoutOnly?: boolean
 }
 
 interface DataTableProps {
@@ -130,6 +131,7 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
       fetched_date: s.fetched_date,
       accuracy_percent: s.accuracy_percent,
       total_signals: s.total_signals,
+      breakout_score: s.breakout_score,
     }
   })
 
@@ -187,13 +189,17 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const totalInDatabase = data?.total || 0
 
   // Filter by favorites locally if active, since the backend doesn't know about local storage
+  // Filter by breakoutOnly locally (score >= 3)
   const filteredData = useMemo(() => {
     let result = allData;
     if (filters?.favoritesOnly) {
       result = result.filter(stock => isFavorite(stock.symbol));
     }
+    if (filters?.breakoutOnly) {
+      result = result.filter(stock => (stock.breakout_score ?? 0) >= 3);
+    }
     return result;
-  }, [allData, filters?.favoritesOnly, favorites])
+  }, [allData, filters?.favoritesOnly, filters?.breakoutOnly, favorites])
 
   // React to sortBy filter changes
   useEffect(() => {
@@ -206,11 +212,9 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
 
   // Notify parent of filtered count changes
   useEffect(() => {
-    // If not filtering by favorites, we use the server's total count
-    // If filtering by favorites, we can only report the length of what we have locally filtered
-    const count = filters?.favoritesOnly ? filteredData.length : totalInDatabase;
+    const count = (filters?.favoritesOnly || filters?.breakoutOnly) ? filteredData.length : totalInDatabase;
     onFilteredCountChange?.(count)
-  }, [totalInDatabase, filteredData.length, filters?.favoritesOnly, onFilteredCountChange])
+  }, [totalInDatabase, filteredData.length, filters?.favoritesOnly, filters?.breakoutOnly, onFilteredCountChange])
 
   // Slice data for display
   const currentData = useMemo(() => {
