@@ -35,7 +35,7 @@ columns = [
     # --- Breakout Score Columns ---
     "EMA14",                   # Index 13
     "EMA20",                   # Index 14
-    "RSI",                     # Index 15 (Standard RSI is 14 period)
+    "RSI14",                   # Index 15
     "High.All",                # Index 16 - 52-week high
     "volume",                  # Index 17
     "average_volume_10d_calc", # Index 18
@@ -237,6 +237,10 @@ def fetch_market(market_name, url, batch_size=300):
         raw_symbol = row.get("s", "")
         # Check exchange in d[0] (name) or if symbol has :OTC
         if "OTC" in raw_symbol or "PINK" in raw_symbol:
+            continue
+
+        # 3. Filter out Neutral-rated stocks (project doesn't use Neutral)
+        if convert_rating(score) == "Neutral":
             continue
 
         # --- Extract Breakout Columns (safe with fallback None) ---

@@ -375,7 +375,11 @@ BEGIN
         ON CONFLICT (symbol) DO UPDATE SET
             current_price = EXCLUDED.current_price,
             technical_score = EXCLUDED.technical_score,
-            technical_rating = EXCLUDED.technical_rating,
+            -- If new rating is Neutral, preserve the existing non-Neutral rating
+            technical_rating = CASE 
+                WHEN EXCLUDED.technical_rating = 'Neutral' THEN COALESCE(latest_stock_ratings.technical_rating, EXCLUDED.technical_rating)
+                ELSE EXCLUDED.technical_rating
+            END,
             fetched_date = EXCLUDED.fetched_date,
             fetched_time = EXCLUDED.fetched_time,
             daily_change_percent = EXCLUDED.daily_change_percent,
@@ -673,6 +677,7 @@ BEGIN
             FROM public.latest_stock_ratings l
             WHERE l.current_price >= 0.2 
               AND l.symbol NOT LIKE 'OTC:%'
+              AND COALESCE(l.technical_rating, '') != 'Neutral'
               AND (p_market IS NULL OR p_market = '' OR l.market = p_market)
               AND (p_sector IS NULL OR p_sector = '' OR p_sector = 'All' OR l.sector = p_sector)
               AND (p_rating IS NULL OR p_rating = '' OR l.technical_rating = p_rating)

@@ -93,25 +93,25 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   const handleMarketSelect = (value: string) => {
     const newMarket = value === "all" ? "" : value;
     setMarket(newMarket);
-    onChange?.({ market: newMarket, currentRating, sector, search });
+    onChange?.({ market: newMarket, currentRating, previousRating, sector, search, favoritesOnly: showFavorites, breakoutOnly: showBreakout });
   };
 
   const handleSectorSelect = (value: string) => {
     const newSector = value === "all" ? "" : value;
     setSector(newSector);
-    onChange?.({ market, currentRating, sector: newSector, search });
+    onChange?.({ market, currentRating, previousRating, sector: newSector, search, favoritesOnly: showFavorites, breakoutOnly: showBreakout });
   };
 
   const handleCurrentRatingSelect = (value: string) => {
     const newRating = value === "all" ? "" : value;
     setCurrentRating(newRating);
-    onChange?.({ market, currentRating: newRating, previousRating, sector, search });
+    onChange?.({ market, currentRating: newRating, previousRating, sector, search, favoritesOnly: showFavorites, breakoutOnly: showBreakout });
   };
 
   const handlePreviousRatingSelect = (value: string) => {
     const newPrev = value === "all" ? "" : value;
     setPreviousRating(newPrev);
-    onChange?.({ market, currentRating, previousRating: newPrev, sector, search });
+    onChange?.({ market, currentRating, previousRating: newPrev, sector, search, favoritesOnly: showFavorites, breakoutOnly: showBreakout });
   };
 
   const handleSearchChange = (value: string) => {
