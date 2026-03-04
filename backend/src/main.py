@@ -35,8 +35,8 @@ columns = [
     # --- Breakout Score Columns ---
     "EMA14",                   # Index 13
     "EMA20",                   # Index 14
-    "RSI14",                   # Index 15
-    "High.All",                # Index 16 - 52-week high
+    "RSI",                     # Index 15
+    "price_52_week_high",      # Index 16 - 52-week high
     "volume",                  # Index 17
     "average_volume_10d_calc", # Index 18
 ]
