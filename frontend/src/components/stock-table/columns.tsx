@@ -203,7 +203,7 @@ export const stockColumns: ColumnDef<Stock>[] = [
       else className += " text-[#354052]"
       return (
         <div className={className}>
-          {score >= 3 ? "🔥" : ""}{label}
+          {label}
         </div>
       )
     },

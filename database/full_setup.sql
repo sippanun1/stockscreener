@@ -361,6 +361,7 @@ BEGIN
             fetched_date, fetched_time, session_type,
             daily_change_percent, daily_change_amount,
             ema14, ema20, rsi14, high_52w, volume, avg_volume_10d, breakout_score,
+            previous_rating, rating_change_date,
             updated_at
         ) VALUES (
             v_rec.symbol, v_rec.market, v_rec.name, v_rec.current_price, v_rec.open,
@@ -370,6 +371,7 @@ BEGIN
             v_rec.daily_change_percent, v_rec.daily_change_amount,
             v_rec.ema14, v_rec.ema20, v_rec.rsi14, v_rec.high_52w,
             v_rec.volume, v_rec.avg_volume_10d, v_rec.breakout_score,
+            NULL, v_rec.fetched_date,  -- previous_rating starts NULL, rating_change_date = today
             NOW()
         )
         ON CONFLICT (symbol) DO UPDATE SET
@@ -379,6 +381,22 @@ BEGIN
             technical_rating = CASE 
                 WHEN EXCLUDED.technical_rating = 'Neutral' THEN COALESCE(latest_stock_ratings.technical_rating, EXCLUDED.technical_rating)
                 ELSE EXCLUDED.technical_rating
+            END,
+            -- Track previous_rating: when rating genuinely changes (non-Neutral → different non-Neutral),
+            -- the current rating becomes the new previous_rating.
+            -- Neutral transitions are skipped so Sell→Neutral→Buy shows "Sell" as previous.
+            previous_rating = CASE
+                WHEN EXCLUDED.technical_rating != 'Neutral'
+                     AND EXCLUDED.technical_rating IS DISTINCT FROM latest_stock_ratings.technical_rating
+                THEN latest_stock_ratings.technical_rating   -- current becomes previous
+                ELSE latest_stock_ratings.previous_rating
+            END,
+            -- Update rating_change_date only when the rating actually changes
+            rating_change_date = CASE
+                WHEN EXCLUDED.technical_rating != 'Neutral'
+                     AND EXCLUDED.technical_rating IS DISTINCT FROM latest_stock_ratings.technical_rating
+                THEN EXCLUDED.fetched_date
+                ELSE latest_stock_ratings.rating_change_date
             END,
             fetched_date = EXCLUDED.fetched_date,
             fetched_time = EXCLUDED.fetched_time,
@@ -1118,3 +1136,26 @@ SELECT setval(
     COALESCE((SELECT MAX(id) FROM public.signal_returns), 0) + 1, 
     false
 );
+
+-- =========================================================================================
+-- 7. Data Repair & Cleanup (One-time and Idempotent)
+-- =========================================================================================
+
+-- Fix existing latest_stock_ratings where previous_rating is broken (NULL, Neutral, or same as current)
+-- by looking up the last non-Neutral rating from stock_ratings history
+UPDATE public.latest_stock_ratings l
+SET previous_rating = (
+    SELECT technical_rating
+    FROM public.stock_ratings h
+    WHERE h.symbol = l.symbol
+      AND h.technical_rating != l.technical_rating 
+      AND h.technical_rating != 'Neutral'
+    ORDER BY h.fetched_date DESC, h.fetched_time DESC
+    LIMIT 1
+)
+WHERE l.previous_rating IS NULL 
+   OR l.previous_rating = 'Neutral' 
+   OR l.previous_rating = l.technical_rating;
+
+-- Remove any stocks that are currently rated as Neutral from the latest summary
+DELETE FROM public.latest_stock_ratings WHERE technical_rating = 'Neutral';

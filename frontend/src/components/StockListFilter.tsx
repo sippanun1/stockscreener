@@ -260,7 +260,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
                 : "bg-[#0F151F] text-[#F8FAFC] border-transparent hover:bg-[#354052]/80"
              }`}
           >
-             🚀 Breakout
+             Breakout
           </button>
 
         </div>
