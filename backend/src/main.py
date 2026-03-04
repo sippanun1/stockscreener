@@ -35,7 +35,7 @@ columns = [
     # --- Breakout Score Columns ---
     "EMA14",                   # Index 13
     "EMA20",                   # Index 14
-    "RSI14",                   # Index 15
+    "RSI",                     # Index 15 (Standard RSI is 14 period)
     "High.All",                # Index 16 - 52-week high
     "volume",                  # Index 17
     "average_volume_10d_calc", # Index 18
