@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { StockLogo } from "./StockLogo";
-import { ArrowRight, ArrowLeft, TrendingUp, TrendingDown, Star } from "lucide-react";
+import { ArrowRight, ArrowLeft, TrendingUp, TrendingDown, Star, BarChart2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useFavorites } from "../hooks/useFavorites";
 import TradingViewWidget from "./TradingViewWidget";
@@ -99,6 +99,7 @@ export default function StockDetail() {
   const navigate = useNavigate();
   const [selectedRating, setSelectedRating] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"daily" | "intraday">("daily");
+  const [isChartAvailable, setIsChartAvailable] = useState(true);
   
   // Hooks must be called at the top level, before any early returns.
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -124,6 +125,11 @@ export default function StockDetail() {
     enabled: !!symbol,
     staleTime: 1 * 60 * 1000, // 1 minute cache for detail pages
   });
+
+  // Reset chart availability when navigating to a different stock
+  useEffect(() => {
+    setIsChartAvailable(true);
+  }, [symbol]);
 
   // Handle error by navigating to 404
   useEffect(() => {
@@ -333,7 +339,25 @@ export default function StockDetail() {
            <h2 className="text-white text-xl font-bold tracking-tight">Technical Chart</h2>
          </div>
          <div className="w-full flex-grow rounded-xl overflow-hidden bg-[#000000]">
-            <TradingViewWidget symbol={data.symbol} />
+           {isChartAvailable ? (
+             <TradingViewWidget
+               symbol={data.symbol}
+               onSymbolUnavailable={() => setIsChartAvailable(false)}
+             />
+           ) : (
+             <div className="flex flex-col items-center justify-center h-full gap-3 text-[#94A3B8]">
+               <BarChart2 className="w-12 h-12 opacity-30" />
+               <p className="text-sm font-medium">Chart not available for this stock</p>
+               <a
+                 href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(data.symbol)}`}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="text-xs text-[#3B82F6] hover:underline flex items-center gap-1"
+               >
+                 View on TradingView ↗
+               </a>
+             </div>
+           )}
          </div>
        </div>
 
@@ -389,7 +413,7 @@ export default function StockDetail() {
                     isSelected 
                         ? isSell 
                             ? "bg-[#FF3069] border-[#FF3069] text-white" 
-                            : "bg-[#10B981] border-[#10B981] text-white"
+                            : "bg-[#00FFB7] border-[#00FFB7] text-white"
                         : `border-[#2D3748] ${colorClass} bg-transparent hover:bg-[#1E293B]`
                     }`}
                 >
@@ -426,10 +450,10 @@ export default function StockDetail() {
              <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] grid grid-cols-2 items-center shadow-lg group hover:border-[#2D3748] transition-colors">
                <div className="flex flex-col items-center justify-center">
                    <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-1">Wins</div>
-                   <div className="text-[#10B981] text-3xl sm:text-5xl font-bold tracking-tight">{currentStats.wins}</div>
+                   <div className="text-[#00FFB7] text-3xl sm:text-5xl font-bold tracking-tight">{currentStats.wins}</div>
                </div>
                <div className="flex items-center justify-center">
-                 <TrendingUp className="w-12 h-12 sm:w-16 sm:h-16 text-[#10B981]" />
+                 <TrendingUp className="w-12 h-12 sm:w-16 sm:h-16 text-[#00FFB7]" />
                </div>
            </div>
  
