@@ -1158,5 +1158,3 @@ WHERE l.previous_rating IS NULL
    OR l.previous_rating = 'Neutral' 
    OR l.previous_rating = l.technical_rating;
 
--- Remove any stocks that are currently rated as Neutral from the latest summary
-DELETE FROM public.latest_stock_ratings WHERE technical_rating = 'Neutral';
