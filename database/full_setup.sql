@@ -383,12 +383,13 @@ BEGIN
                 ELSE EXCLUDED.technical_rating
             END,
             -- Track previous_rating: when rating genuinely changes (non-Neutral → different non-Neutral),
-            -- the current rating becomes the new previous_rating.
-            -- Neutral transitions are skipped so Sell→Neutral→Buy shows "Sell" as previous.
+            -- the non-Neutral current rating becomes the new previous_rating.
+            -- Neutral transitions are skipped: Sell→Neutral→Buy shows "Sell" as previous, never "Neutral".
+            -- COALESCE(NULLIF(..., 'Neutral'), ...) ensures we always use the last real non-Neutral rating.
             previous_rating = CASE
                 WHEN EXCLUDED.technical_rating != 'Neutral'
-                     AND EXCLUDED.technical_rating IS DISTINCT FROM latest_stock_ratings.technical_rating
-                THEN latest_stock_ratings.technical_rating   -- current becomes previous
+                     AND EXCLUDED.technical_rating IS DISTINCT FROM COALESCE(NULLIF(latest_stock_ratings.technical_rating, 'Neutral'), latest_stock_ratings.previous_rating)
+                THEN COALESCE(NULLIF(latest_stock_ratings.technical_rating, 'Neutral'), latest_stock_ratings.previous_rating)
                 ELSE latest_stock_ratings.previous_rating
             END,
             -- Update rating_change_date only when the rating actually changes
