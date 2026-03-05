@@ -1,18 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
 
-export function useFavorites() {
-  const [favorites, setFavorites] = useState<string[]>([]);
+const STORAGE_KEY = 'stock_favorites';
+// Custom event name to sync state between multiple hook instances on the same page
+const SYNC_EVENT = 'favorites_updated';
 
-  // Load from localStorage on mount
+function readFromStorage(): string[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function useFavorites() {
+  const [favorites, setFavorites] = useState<string[]>(readFromStorage);
+
+  // Listen for changes from other hook instances (e.g. star button in columns.tsx
+  // updating state that data-table.tsx also needs to reflect immediately)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('stock_favorites');
-      if (saved) {
-        setFavorites(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to parse favorites from localStorage', e);
-    }
+    const handleSync = () => {
+      setFavorites(readFromStorage());
+    };
+
+    window.addEventListener(SYNC_EVENT, handleSync);
+    // Also handle cross-tab updates via the native storage event
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      window.removeEventListener(SYNC_EVENT, handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, []);
 
   const toggleFavorite = useCallback((symbol: string) => {
@@ -20,11 +38,13 @@ export function useFavorites() {
       const newFavs = prev.includes(symbol)
         ? prev.filter(s => s !== symbol)
         : [...prev, symbol];
-      
+
       try {
-        localStorage.setItem('stock_favorites', JSON.stringify(newFavs));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newFavs));
+        // Notify all other useFavorites instances on the same page
+        window.dispatchEvent(new Event(SYNC_EVENT));
       } catch (e) {
-         console.error('Failed to save favorites to localStorage', e);
+        console.error('Failed to save favorites to localStorage', e);
       }
       return newFavs;
     });
