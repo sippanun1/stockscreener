@@ -197,10 +197,12 @@ export const stockColumns: ColumnDef<Stock>[] = [
         return <div className="text-[#354052] text-center text-xs">—</div>
       }
       const label = `${score}/4`
-      let className = "text-center text-xs font-bold"
-      if (score === 4) className += " text-yellow-400"
-      else if (score === 3) className += " text-emerald-400"
-      else className += " text-[#354052]"
+      let className = "text-center text-xs"
+      if (score === 4)      className += " text-[#EF4444] font-bold"   // Hot red — max intensity
+      else if (score === 3) className += " text-[#F97316] font-bold"   // Orange — strong
+      else if (score === 2) className += " text-[#F59E0B] font-medium" // Amber — moderate
+      else if (score === 1) className += " text-[#94A3B8]"             // Slate — weak
+      else                  className += " text-[#475569]"             // Gray — no signal
       return (
         <div className={className}>
           {label}
