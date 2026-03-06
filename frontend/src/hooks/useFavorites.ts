@@ -1,53 +1,72 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const STORAGE_KEY = 'stock_favorites';
-// Custom event name to sync state between multiple hook instances on the same page
-const SYNC_EVENT = 'favorites_updated';
 
-function readFromStorage(): string[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
+// Module-level state: Single Source of Truth for this tab
+let inMemoryFavorites: string[] = [];
+
+// Initialize memory from storage on load
+try {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  inMemoryFavorites = saved ? JSON.parse(saved) : [];
+} catch {
+  inMemoryFavorites = [];
+}
+
+const listeners = new Set<() => void>();
+
+function notify() {
+  listeners.forEach(l => l());
 }
 
 export function useFavorites() {
-  const [favorites, setFavorites] = useState<string[]>(readFromStorage);
+  // Use state to trigger re-renders, but always sync with inMemoryFavorites
+  const [favorites, setFavorites] = useState<string[]>(inMemoryFavorites);
 
-  // Listen for changes from other hook instances (e.g. star button in columns.tsx
-  // updating state that data-table.tsx also needs to reflect immediately)
   useEffect(() => {
-    const handleSync = () => {
-      setFavorites(readFromStorage());
+    const handleChange = () => {
+      setFavorites([...inMemoryFavorites]);
     };
 
-    window.addEventListener(SYNC_EVENT, handleSync);
-    // Also handle cross-tab updates via the native storage event
-    window.addEventListener('storage', handleSync);
+    listeners.add(handleChange);
+
+    // Sync from other tabs/windows
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        try {
+          inMemoryFavorites = e.newValue ? JSON.parse(e.newValue) : [];
+          notify();
+        } catch {
+          // Ignore
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
 
     return () => {
-      window.removeEventListener(SYNC_EVENT, handleSync);
-      window.removeEventListener('storage', handleSync);
+      listeners.delete(handleChange);
+      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 
   const toggleFavorite = useCallback((symbol: string) => {
-    setFavorites(prev => {
-      const newFavs = prev.includes(symbol)
-        ? prev.filter(s => s !== symbol)
-        : [...prev, symbol];
+    const isFav = inMemoryFavorites.includes(symbol);
+    
+    if (isFav) {
+      inMemoryFavorites = inMemoryFavorites.filter(s => s !== symbol);
+    } else {
+      inMemoryFavorites = [...inMemoryFavorites, symbol];
+    }
 
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newFavs));
-        // Notify all other useFavorites instances on the same page
-        window.dispatchEvent(new Event(SYNC_EVENT));
-      } catch (e) {
-        console.error('Failed to save favorites to localStorage', e);
-      }
-      return newFavs;
-    });
+    // Persist and Notify
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(inMemoryFavorites));
+    } catch {
+      // Ignore
+    }
+    
+    notify();
   }, []);
 
   const isFavorite = useCallback((symbol: string) => {
