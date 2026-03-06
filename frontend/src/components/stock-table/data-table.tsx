@@ -191,6 +191,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
 
   // Filter by favorites locally if active, since the backend doesn't know about local storage
   // Filter by breakoutOnly locally (score >= 3)
+  // Always sort favorites to the top
   const filteredData = useMemo(() => {
     let result = allData;
     if (filters?.favoritesOnly) {
@@ -199,8 +200,17 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     if (filters?.breakoutOnly) {
       result = result.filter(stock => (stock.breakout_score ?? 0) >= 3);
     }
+    // Favorites always float to the top (stable sort - preserves server order within each group)
+    if (favorites.length > 0) {
+      result = [...result].sort((a, b) => {
+        const aFav = isFavorite(a.symbol) ? 0 : 1;
+        const bFav = isFavorite(b.symbol) ? 0 : 1;
+        return aFav - bFav;
+      });
+    }
     return result;
   }, [allData, filters?.favoritesOnly, filters?.breakoutOnly, favorites])
+
 
   // React to sortBy filter changes
   useEffect(() => {
