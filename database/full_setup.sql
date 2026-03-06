@@ -672,7 +672,8 @@ CREATE OR REPLACE FUNCTION public.get_stocks(
     p_sort_by TEXT DEFAULT 'rating_change_date', p_sort_order TEXT DEFAULT 'desc',
     p_limit INTEGER DEFAULT 50, p_offset INTEGER DEFAULT 0, p_lookback INTEGER DEFAULT 60,
     p_sector TEXT DEFAULT NULL,
-    p_previous_rating TEXT DEFAULT NULL
+    p_previous_rating TEXT DEFAULT NULL,
+    p_pinned_symbols TEXT[] DEFAULT NULL
 )
 RETURNS TABLE (
     res_id BIGINT, res_symbol TEXT, res_market TEXT, res_name TEXT, res_current_price NUMERIC,
@@ -708,6 +709,8 @@ BEGIN
         ), SortedIds AS (
             SELECT * FROM CandidateIds
             ORDER BY
+                -- Pinned symbols (favorites) always come first
+                CASE WHEN p_pinned_symbols IS NOT NULL AND symbol = ANY(p_pinned_symbols) THEN 0 ELSE 1 END ASC,
                 -- Manual Sorting mapping from Frontend TanStack Table IDs
                 CASE WHEN (p_sort_by = 'symbol' OR p_sort_by = 'Symbol') AND p_sort_order = 'asc' THEN symbol_only END ASC NULLS LAST,
                 CASE WHEN (p_sort_by = 'symbol' OR p_sort_by = 'Symbol') AND p_sort_order = 'desc' THEN symbol_only END DESC NULLS LAST,
@@ -767,6 +770,8 @@ BEGIN
         ), SortedHistory AS (
             SELECT * FROM LatestPerSymbol
             ORDER BY
+                -- Pinned symbols (favorites) always come first
+                CASE WHEN p_pinned_symbols IS NOT NULL AND symbol = ANY(p_pinned_symbols) THEN 0 ELSE 1 END ASC,
                 -- Manual Sorting mapping from Frontend TanStack Table IDs
                 CASE WHEN (p_sort_by = 'symbol' OR p_sort_by = 'Symbol') AND p_sort_order = 'asc' THEN symbol_only END ASC NULLS LAST,
                 CASE WHEN (p_sort_by = 'symbol' OR p_sort_by = 'Symbol') AND p_sort_order = 'desc' THEN symbol_only END DESC NULLS LAST,

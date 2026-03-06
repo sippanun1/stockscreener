@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { StockLogo } from "./StockLogo";
@@ -100,6 +100,10 @@ export default function StockDetail() {
   const [selectedRating, setSelectedRating] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"daily" | "intraday">("daily");
   const [isChartAvailable, setIsChartAvailable] = useState(true);
+
+  const handleSymbolUnavailable = useCallback(() => {
+    setIsChartAvailable(false);
+  }, []);
   
   // Hooks must be called at the top level, before any early returns.
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -342,7 +346,7 @@ export default function StockDetail() {
            {isChartAvailable ? (
              <TradingViewWidget
                symbol={data.symbol}
-               onSymbolUnavailable={() => setIsChartAvailable(false)}
+               onSymbolUnavailable={handleSymbolUnavailable}
              />
            ) : (
              <div className="flex flex-col items-center justify-center h-full gap-3 text-[#94A3B8]">

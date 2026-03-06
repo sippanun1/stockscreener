@@ -99,6 +99,10 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   if (currentFilters?.sortOrder) {
     params.append('sort_order', currentFilters.sortOrder);
   }
+  // Pass pinned symbols so the DB returns them first (Option 1 - server-side pinning)
+  if (currentFilters?.pinnedSymbols && currentFilters.pinnedSymbols.length > 0) {
+    params.append('pinned_symbols', currentFilters.pinnedSymbols.join(','));
+  }
   
   const response = await fetch(`${API_URL}/api/stocks?${params.toString()}`)
   const result: StockApiResponse = await response.json()
@@ -176,22 +180,22 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
       technicalRating: filters?.technicalRating,
       sector: filters?.sector,
       sortBy: sortBy,
-      sortOrder: sortOrder
+      sortOrder: sortOrder,
+      pinnedSymbols: favorites, // favorites passed here → server returns them first
     }],
     queryFn: fetchStocks,
-    staleTime: 30 * 60 * 1000, // 30 minutes - optimized cache
-    gcTime: 60 * 60 * 1000, // Keep in cache for 60 minutes
-    refetchOnWindowFocus: false, // Don't refetch when user returns to tab
-    refetchOnMount: false, // Don't refetch if data is fresh
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   })
 
   // Extract stocks array and total count from response
   const allData = data?.stocks || []
   const totalInDatabase = data?.total || 0
 
-  // Filter by favorites locally if active, since the backend doesn't know about local storage
-  // Filter by breakoutOnly locally (score >= 3)
-  // Always sort favorites to the top
+  // Client-side: favorites-only and breakout-only filters
+  // No need to sort favorites here — the server already returns them first.
   const filteredData = useMemo(() => {
     let result = allData;
     if (filters?.favoritesOnly) {
@@ -199,14 +203,6 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     }
     if (filters?.breakoutOnly) {
       result = result.filter(stock => (stock.breakout_score ?? 0) >= 3);
-    }
-    // Favorites always float to the top (stable sort - preserves server order within each group)
-    if (favorites.length > 0) {
-      result = [...result].sort((a, b) => {
-        const aFav = isFavorite(a.symbol) ? 0 : 1;
-        const bFav = isFavorite(b.symbol) ? 0 : 1;
-        return aFav - bFav;
-      });
     }
     return result;
   }, [allData, filters?.favoritesOnly, filters?.breakoutOnly, favorites])

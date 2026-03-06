@@ -181,6 +181,7 @@ def get_stocks(
     offset: int = Query(0, ge=0, description="Pagination offset"),
     lookback: Optional[int] = Query(None, description="Lookback days for historical data (Null for infinite)"),
     min_breakout_score: Optional[int] = Query(None, ge=0, le=4, description="Min breakout score (0-4). 3 or 4 = hot stocks"),
+    pinned_symbols: Optional[str] = Query(None, description="Comma-separated list of symbols to pin at top, e.g. 'NASDAQ:AAPL,HKEX:1065'"),
     _auth: bool = Depends(verify_api_key)
 ):
     """
@@ -201,6 +202,9 @@ def get_stocks(
     if search:
         logger.info(f"🔍 SEARCH REQUEST: term='{search}', market={market}, rating={rating}, limit={limit}")
 
+    # Parse pinned_symbols from comma-separated string to list
+    pinned_list = [s.strip() for s in pinned_symbols.split(",") if s.strip()] if pinned_symbols else None
+
     try:
         stocks = database.get_stocks_with_previous_rating(
             market=market,
@@ -214,7 +218,8 @@ def get_stocks(
             offset=offset,
             lookback_days=lookback,
             sector=sector,
-            previous_rating=previous_rating
+            previous_rating=previous_rating,
+            pinned_symbols=pinned_list
         )
         
         # Get total count matching the same filters (for "Total Signal" display)
