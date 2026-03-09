@@ -300,19 +300,6 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
             </SelectContent>
           </Select>
           
-          {/* Action Toggle (Favorites) */}
-          <button
-             onClick={handleFavoritesToggle}
-             className={`h-[40px] px-4 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 border ${
-                showFavorites 
-                ? "bg-yellow-400/10 text-yellow-400 border-yellow-400/30 hover:bg-yellow-400/20" 
-                : "bg-[#0F151F] text-[#F8FAFC] border-transparent hover:bg-[#354052]/80"
-             }`}
-          >
-             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={showFavorites ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-             Watchlist
-          </button>
-
           {/* Breakout Scores Filter */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -355,6 +342,19 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          {/* Action Toggle (Favorites) */}
+          <button
+             onClick={handleFavoritesToggle}
+             className={`h-[40px] px-4 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 border ${
+                showFavorites 
+                ? "bg-yellow-400/10 text-yellow-400 border-yellow-400/30 hover:bg-yellow-400/20" 
+                : "bg-[#0F151F] text-[#F8FAFC] border-transparent hover:bg-[#354052]/80"
+             }`}
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={showFavorites ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+             Watchlist
+          </button>
 
         </div>
         {/* Right side - Search & Clear */}
