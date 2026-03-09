@@ -340,7 +340,7 @@ export default function StockDetail() {
        {/* TRADINGVIEW WIDGET SECTION */}
        <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] mb-6 shadow-sm overflow-hidden flex flex-col h-[500px]">
          <div className="flex items-center justify-between mb-4">
-           <h2 className="text-white text-xl font-bold tracking-tight">Technical Chart</h2>
+           <h2 className="text-white text-xl font-bold tracking-tight">Price Chart</h2>
          </div>
          <div className="w-full flex-grow rounded-xl overflow-hidden bg-[#000000]">
            {isChartAvailable ? (
