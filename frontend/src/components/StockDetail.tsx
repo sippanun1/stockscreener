@@ -251,120 +251,95 @@ export default function StockDetail() {
 
   return (
      <div className="min-h-screen bg-[#000000] p-4 sm:p-6 lg:px-[40px] lg:py-[32px] font-sans">
-       {/* Back Button */}
+       {/* Back Button - Mockup Style */}
        <button 
          onClick={() => navigate('/')}
-         className="flex items-center gap-2 text-[#94A3B8] hover:text-white transition-colors mb-6 group"
+         className="flex items-center gap-3 text-[#b2b5be] hover:text-white transition-colors mb-4 group"
        >
-         <div className="p-2 rounded-full bg-[#1E2530] group-hover:bg-[#2D3748] transition-colors">
-            <ArrowLeft className="w-5 h-5" />
+         <div className="w-[32px] h-[32px] rounded-full bg-[#1e222d] border border-[#2b313f] flex items-center justify-center group-hover:bg-[#2a2e39] transition-colors">
+            <ArrowLeft className="w-4 h-4 text-[#8b949e] group-hover:text-white" />
          </div>
-         <span className="text-sm font-medium">Back to Screener</span>
+         <span className="text-[13px] font-semibold tracking-wide">Back to Screener</span>
        </button>
 
-       {/* HEADER SECTION - Redesigned for High Density */}
-       <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-6 shadow-sm">
-         
-         {/* LEFT COLUMN: Identity */}
-         <div className="flex items-start gap-5 flex-1 min-w-[300px]">
-           <StockLogo 
-             symbol={data.symbol} 
-             name={data.name} 
-             className="w-16 h-16 sm:w-[80px] sm:h-[80px] text-2xl shrink-0" 
-           />
-           <div className="flex-1 min-w-0">
-             <div className="flex flex-wrap items-center gap-3 mb-1">
-               <h1 className="text-white text-3xl sm:text-[40px] font-bold tracking-tight leading-none truncate max-w-full">
-                 {data.symbol.split(":")[1] || data.symbol}
-               </h1>
-               <span className="px-2.5 py-1 rounded bg-[#1E2530]/80 text-[#94A3B8] text-[11px] font-bold tracking-wider border border-[#354052]/30 mt-1 shrink-0">
-                 {data.market}
-               </span>
-               <button 
-                 onClick={() => toggleFavorite(data.symbol)}
-                 className="p-1 hover:bg-[#1E2530] rounded-full transition-colors mt-1 flex items-center justify-center group shrink-0"
-                 title={isFavorite(data.symbol) ? "Remove from Watchlist" : "Add to Watchlist"}
-               >
-                 <Star 
-                   className={`w-6 h-6 sm:w-7 sm:h-7 transition-all ${
-                     isFavorite(data.symbol) 
-                       ? "fill-[#FBBF24] text-[#FBBF24] scale-110 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" 
-                       : "text-[#94A3B8] group-hover:text-white"
-                   }`} 
-                 />
-               </button>
-             </div>
-             <p className="text-[#94A3B8] text-lg font-medium tracking-wide truncate mt-2">{data.name}</p>
-              
-             {/* Sector & Industry */}
-             {(data.sector || data.industry) && (
-               <div className="flex flex-wrap items-center gap-2 mt-3">
-                 {data.sector && data.sector !== "-" && (
-                   <span className="px-3 py-1 rounded bg-[#2D3748]/50 text-[#E2E8F0] text-[11px] font-semibold tracking-wide border border-[#354052]/50">
-                     {data.sector}
-                   </span>
-                 )}
-                 {data.industry && data.industry !== "-" && (
-                   <span className="px-3 py-1 rounded bg-[#2D3748]/50 text-[#E2E8F0] text-[11px] font-semibold tracking-wide border border-[#354052]/50 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px] sm:max-w-xs">
-                     {data.industry}
-                   </span>
-                 )}
+       {/* HEADER SECTION - Precise Mockup Matching V6 (Card Wrapped) */}
+       <div className="bg-[#0F151F] rounded-2xl p-4 sm:px-6 sm:py-5 border border-[#1E2530] mb-8 shadow-sm">
+         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
+           {/* LEFT COLUMN: Logo, Name, Meta, Price */}
+           <div className="flex items-start gap-5 sm:gap-6 w-full xl:w-auto">
+             {/* Logo - Large Circle with subtle border */}
+             <StockLogo 
+               symbol={data.symbol} 
+               name={data.name} 
+               className="w-16 h-16 sm:w-[90px] sm:h-[90px] text-2xl shrink-0 rounded-full bg-[#0d1117] border border-[#1f2937] shadow-sm !rounded-full mt-1" 
+             />
+             
+             <div className="flex flex-col pt-1">
+               {/* Company Name & Star */}
+               <div className="flex items-center gap-4 mb-3">
+                 <h1 className="text-white text-3xl sm:text-[40px] font-bold tracking-tight leading-none">
+                   {data.name}
+                 </h1>
+                 <button 
+                   onClick={() => toggleFavorite(data.symbol)}
+                   className="p-[5px] bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] rounded-[4px] transition-colors group flex items-center justify-center cursor-pointer mt-1"
+                   title={isFavorite(data.symbol) ? "Remove from Watchlist" : "Add to Watchlist"}
+                 >
+                   <Star className={`w-[18px] h-[18px] ${isFavorite(data.symbol) ? "fill-[#FBBF24] text-[#FBBF24]" : "text-[#8b949e] group-hover:text-white"}`} />
+                 </button>
                </div>
-             )}
+               
+               {/* Meta Row 1: Ticker, Exchange, Market */}
+               <div className="flex flex-wrap items-center gap-[6px] text-sm text-[#8b949e] font-medium">
+                 <span className="text-white font-bold">{data.symbol.split(":")[1] || data.symbol}</span>
+                 <span className="text-[#30363d] mx-1">•</span>
+                 <span>
+                     {data.symbol.includes(":") 
+                        ? data.symbol.split(":")[0] 
+                        : (data.market === "US" ? "NASDAQ/NYSE" : data.market)
+                     }
+                 </span>
+                 <span className="text-[#30363d] mx-1">•</span>
+                 <span>{data.market === "US" ? "United States" : data.market}</span>
+               </div>
+               
+               {/* Meta Row 2: Sector, Industry (3rd row total) */}
+               {(data.sector || data.industry) && (
+                 <div className="flex flex-wrap items-center gap-[6px] text-sm text-[#8b949e] mb-4 font-medium mt-3">
+                   {data.sector && data.sector !== "-" && (
+                       <span>{data.sector}</span>
+                   )}
+                   {data.sector && data.sector !== "-" && data.industry && data.industry !== "-" && (
+                       <span className="text-[#30363d] mx-1">•</span>
+                   )}
+                   {data.industry && data.industry !== "-" && (
+                       <span>{data.industry}</span>
+                   )}
+                 </div>
+               )}
            </div>
          </div>
- 
-         {/* MIDDLE COLUMN: Price Action */}
-         <div className="flex flex-col items-start xl:items-center justify-center flex-1 border-y xl:border-y-0 xl:border-x border-[#1E2530] py-4 xl:py-0 xl:px-6">
-            <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Live Price</div>
-            <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-white text-4xl sm:text-[44px] font-semibold tracking-tight leading-none">
+
+         {/* RIGHT COLUMN: Price Row */}
+         <div className="flex flex-col xl:items-end w-full xl:w-auto mt-4 xl:mt-0 pb-1">
+             <div className="flex items-baseline gap-2 sm:gap-3">
+                <span className="text-white text-5xl sm:text-[54px] font-bold tracking-tight leading-none">
                     {data.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
-                <span className="text-lg text-[#64748B] font-bold uppercase">{getCurrencyUnit(data.market)}</span>
-            </div>
-            <div className={`text-lg sm:text-xl font-medium flex items-center gap-2 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                {isPositiveChange ? <TrendingUp className="w-5 h-5 mb-0.5" /> : <TrendingDown className="w-5 h-5 mb-0.5" />}
-                <span>{data.change > 0 ? "+" : ""}{Number(data.change).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span>({data.change_percent > 0 ? "+" : ""}{data.change_percent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%)</span>
-            </div>
-         </div>
-
-         {/* RIGHT COLUMN: Signal & Lifetime Stats */}
-         <div className="flex flex-col flex-1 items-start xl:items-end justify-center min-w-[280px]">
-             <div className="flex items-center justify-between w-full xl:justify-end xl:gap-4 mb-4">
-               <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider">Current Rating</div>
-               <div className={`px-4 py-1.5 rounded-md text-sm font-bold uppercase tracking-widest border ${
-                   data.current_rating === 'Strong Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7] border-[#00FFB7]/30 shadow-[0_0_15px_rgba(0,255,183,0.15)]' :
-                   data.current_rating === 'Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7] border-[#00FFB7]/30' :
-                   data.current_rating === 'Sell' ? 'bg-[#FF3069]/10 text-[#FF3069] border-[#FF3069]/30' :
-                   data.current_rating === 'Strong Sell' ? 'bg-[#FF3069]/10 text-[#FF3069] border-[#FF3069]/30 shadow-[0_0_15px_rgba(255,48,105,0.15)]' :
-                   'bg-[#2D3748] text-[#E2E8F0] border-[#354052]'
-               }`}>
-                 {data.current_rating}
-               </div>
-             </div>
-
-             {/* Micro-Stats Panel for Lifetime Performance */}
-             <div className="w-full bg-[#171E2D] rounded-xl p-3 border border-[#2D3748]/50 flex justify-between items-center text-center divide-x divide-[#2D3748]">
-                <div className="flex-1 px-2">
-                    <div className="text-[10px] text-[#64748B] font-bold uppercase tracking-wide mb-1">Trades</div>
-                    <div className="text-[#E2E8F0] text-lg font-bold font-mono">{data.stats.total_signals}</div>
-                </div>
-                <div className="flex-1 px-2">
-                    <div className="text-[10px] text-[#64748B] font-bold uppercase tracking-wide mb-1">Win Rate</div>
-                    <div className="text-[#00FFB7] text-lg font-bold font-mono">{Math.round(data.stats.win_rate)}%</div>
-                </div>
-                <div className="flex-1 px-2">
-                    <div className="text-[10px] text-[#64748B] font-bold uppercase tracking-wide mb-1">Avg Return</div>
-                    <div className={`text-lg font-bold font-mono ${data.stats.avg_return >= 0 ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                        {data.stats.avg_return > 0 ? "+" : ""}{data.stats.avg_return.toFixed(1)}%
-                    </div>
+                <span className="text-sm font-semibold text-[#8b949e] uppercase -translate-y-[4px]">
+                    {getCurrencyUnit(data.market)}
+                </span>
+                <div className={`text-xl sm:text-2xl font-medium flex items-center tracking-tight ml-2 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                    {isPositiveChange ? "+" : ""}{Number(data.change).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
+                    <span className="ml-[6px]">
+                        {isPositiveChange ? "+" : ""}{data.change_percent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                    </span>
                 </div>
              </div>
          </div>
-
        </div>
+       </div>
+
 
  
        {/* TRADINGVIEW WIDGET SECTION */}
