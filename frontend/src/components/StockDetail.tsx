@@ -262,27 +262,31 @@ export default function StockDetail() {
          <span className="text-sm font-medium">Back to Screener</span>
        </button>
 
-       {/* HEADER SECTION */}
-       <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col sm:flex-row items-center justify-between mb-6 shadow-sm">
-         {/* Left: Logo & Title */}
-         <div className="flex items-center gap-5 w-full sm:w-auto">
+       {/* HEADER SECTION - Redesigned for High Density */}
+       <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-6 shadow-sm">
+         
+         {/* LEFT COLUMN: Identity */}
+         <div className="flex items-start gap-5 flex-1 min-w-[300px]">
            <StockLogo 
              symbol={data.symbol} 
              name={data.name} 
-             className="w-16 h-16 sm:w-[72px] sm:h-[72px] text-2xl" 
+             className="w-16 h-16 sm:w-[80px] sm:h-[80px] text-2xl shrink-0" 
            />
-           <div>
-             <div className="flex items-center gap-3 mb-1">
-               <h1 className="text-white text-3xl sm:text-[40px] font-bold tracking-tight leading-none">
+           <div className="flex-1 min-w-0">
+             <div className="flex flex-wrap items-center gap-3 mb-1">
+               <h1 className="text-white text-3xl sm:text-[40px] font-bold tracking-tight leading-none truncate max-w-full">
                  {data.symbol.split(":")[1] || data.symbol}
                </h1>
+               <span className="px-2.5 py-1 rounded bg-[#1E2530]/80 text-[#94A3B8] text-[11px] font-bold tracking-wider border border-[#354052]/30 mt-1 shrink-0">
+                 {data.market}
+               </span>
                <button 
                  onClick={() => toggleFavorite(data.symbol)}
-                 className="p-1.5 hover:bg-[#1E2530] rounded-full transition-colors mt-1 flex items-center justify-center group"
+                 className="p-1 hover:bg-[#1E2530] rounded-full transition-colors mt-1 flex items-center justify-center group shrink-0"
                  title={isFavorite(data.symbol) ? "Remove from Watchlist" : "Add to Watchlist"}
                >
                  <Star 
-                   className={`w-6 h-6 sm:w-8 sm:h-8 transition-all ${
+                   className={`w-6 h-6 sm:w-7 sm:h-7 transition-all ${
                      isFavorite(data.symbol) 
                        ? "fill-[#FBBF24] text-[#FBBF24] scale-110 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" 
                        : "text-[#94A3B8] group-hover:text-white"
@@ -290,18 +294,18 @@ export default function StockDetail() {
                  />
                </button>
              </div>
-             <p className="text-[#94A3B8] text-lg font-medium tracking-wide">{data.name}</p>
+             <p className="text-[#94A3B8] text-lg font-medium tracking-wide truncate mt-2">{data.name}</p>
               
-             {/* Sector & Industry - Professional Badges */}
+             {/* Sector & Industry */}
              {(data.sector || data.industry) && (
-               <div className="flex flex-wrap items-center gap-2 mt-2">
+               <div className="flex flex-wrap items-center gap-2 mt-3">
                  {data.sector && data.sector !== "-" && (
-                   <span className="px-3 py-1 rounded bg-[#1E2530]/80 text-[#94A3B8] text-[11px] font-medium tracking-wide border border-[#354052]/30">
+                   <span className="px-3 py-1 rounded bg-[#2D3748]/50 text-[#E2E8F0] text-[11px] font-semibold tracking-wide border border-[#354052]/50">
                      {data.sector}
                    </span>
                  )}
                  {data.industry && data.industry !== "-" && (
-                   <span className="px-3 py-1 rounded bg-[#1E2530]/80 text-[#94A3B8] text-[11px] font-medium tracking-wide border border-[#354052]/30 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px] sm:max-w-xs">
+                   <span className="px-3 py-1 rounded bg-[#2D3748]/50 text-[#E2E8F0] text-[11px] font-semibold tracking-wide border border-[#354052]/50 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px] sm:max-w-xs">
                      {data.industry}
                    </span>
                  )}
@@ -310,32 +314,58 @@ export default function StockDetail() {
            </div>
          </div>
  
-         {/* Right: Price & Info */}
-         <div className="text-left sm:text-right mt-6 sm:mt-0 w-full sm:w-auto flex flex-row sm:flex-col justify-between items-end">
-           <div className="flex flex-col items-start sm:items-end w-full">
-              <div className="text-white text-3xl sm:text-[32px] font-medium tracking-tight mb-3 flex items-baseline gap-2">
-                 {data.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-lg text-[#94A3B8] font-normal">{getCurrencyUnit(data.market)}</span>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                 <div className={`text-base font-medium flex items-center gap-2 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
-                    <span>{data.change > 0 ? "+" : ""}{Number(data.change).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    <span>({data.change_percent > 0 ? "+" : ""}{data.change_percent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%)</span>
-                 </div>
-                  
-                  <div className={`px-3 py-1 rounded-[4px] text-[11px] font-bold uppercase tracking-wider ${
-                     data.current_rating === 'Strong Buy' ? 'bg-[#00FFB7]/20 text-[#00FFB7]' :
-                     data.current_rating === 'Buy' ? 'bg-[#00FFB7]/20 text-[#00FFB7]' :
-                     data.current_rating === 'Sell' ? 'bg-[#FF3069]/20 text-[#FF3069]' :
-                     data.current_rating === 'Strong Sell' ? 'bg-[#FF3069]/20 text-[#FF3069]' :
-                     'bg-[#7588A3]/20 text-[#7588A3]'
-                  }`}>
-                    {data.current_rating}
-                  </div>
-               </div>
-           </div>
+         {/* MIDDLE COLUMN: Price Action */}
+         <div className="flex flex-col items-start xl:items-center justify-center flex-1 border-y xl:border-y-0 xl:border-x border-[#1E2530] py-4 xl:py-0 xl:px-6">
+            <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Live Price</div>
+            <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-white text-4xl sm:text-[44px] font-semibold tracking-tight leading-none">
+                    {data.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-lg text-[#64748B] font-bold uppercase">{getCurrencyUnit(data.market)}</span>
+            </div>
+            <div className={`text-lg sm:text-xl font-medium flex items-center gap-2 ${isPositiveChange ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                {isPositiveChange ? <TrendingUp className="w-5 h-5 mb-0.5" /> : <TrendingDown className="w-5 h-5 mb-0.5" />}
+                <span>{data.change > 0 ? "+" : ""}{Number(data.change).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>({data.change_percent > 0 ? "+" : ""}{data.change_percent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%)</span>
+            </div>
          </div>
+
+         {/* RIGHT COLUMN: Signal & Lifetime Stats */}
+         <div className="flex flex-col flex-1 items-start xl:items-end justify-center min-w-[280px]">
+             <div className="flex items-center justify-between w-full xl:justify-end xl:gap-4 mb-4">
+               <div className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider">Current Rating</div>
+               <div className={`px-4 py-1.5 rounded-md text-sm font-bold uppercase tracking-widest border ${
+                   data.current_rating === 'Strong Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7] border-[#00FFB7]/30 shadow-[0_0_15px_rgba(0,255,183,0.15)]' :
+                   data.current_rating === 'Buy' ? 'bg-[#00FFB7]/10 text-[#00FFB7] border-[#00FFB7]/30' :
+                   data.current_rating === 'Sell' ? 'bg-[#FF3069]/10 text-[#FF3069] border-[#FF3069]/30' :
+                   data.current_rating === 'Strong Sell' ? 'bg-[#FF3069]/10 text-[#FF3069] border-[#FF3069]/30 shadow-[0_0_15px_rgba(255,48,105,0.15)]' :
+                   'bg-[#2D3748] text-[#E2E8F0] border-[#354052]'
+               }`}>
+                 {data.current_rating}
+               </div>
+             </div>
+
+             {/* Micro-Stats Panel for Lifetime Performance */}
+             <div className="w-full bg-[#171E2D] rounded-xl p-3 border border-[#2D3748]/50 flex justify-between items-center text-center divide-x divide-[#2D3748]">
+                <div className="flex-1 px-2">
+                    <div className="text-[10px] text-[#64748B] font-bold uppercase tracking-wide mb-1">Trades</div>
+                    <div className="text-[#E2E8F0] text-lg font-bold font-mono">{data.stats.total_signals}</div>
+                </div>
+                <div className="flex-1 px-2">
+                    <div className="text-[10px] text-[#64748B] font-bold uppercase tracking-wide mb-1">Win Rate</div>
+                    <div className="text-[#00FFB7] text-lg font-bold font-mono">{Math.round(data.stats.win_rate)}%</div>
+                </div>
+                <div className="flex-1 px-2">
+                    <div className="text-[10px] text-[#64748B] font-bold uppercase tracking-wide mb-1">Avg Return</div>
+                    <div className={`text-lg font-bold font-mono ${data.stats.avg_return >= 0 ? 'text-[#00FFB7]' : 'text-[#FF3069]'}`}>
+                        {data.stats.avg_return > 0 ? "+" : ""}{data.stats.avg_return.toFixed(1)}%
+                    </div>
+                </div>
+             </div>
+         </div>
+
        </div>
+
  
        {/* TRADINGVIEW WIDGET SECTION */}
        <div className="bg-[#0F151F] rounded-2xl p-6 border border-[#1E2530] mb-6 shadow-sm overflow-hidden flex flex-col h-[500px]">
