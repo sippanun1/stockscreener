@@ -9,6 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type StockFiltersProps = {
   onChange?: (filters: any) => void;
@@ -22,8 +29,8 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   const [market, setMarket] = useState<string>("");
   const [currentRating, setCurrentRating] = useState<string>("");
   const [previousRating, setPreviousRating] = useState<string>("");
-  const [sector, setSector] = useState<string>("");
-  const [sectors, setSectors] = useState<string[]>([]);
+  const [sectorsSelected, setSectorsSelected] = useState<string[]>([]);
+  const [sectorsOptions, setSectorsOptions] = useState<string[]>([]);
 
   const [search, setSearch] = useState<string>("");
 
@@ -34,7 +41,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
         const res = await fetch(`${API_URL}/api/sectors`);
         if (res.ok) {
           const data = await res.json();
-          setSectors(data.sectors || []);
+          setSectorsOptions(data.sectors || []);
         }
       } catch (err) {
         console.error("Failed to fetch sectors:", err);
@@ -44,7 +51,24 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   }, []);
 
   const [showFavorites, setShowFavorites] = useState<boolean>(false);
-  const [showBreakout, setShowBreakout] = useState<boolean>(false);
+  const [breakoutScores, setBreakoutScores] = useState<string[]>([]);
+  const [breakoutScoreOptions, setBreakoutScoreOptions] = useState<string[]>([]);
+
+  // Fetch available breakout scores on mount
+  useEffect(() => {
+    const fetchBreakoutScores = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/breakout-scores`);
+        if (res.ok) {
+          const data = await res.json();
+          setBreakoutScoreOptions((data.breakout_scores || []).map(String));
+        }
+      } catch (err) {
+        console.error("Failed to fetch breakout scores:", err);
+      }
+    };
+    fetchBreakoutScores();
+  }, []);
 
   // Sync local state with external filters (e.g. from SummaryInfo clicks)
   useEffect(() => {
@@ -52,10 +76,10 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
       setMarket(currentFilters.market || "");
       setCurrentRating(currentFilters.currentRating || "");
       setPreviousRating(currentFilters.previousRating || "");
-      setSector(currentFilters.sector || "");
+      setSectorsSelected(currentFilters.sectorsSelected || []);
       setSearch(currentFilters.search || "");
       setShowFavorites(currentFilters.favoritesOnly || false);
-      setShowBreakout(currentFilters.breakoutOnly || false);
+      setBreakoutScores(currentFilters.breakoutScores || []);
     }
   }, [currentFilters]);
 
@@ -93,52 +117,74 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   const handleMarketSelect = (value: string) => {
     const newMarket = value === "all" ? "" : value;
     setMarket(newMarket);
-    onChange?.({ market: newMarket, currentRating, previousRating, sector, search, favoritesOnly: showFavorites, breakoutOnly: showBreakout });
+    onChange?.({ market: newMarket, currentRating, previousRating, sectorsSelected, search, favoritesOnly: showFavorites, breakoutScores });
   };
 
   const handleSectorSelect = (value: string) => {
-    const newSector = value === "all" ? "" : value;
-    setSector(newSector);
-    onChange?.({ market, currentRating, previousRating, sector: newSector, search, favoritesOnly: showFavorites, breakoutOnly: showBreakout });
+    setSectorsSelected((prev) => {
+      const isSelected = prev.includes(value);
+      const newSectors = isSelected 
+        ? prev.filter((s) => s !== value)
+        : [...prev, value];
+      onChange?.({ market, currentRating, previousRating, sectorsSelected: newSectors, search, favoritesOnly: showFavorites, breakoutScores });
+      return newSectors;
+    });
+  };
+
+  const handleSelectAllSectors = () => {
+    if (sectorsSelected.length === sectorsOptions.length) {
+      // Deselect all
+      setSectorsSelected([]);
+      onChange?.({ market, currentRating, previousRating, sectorsSelected: [], search, favoritesOnly: showFavorites, breakoutScores });
+    } else {
+      // Select all
+      setSectorsSelected(sectorsOptions);
+      onChange?.({ market, currentRating, previousRating, sectorsSelected: sectorsOptions, search, favoritesOnly: showFavorites, breakoutScores });
+    }
   };
 
   const handleCurrentRatingSelect = (value: string) => {
     const newRating = value === "all" ? "" : value;
     setCurrentRating(newRating);
-    onChange?.({ market, currentRating: newRating, previousRating, sector, search, favoritesOnly: showFavorites, breakoutOnly: showBreakout });
+    onChange?.({ market, currentRating: newRating, previousRating, sectorsSelected, search, favoritesOnly: showFavorites, breakoutScores });
   };
 
   const handlePreviousRatingSelect = (value: string) => {
     const newPrev = value === "all" ? "" : value;
     setPreviousRating(newPrev);
-    onChange?.({ market, currentRating, previousRating: newPrev, sector, search, favoritesOnly: showFavorites, breakoutOnly: showBreakout });
+    onChange?.({ market, currentRating, previousRating: newPrev, sectorsSelected, search, favoritesOnly: showFavorites, breakoutScores });
   };
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    onChange?.({ market, currentRating, previousRating, sector, search: value, favoritesOnly: showFavorites, breakoutOnly: showBreakout });
+    onChange?.({ market, currentRating, previousRating, sectorsSelected, search: value, favoritesOnly: showFavorites, breakoutScores });
   };
 
   const handleFavoritesToggle = () => {
     const newShowFavorites = !showFavorites;
     setShowFavorites(newShowFavorites);
-    onChange?.({ market, currentRating, previousRating, sector, search, favoritesOnly: newShowFavorites, breakoutOnly: showBreakout });
+    onChange?.({ market, currentRating, previousRating, sectorsSelected, search, favoritesOnly: newShowFavorites, breakoutScores });
   };
 
-  const handleBreakoutToggle = () => {
-    const next = !showBreakout;
-    setShowBreakout(next);
-    onChange?.({ market, currentRating, previousRating, sector, search, favoritesOnly: showFavorites, breakoutOnly: next });
+  const handleBreakoutScoresChange = (score: string) => {
+    setBreakoutScores((prev) => {
+      const isSelected = prev.includes(score);
+      const newScores = isSelected 
+        ? prev.filter((s) => s !== score)
+        : [...prev, score];
+      onChange?.({ market, currentRating, previousRating, sectorsSelected, search, favoritesOnly: showFavorites, breakoutScores: newScores });
+      return newScores;
+    });
   };
 
   const handleClearFilters = () => {
     setMarket("");
     setCurrentRating("");
     setPreviousRating("");
-    setSector("");
+    setSectorsSelected([]);
     setShowFavorites(false);
-    setShowBreakout(false);
-    onChange?.({ market: "", currentRating: "", previousRating: "", sector: "", search: "", favoritesOnly: false, breakoutOnly: false });
+    setBreakoutScores([]);
+    onChange?.({ market: "", currentRating: "", previousRating: "", sectorsSelected: [], search: "", favoritesOnly: false, breakoutScores: [] });
   };
 
   return (
@@ -166,23 +212,39 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
           </Select>
 
           {/* Sector Filter */}
-          <Select value={sector || "all"} onValueChange={handleSectorSelect}>
-            <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px] lg:w-[172px] h-[40px] bg-[#0F151F] text-[#F8FAFC] border-0 rounded-xl text-sm font-semibold hover:bg-[#354052]/80 transition">
-              <SelectValue>{sector ? sector : "All Sectors"}</SelectValue>
-            </SelectTrigger>
-            <SelectContent position="popper" className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] [&>*]:p-0 max-h-[300px]">
-              <SelectGroup>
-                <SelectItem value="all" className="text-white hover:text-white focus:text-white hover:bg-[#7588A380] focus:bg-[#7588A380] cursor-pointer px-3 py-2.5 rounded-none">
-                  All Sectors
-                </SelectItem>
-                {sectors.map((s) => (
-                  <SelectItem key={s} value={s} className="text-white hover:text-white focus:text-white hover:bg-[#7588A380] focus:bg-[#7588A380] cursor-pointer px-3 py-2.5 rounded-none">
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button 
+                className={`flex gap-1 items-center h-[40px] px-4 rounded-xl text-sm font-semibold transition-colors border ${
+                  sectorsSelected.length > 0
+                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25"
+                  : "bg-[#0F151F] text-[#F8FAFC] border-transparent hover:bg-[#354052]/80"
+                }`}
+              >
+                Sector {sectorsSelected.length > 0 && `(${sectorsSelected.length})`}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[200px] max-h-[300px] overflow-y-auto">
+              <DropdownMenuCheckboxItem
+                  checked={sectorsSelected.length === sectorsOptions.length && sectorsOptions.length > 0}
+                  onCheckedChange={handleSelectAllSectors}
+                  className="cursor-pointer hover:bg-[#7588A380] focus:bg-[#7588A380] hover:text-white focus:text-white font-semibold"
+              >
+                 Select all
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator className="bg-[#354052]/80" />
+              {sectorsOptions.map((s) => (
+                <DropdownMenuCheckboxItem
+                  key={s}
+                  checked={sectorsSelected.includes(s)}
+                  onCheckedChange={() => handleSectorSelect(s)}
+                  className="cursor-pointer hover:bg-[#7588A380] focus:bg-[#7588A380] hover:text-white focus:text-white"
+                >
+                  {s}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Previous Rating */}
           <Select value={previousRating || "all"} onValueChange={handlePreviousRatingSelect}>
@@ -251,17 +313,48 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
              Watchlist
           </button>
 
-          {/* Breakout Filter */}
-          <button
-             onClick={handleBreakoutToggle}
-             className={`h-[40px] px-4 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1.5 border ${
-                showBreakout
-                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25"
-                : "bg-[#0F151F] text-[#F8FAFC] border-transparent hover:bg-[#354052]/80"
-             }`}
-          >
-             Breakout
-          </button>
+          {/* Breakout Scores Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button 
+                className={`flex gap-1 items-center h-[40px] px-4 rounded-xl text-sm font-semibold transition-colors border ${
+                  breakoutScores.length > 0
+                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25"
+                  : "bg-[#0F151F] text-[#F8FAFC] border-transparent hover:bg-[#354052]/80"
+                }`}
+              >
+                Breakout {breakoutScores.length > 0 && `(${breakoutScores.length})`}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-[#171E2D] border-0 text-[#F8FAFC] min-w-[150px]">
+              <DropdownMenuCheckboxItem
+                  checked={breakoutScores.length === breakoutScoreOptions.length && breakoutScoreOptions.length > 0}
+                  onCheckedChange={() => {
+                    if (breakoutScores.length === breakoutScoreOptions.length) {
+                      setBreakoutScores([]);
+                      onChange?.({ market, currentRating, previousRating, sectorsSelected, search, favoritesOnly: showFavorites, breakoutScores: [] });
+                    } else {
+                      setBreakoutScores([...breakoutScoreOptions]);
+                      onChange?.({ market, currentRating, previousRating, sectorsSelected, search, favoritesOnly: showFavorites, breakoutScores: [...breakoutScoreOptions] });
+                    }
+                  }}
+                  className="cursor-pointer hover:bg-[#7588A380] focus:bg-[#7588A380] hover:text-white focus:text-white font-semibold"
+              >
+                 Select all
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator className="bg-[#354052]/80" />
+              {breakoutScoreOptions.map((score) => (
+                <DropdownMenuCheckboxItem
+                  key={score}
+                  checked={breakoutScores.includes(score)}
+                  onCheckedChange={() => handleBreakoutScoresChange(score)}
+                  className="cursor-pointer hover:bg-[#7588A380] focus:bg-[#7588A380] hover:text-white focus:text-white"
+                >
+                  Score {score}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
         </div>
         {/* Right side - Search & Clear */}

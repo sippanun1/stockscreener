@@ -157,9 +157,10 @@ def get_stocks_with_previous_rating(
     limit: int = 100,
     offset: int = 0,
     lookback_days: Optional[int] = None,
-    sector: Optional[str] = None,
+    sectors: Optional[List[str]] = None,
     previous_rating: Optional[str] = None,
-    pinned_symbols: Optional[list] = None
+    pinned_symbols: Optional[list] = None,
+    breakout_scores: Optional[list] = None
 ):
     """
     Get stocks using the Supabase RPC function `get_stocks_with_last_rating`.
@@ -186,9 +187,10 @@ def get_stocks_with_previous_rating(
             "p_limit": batch_size,
             "p_offset": current_offset,
             "p_lookback": lookback_days,
-            "p_sector": sector,
+            "p_sectors": sectors,
             "p_previous_rating": previous_rating,
-            "p_pinned_symbols": pinned_symbols if pinned_symbols else None
+            "p_pinned_symbols": pinned_symbols if pinned_symbols else None,
+            "p_breakout_scores": breakout_scores if breakout_scores else None
         }
         
         try:
@@ -244,7 +246,9 @@ def get_stocks_count(
     rating: Optional[str] = None,
     technical_rating: Optional[str] = None,
     lookback_days: Optional[int] = None,
-    sector: Optional[str] = None
+    sectors: Optional[List[str]] = None,
+    previous_rating: Optional[str] = None,
+    breakout_scores: Optional[List[int]] = None
 ) -> int:
     """
     Get total count of stocks matching filters.
@@ -261,7 +265,9 @@ def get_stocks_count(
             "p_rating": rating,
             "p_tech_rating": technical_rating,
             "p_lookback": lookback_days,
-            "p_sector": sector
+            "p_sectors": sectors,
+            "p_previous_rating": previous_rating,
+            "p_breakout_scores": breakout_scores
         }
         
         # Use a dedicated count RPC function for better performance
@@ -677,4 +683,14 @@ def get_unique_sectors():
         return [row["sector"] for row in response.data] if response.data else []
     except Exception as e:
         logger.error(f"Error fetching sectors: {e}")
+        return []
+
+def get_unique_breakout_scores():
+    """Get list of unique breakout scores."""
+    client = get_client()
+    try:
+        response = client.rpc("get_breakout_scores").execute()
+        return [row["breakout_score"] for row in response.data] if response.data else []
+    except Exception as e:
+        logger.error(f"Error fetching breakout scores: {e}")
         return []

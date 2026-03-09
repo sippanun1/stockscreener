@@ -632,6 +632,17 @@ BEGIN
     ORDER BY l.sector ASC;
 END; $$;
 
+-- GET UNIQUE BREAKOUT SCORES (For Breakout Filter Dropdown)
+CREATE OR REPLACE FUNCTION public.get_breakout_scores()
+RETURNS TABLE (breakout_score INTEGER) LANGUAGE plpgsql AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT l.breakout_score
+    FROM public.latest_stock_ratings l
+    WHERE l.breakout_score IS NOT NULL
+    ORDER BY l.breakout_score ASC;
+END; $$;
+
 -- CALCULATE ALL ACCURACIES (Bulk Update)
 CREATE OR REPLACE FUNCTION public.calculate_all_accuracies()
 RETURNS VOID LANGUAGE plpgsql AS $$
@@ -662,8 +673,7 @@ BEGIN
 END; $$;
 
 -- MAIN STOCK LIST (Updated with Neutral Filter)
--- Drop first to allow return type change
-DROP FUNCTION IF EXISTS public.get_stocks(TEXT, DATE, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER, INTEGER, INTEGER, TEXT) CASCADE;
+-- Drop first to allow return type/parameter change
 DROP FUNCTION IF EXISTS public.get_stocks CASCADE;
 
 CREATE OR REPLACE FUNCTION public.get_stocks(
@@ -671,9 +681,10 @@ CREATE OR REPLACE FUNCTION public.get_stocks(
     p_rating TEXT DEFAULT NULL, p_tech_rating TEXT DEFAULT NULL,
     p_sort_by TEXT DEFAULT 'rating_change_date', p_sort_order TEXT DEFAULT 'desc',
     p_limit INTEGER DEFAULT 50, p_offset INTEGER DEFAULT 0, p_lookback INTEGER DEFAULT 60,
-    p_sector TEXT DEFAULT NULL,
+    p_sectors TEXT[] DEFAULT NULL,
     p_previous_rating TEXT DEFAULT NULL,
-    p_pinned_symbols TEXT[] DEFAULT NULL
+    p_pinned_symbols TEXT[] DEFAULT NULL,
+    p_breakout_scores INTEGER[] DEFAULT NULL
 )
 RETURNS TABLE (
     res_id BIGINT, res_symbol TEXT, res_market TEXT, res_name TEXT, res_current_price NUMERIC,
@@ -699,13 +710,14 @@ BEGIN
               AND l.symbol NOT LIKE 'OTC:%'
               AND COALESCE(l.technical_rating, '') != 'Neutral'
               AND (p_market IS NULL OR p_market = '' OR l.market = p_market)
-              AND (p_sector IS NULL OR p_sector = '' OR p_sector = 'All' OR l.sector = p_sector)
+              AND (p_sectors IS NULL OR cardinality(p_sectors) = 0 OR l.sector = ANY(p_sectors))
               AND (p_rating IS NULL OR p_rating = '' OR l.technical_rating = p_rating)
               AND (p_tech_rating IS NULL OR p_tech_rating = ''
                    OR (p_tech_rating = 'Positive' AND l.technical_rating IN ('Strong Buy', 'Buy'))
                    OR (p_tech_rating = 'Negative' AND l.technical_rating IN ('Strong Sell', 'Sell')))
               AND (p_search IS NULL OR p_search = '' OR l.symbol ILIKE '%' || p_search || '%' OR l.name ILIKE '%' || p_search || '%')
               AND (p_previous_rating IS NULL OR p_previous_rating = '' OR l.previous_rating = p_previous_rating)
+              AND (p_breakout_scores IS NULL OR l.breakout_score = ANY(p_breakout_scores))
         ), SortedIds AS (
             SELECT * FROM CandidateIds
             ORDER BY
@@ -760,12 +772,14 @@ BEGIN
               AND sr.current_price >= 0.2 
               AND sr.symbol NOT LIKE 'OTC:%'
               AND (p_market IS NULL OR p_market = '' OR sr.market = p_market)
-              AND (p_sector IS NULL OR p_sector = '' OR p_sector = 'All' OR sr.sector = p_sector)
+              AND (p_sectors IS NULL OR cardinality(p_sectors) = 0 OR sr.sector = ANY(p_sectors))
               AND (p_rating IS NULL OR p_rating = '' OR sr.technical_rating = p_rating)
               AND (p_tech_rating IS NULL OR p_tech_rating = ''
                    OR (p_tech_rating = 'Positive' AND sr.technical_rating IN ('Strong Buy', 'Buy'))
                    OR (p_tech_rating = 'Negative' AND sr.technical_rating IN ('Strong Sell', 'Sell')))
               AND (p_search IS NULL OR p_search = '' OR sr.symbol ILIKE '%' || p_search || '%' OR sr.name ILIKE '%' || p_search || '%')
+              AND (p_previous_rating IS NULL OR p_previous_rating = '' OR sr.previous_rating = p_previous_rating)
+              AND (p_breakout_scores IS NULL OR sr.breakout_score = ANY(p_breakout_scores))
             ORDER BY sr.symbol, sr.fetched_date DESC, sr.fetched_time DESC
         ), SortedHistory AS (
             SELECT * FROM LatestPerSymbol
@@ -810,10 +824,13 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 
 -- TOTAL COUNT (Updated with Neutral Filter)
+DROP FUNCTION IF EXISTS public.get_stocks_count_filtered CASCADE;
 CREATE OR REPLACE FUNCTION public.get_stocks_count_filtered(
     p_market TEXT DEFAULT NULL, p_date DATE DEFAULT NULL, p_search TEXT DEFAULT NULL, 
     p_rating TEXT DEFAULT NULL, p_tech_rating TEXT DEFAULT NULL, p_lookback INT DEFAULT 60,
-    p_sector TEXT DEFAULT NULL
+    p_sectors TEXT[] DEFAULT NULL,
+    p_previous_rating TEXT DEFAULT NULL,
+    p_breakout_scores INTEGER[] DEFAULT NULL
 )
 RETURNS TABLE (res_total BIGINT) LANGUAGE plpgsql AS $$
 DECLARE 
@@ -824,12 +841,14 @@ BEGIN
         WHERE l.current_price >= 0.2 
           AND l.symbol NOT LIKE 'OTC:%'
           AND (p_market IS NULL OR p_market = '' OR l.market = p_market)
-          AND (p_sector IS NULL OR p_sector = '' OR p_sector = 'All' OR l.sector = p_sector)
+          AND (p_sectors IS NULL OR cardinality(p_sectors) = 0 OR l.sector = ANY(p_sectors))
           AND (p_rating IS NULL OR p_rating = '' OR l.technical_rating = p_rating)
           AND (p_tech_rating IS NULL OR p_tech_rating = ''
               OR (p_tech_rating = 'Positive' AND l.technical_rating IN ('Strong Buy', 'Buy'))
               OR (p_tech_rating = 'Negative' AND l.technical_rating IN ('Strong Sell', 'Sell')))
-          AND (p_search IS NULL OR p_search = '' OR l.symbol ILIKE '%' || p_search || '%' OR l.name ILIKE '%' || p_search || '%');
+          AND (p_search IS NULL OR p_search = '' OR l.symbol ILIKE '%' || p_search || '%' OR l.name ILIKE '%' || p_search || '%')
+          AND (p_previous_rating IS NULL OR p_previous_rating = '' OR l.previous_rating = p_previous_rating)
+          AND (p_breakout_scores IS NULL OR l.breakout_score = ANY(p_breakout_scores));
     ELSE
         RETURN QUERY WITH Latest AS (
             SELECT DISTINCT ON (sr.symbol) sr.id FROM public.stock_ratings sr
@@ -837,12 +856,14 @@ BEGIN
               AND sr.current_price >= 0.2 
               AND sr.symbol NOT LIKE 'OTC:%'
               AND (p_market IS NULL OR p_market = '' OR sr.market = p_market)
-              AND (p_sector IS NULL OR p_sector = '' OR p_sector = 'All' OR sr.sector = p_sector)
+              AND (p_sectors IS NULL OR cardinality(p_sectors) = 0 OR sr.sector = ANY(p_sectors))
               AND (p_rating IS NULL OR p_rating = '' OR sr.technical_rating = p_rating)
               AND (p_tech_rating IS NULL OR p_tech_rating = ''
                    OR (p_tech_rating = 'Positive' AND sr.technical_rating IN ('Strong Buy', 'Buy'))
                    OR (p_tech_rating = 'Negative' AND sr.technical_rating IN ('Strong Sell', 'Sell')))
               AND (p_search IS NULL OR p_search = '' OR sr.symbol ILIKE '%' || p_search || '%' OR sr.name ILIKE '%' || p_search || '%')
+              AND (p_previous_rating IS NULL OR p_previous_rating = '' OR sr.previous_rating = p_previous_rating)
+              AND (p_breakout_scores IS NULL OR sr.breakout_score = ANY(p_breakout_scores))
             ORDER BY sr.symbol, sr.fetched_date DESC, sr.fetched_time DESC
         ) SELECT COUNT(*) FROM Latest;
     END IF;

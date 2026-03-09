@@ -22,7 +22,7 @@ function ScreenerPage() {
     search: "",
     sortBy: undefined as string | undefined,
     favoritesOnly: false,
-    breakoutOnly: false,
+    breakoutScores: [],
   });
   const [filteredCount, setFilteredCount] = useState(0);
 

@@ -31,9 +31,9 @@ interface Filters {
   previousRating?: string
   search?: string
   sortBy?: string
-  sector?: string
+  sectorsSelected?: string[]
   favoritesOnly?: boolean
-  breakoutOnly?: boolean
+  breakoutScores?: string[]
 }
 
 interface DataTableProps {
@@ -83,13 +83,18 @@ const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total:
   }
 
   // Include sector filter
-  if (currentFilters?.sector && currentFilters.sector !== '' && currentFilters.sector !== 'all') {
-    params.append('sector', currentFilters.sector);
+  if (currentFilters?.sectorsSelected && currentFilters.sectorsSelected.length > 0) {
+    params.append('sectors', currentFilters.sectorsSelected.join(','));
   }
 
   // Include previous_rating filter
   if (currentFilters?.previousRating && currentFilters.previousRating !== '') {
     params.append('previous_rating', currentFilters.previousRating);
+  }
+
+  // Include breakout_scores filter for server-side filtering
+  if (currentFilters?.breakoutScores && currentFilters.breakoutScores.length > 0) {
+    params.append('breakout_scores', currentFilters.breakoutScores.join(','));
   }
 
   // Include sort parameters for server-side sorting
@@ -178,7 +183,9 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
       limit: fetchLimit, 
       rating: filters?.currentRating,
       technicalRating: filters?.technicalRating,
-      sector: filters?.sector,
+      sectorsSelected: filters?.sectorsSelected,
+      previousRating: filters?.previousRating,
+      breakoutScores: filters?.breakoutScores,
       sortBy: sortBy,
       sortOrder: sortOrder,
       pinnedSymbols: favorites, // favorites passed here → server returns them first
@@ -194,18 +201,15 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const allData = data?.stocks || []
   const totalInDatabase = data?.total || 0
 
-  // Client-side: favorites-only and breakout-only filters
+  // Client-side: favorites-only filter (breakout scores now filtered on server)
   // No need to sort favorites here — the server already returns them first.
   const filteredData = useMemo(() => {
     let result = allData;
     if (filters?.favoritesOnly) {
       result = result.filter(stock => isFavorite(stock.symbol));
     }
-    if (filters?.breakoutOnly) {
-      result = result.filter(stock => (stock.breakout_score ?? 0) >= 3);
-    }
     return result;
-  }, [allData, filters?.favoritesOnly, filters?.breakoutOnly, favorites])
+  }, [allData, filters?.favoritesOnly, favorites])
 
 
   // React to sortBy filter changes
@@ -217,11 +221,24 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     }
   }, [filters?.sortBy])
 
+  const previousBreakoutLength = useRef<number>(0);
+
+  // Auto-sort by breakout score when starting to filter by breakout
+  useEffect(() => {
+    const currentLength = filters?.breakoutScores?.length || 0;
+    if (currentLength > 0 && previousBreakoutLength.current === 0) {
+      setSorting([{ id: "breakout_score", desc: true }]);
+    }
+    previousBreakoutLength.current = currentLength;
+  }, [filters?.breakoutScores]);
+
   // Notify parent of filtered count changes
   useEffect(() => {
-    const count = (filters?.favoritesOnly || filters?.breakoutOnly) ? filteredData.length : totalInDatabase;
+    // Only use filteredData.length for favorites-only view (client-side filter)
+    // For all other filters (sectors, breakout, search, etc.), use the total from DB.
+    const count = filters?.favoritesOnly ? filteredData.length : totalInDatabase;
     onFilteredCountChange?.(count)
-  }, [totalInDatabase, filteredData.length, filters?.favoritesOnly, filters?.breakoutOnly, onFilteredCountChange])
+  }, [totalInDatabase, filteredData.length, filters?.favoritesOnly, onFilteredCountChange])
 
   // Slice data for display
   const currentData = useMemo(() => {

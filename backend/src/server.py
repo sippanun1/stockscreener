@@ -173,14 +173,14 @@ def get_stocks(
     search: Optional[str] = Query(None, description="Search term for symbol or name"),
     rating: Optional[str] = Query(None, description="Filter by rating: Strong Buy, Buy, Sell, Strong Sell"),
     technical_rating: Optional[str] = Query(None, description="Filter by technical rating group: Positive or Negative"),
-    sector: Optional[str] = Query(None, description="Filter by sector"),
+    sectors: Optional[str] = Query(None, description="Comma-separated sectors to filter"),
     previous_rating: Optional[str] = Query(None, description="Filter by previous rating: Strong Buy, Buy, Sell, Strong Sell"),
     sort_by: str = Query('fetched_date', description="Sort by: symbol, current_price, change, changePercent, fetched_date"),
     sort_order: str = Query('desc', description="Sort order: asc or desc"),
     limit: int = Query(100, ge=1, le=50000, description="Number of results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     lookback: Optional[int] = Query(None, description="Lookback days for historical data (Null for infinite)"),
-    min_breakout_score: Optional[int] = Query(None, ge=0, le=4, description="Min breakout score (0-4). 3 or 4 = hot stocks"),
+    breakout_scores: Optional[str] = Query(None, description="Comma-separated breakout scores to filter, e.g. '0,1,2,3,4'"),
     pinned_symbols: Optional[str] = Query(None, description="Comma-separated list of symbols to pin at top, e.g. 'NASDAQ:AAPL,HKEX:1065'"),
     _auth: bool = Depends(verify_api_key)
 ):
@@ -204,6 +204,12 @@ def get_stocks(
 
     # Parse pinned_symbols from comma-separated string to list
     pinned_list = [s.strip() for s in pinned_symbols.split(",") if s.strip()] if pinned_symbols else None
+    
+    # Parse sectors from comma-separated string to list
+    sectors_list = [s.strip() for s in sectors.split(",") if s.strip()] if sectors else None
+    
+    # Parse breakout_scores from comma-separated string to list
+    breakout_scores_list = [int(s.strip()) for s in breakout_scores.split(",") if s.strip()] if breakout_scores else None
 
     try:
         stocks = database.get_stocks_with_previous_rating(
@@ -217,9 +223,10 @@ def get_stocks(
             limit=limit,
             offset=offset,
             lookback_days=lookback,
-            sector=sector,
+            sectors=sectors_list,
             previous_rating=previous_rating,
-            pinned_symbols=pinned_list
+            pinned_symbols=pinned_list,
+            breakout_scores=breakout_scores_list
         )
         
         # Get total count matching the same filters (for "Total Signal" display)
@@ -230,13 +237,11 @@ def get_stocks(
             rating=rating,
             technical_rating=technical_rating,
             lookback_days=lookback,
-            sector=sector
+            sectors=sectors_list,
+            previous_rating=previous_rating,
+            breakout_scores=breakout_scores_list
         )
 
-        # Apply breakout score filter (Python-side)
-        if min_breakout_score is not None:
-            stocks = [s for s in stocks if (s.get("breakout_score") or 0) >= min_breakout_score]
-        
         logger.debug(f"Fetched {len(stocks)} stocks out of {total_count} total (market={market}, date={date}, technical_rating={technical_rating})")
         
         return {
@@ -248,7 +253,7 @@ def get_stocks(
                 "date": date,
                 "rating": rating,
                 "technical_rating": technical_rating,
-                "sector": sector
+                "sectors": sectors
             }
         }
     except Exception as e:
@@ -309,6 +314,17 @@ def get_sectors(_auth: bool = Depends(verify_api_key)):
     except Exception as e:
         logger.error(f"Error fetching sectors: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch sectors")
+
+
+@app.get("/api/breakout-scores")
+def get_breakout_scores(_auth: bool = Depends(verify_api_key)):
+    """Get list of all available breakout scores."""
+    try:
+        breakout_scores = database.get_unique_breakout_scores()
+        return {"breakout_scores": breakout_scores}
+    except Exception as e:
+        logger.error(f"Error fetching breakout scores: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch breakout scores")
 
 
 @app.get("/api/stock/{symbol}")
