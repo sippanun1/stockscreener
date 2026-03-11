@@ -76,6 +76,14 @@ function TradingViewWidget({ symbol, onSymbolUnavailable }: TradingViewWidgetPro
         const raw = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
         if (!raw) return;
 
+        // Immediately catch restricted/unavailable symbols (e.g., SET market stocks)
+        if (raw.name === 'tv-widget-no-data') {
+          localConfirmed = true;
+          clearTimeout(timeoutId);
+          onSymbolUnavailable?.();
+          return;
+        }
+
         const isQuoteUpdate = raw.name === 'quoteUpdate' || raw.name === 'quote_update';
         if (isQuoteUpdate) {
           const msgTicker = (raw?.data?.short_name || raw?.data?.s || "").toString().toUpperCase();
