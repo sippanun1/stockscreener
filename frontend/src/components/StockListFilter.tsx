@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { HiOutlineSearch } from "react-icons/hi";
 import { RotateCcw } from "lucide-react";
 import {
@@ -33,6 +33,7 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   const [sectorsOptions, setSectorsOptions] = useState<string[]>([]);
 
   const [search, setSearch] = useState<string>("");
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch available sectors on mount
   useEffect(() => {
@@ -156,8 +157,15 @@ export default function StockListFilter({ onChange, filteredCount, currentFilter
   };
 
   const handleSearchChange = (value: string) => {
-    setSearch(value);
-    onChange?.({ market, currentRating, previousRating, sectorsSelected, search: value, favoritesOnly: showFavorites, breakoutScores });
+    setSearch(value); // Update local input instantly
+    
+    // Debounce the heavy API/table update
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      onChange?.({ market, currentRating, previousRating, sectorsSelected, search: value, favoritesOnly: showFavorites, breakoutScores });
+    }, 300);
   };
 
   const handleFavoritesToggle = () => {

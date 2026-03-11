@@ -192,6 +192,11 @@ CREATE INDEX IF NOT EXISTS idx_latest_symbol_trgm ON public.latest_stock_ratings
 CREATE INDEX IF NOT EXISTS idx_latest_name_trgm ON public.latest_stock_ratings USING gin (name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_latest_accuracy ON public.latest_stock_ratings (accuracy_percent DESC NULLS LAST);
 
+-- Compound Indexes (Critical for fast UI Sorting with Filters)
+CREATE INDEX IF NOT EXISTS idx_latest_market_change_pct ON public.latest_stock_ratings (market, daily_change_percent DESC);
+CREATE INDEX IF NOT EXISTS idx_latest_market_accuracy ON public.latest_stock_ratings (market, accuracy_percent DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_latest_sector_change_pct ON public.latest_stock_ratings (sector, daily_change_percent DESC);
+
 -- History Table Indexes (For deep search & analytics)
 CREATE INDEX IF NOT EXISTS idx_stock_ratings_symbol_date ON public.stock_ratings (symbol, fetched_date DESC, fetched_time DESC);
 CREATE INDEX IF NOT EXISTS idx_stock_ratings_fetched_date ON public.stock_ratings (fetched_date DESC);
