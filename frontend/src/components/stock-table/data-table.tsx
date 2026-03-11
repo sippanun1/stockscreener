@@ -10,7 +10,8 @@ import {
   getFilteredRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
+import { useVirtualizer } from "@tanstack/react-virtual"
 
 import {
   TableBody,
@@ -41,8 +42,6 @@ interface DataTableProps {
   filters?: Filters
   onFilteredCountChange?: (count: number) => void
 }
-
-const BATCH_SIZE = 100
 
 // API base URL from environment variable
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -157,8 +156,7 @@ import { useFavorites } from "@/hooks/useFavorites"
 
 export function DataTable({ columns, filters, onFilteredCountChange }: DataTableProps) {
   const { favorites, isFavorite } = useFavorites();
-  const [displayCount, setDisplayCount] = useState(BATCH_SIZE)
-  const [loadingMore, setLoadingMore] = useState(false)
+
   const [sorting, setSorting] = useState<SortingState>([{ id: "rating_change_date", desc: true }])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -176,7 +174,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const sortBy = sorting.length > 0 ? sorting[0].id : 'rating_change_date'
   const sortOrder = sorting.length > 0 ? (sorting[0].desc ? 'desc' : 'asc') : 'desc'
   
-  const { data, isLoading: loading } = useQuery({
+  const { data, isLoading: loading, isFetching } = useQuery({
     queryKey: ['stocks', { 
       market: filters?.market, 
       search: filters?.search, 
@@ -191,6 +189,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
       pinnedSymbols: favorites, // favorites passed here → server returns them first
     }],
     queryFn: fetchStocks,
+    placeholderData: keepPreviousData,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -209,7 +208,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
       result = result.filter(stock => isFavorite(stock.symbol));
     }
     return result;
-  }, [allData, filters?.favoritesOnly, favorites])
+  }, [allData, filters?.favoritesOnly, isFavorite, favorites])
 
 
   // React to sortBy filter changes
@@ -240,50 +239,31 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     onFilteredCountChange?.(count)
   }, [totalInDatabase, filteredData.length, filters?.favoritesOnly, onFilteredCountChange])
 
-  // Slice data for display
-  const currentData = useMemo(() => {
-    return filteredData.slice(0, displayCount)
-  }, [filteredData, displayCount])
-
-  // Handle scroll to load more (Infinite Scroll)
+  // Handle scroll to load more from backend
   const handleScroll = useCallback(() => {
-    if (!scrollRef.current || loadingMore || loading) return
+    if (!scrollRef.current || isFetching) return
     
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
-    const nearBottom = scrollTop + clientHeight >= scrollHeight - 300 // Trigger 300px before bottom
+    const nearBottom = scrollTop + clientHeight >= scrollHeight - 400
     
     if (nearBottom) {
-        // Case 1: We have more data locally (displayCount < total fetched)
-        if (displayCount < filteredData.length) {
-            setLoadingMore(true)
-            // Small delay to show spinner/prevent main thread blocking
-            setTimeout(() => {
-                setDisplayCount(prev => Math.min(prev + BATCH_SIZE, filteredData.length))
-                setLoadingMore(false)
-            }, 50)
-        } 
-        // Case 2: We reached end of local data, but more exists in DB (fetchLimit < totalInDatabase)
-        // AND we haven't already maxed out our fetch limit logic
-        else if (allData.length === fetchLimit && fetchLimit < totalInDatabase) {
-             // Auto-upgrade fetch limit to get next batch
-             // 300 -> 1000 -> 5000 -> 25000 (Max)
+        if (allData.length === fetchLimit && fetchLimit < totalInDatabase) {
              const nextLimit = fetchLimit === 300 ? 1000 : fetchLimit === 1000 ? 5000 : 25000;
              if (nextLimit !== fetchLimit) {
                  setFetchLimit(nextLimit);
              }
         }
     }
-  }, [displayCount, filteredData.length, loadingMore, loading, allData.length, fetchLimit, totalInDatabase])
+  }, [isFetching, allData.length, fetchLimit, totalInDatabase])
 
   const table = useReactTable({
-    data: currentData,
+    data: filteredData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    // getSortedRowModel: getSortedRowModel(), // Disable client-side sorting of the slice
-    manualSorting: true, // Enable manual sorting
-    sortDescFirst: true, // Start with descending when clicking column (TradingView style)
+    manualSorting: true, 
+    sortDescFirst: true, 
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     state: {
@@ -292,6 +272,21 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
       columnVisibility,
     },
   })
+
+  const { rows } = table.getRowModel()
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 40,
+    overscan: 20,
+  })
+
+  const virtualRows = rowVirtualizer.getVirtualItems()
+  const totalSize = rowVirtualizer.getTotalSize()
+
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start || 0 : 0;
+  const paddingBottom = virtualRows.length > 0 ? totalSize - (virtualRows[virtualRows.length - 1]?.end || 0) : 0;
 
   if (loading) {
     return (
@@ -386,61 +381,73 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="bg-[#7588A31A] hover:bg-[#292D33]/80 border-[#1E2530] cursor-pointer h-10 group"
-                    onClick={() => {
-                      const stock = row.original as { symbol: string }
-                      navigate(`/symbols/${encodeURIComponent(stock.symbol.replace(':', '-'))}`)
-                    }}
-                  >
-                    {row.getVisibleCells().map((cell) => {
-                         const isSymbol = cell.column.id === 'symbol'
-                         const isExchange = cell.column.id === 'exchange'
-                         
-                         // Sticky Symbol Column (Row)
-                         // Removed sticky lock as requested.
-                         const stickyClass = ""
-                         
-                         let paddingClass = ''
-                         if (cell.column.id === 'current_price') {
-                           paddingClass = '!py-2 !px-0.5 sm:!px-1'
-                         } else if (cell.column.id === 'change') {
-                           paddingClass = '!py-2 !pl-0.5 !pr-2 sm:!pl-1 sm:!pr-3' // Add more right padding
-                         } else if (cell.column.id === 'changePercent') {
-                           paddingClass = '!py-2 !px-0.5 sm:!px-1'
-                         } else if (isSymbol) {
-                           paddingClass = '!py-2 !px-1 sm:!px-2'
-                         } else if (isExchange) {
-                           paddingClass = '!py-2 !pl-2 !pr-1' // Left aligned padding
-                         }
+              {paddingTop > 0 && (
+                <tr>
+                  <td style={{ height: `${paddingTop}px` }} colSpan={columns.length} />
+                </tr>
+              )}
+              {rows.length > 0 ? (
+                virtualRows.map((virtualRow) => {
+                  const row = rows[virtualRow.index]
+                  return (
+                    <TableRow
+                      key={row.id}
+                      data-index={virtualRow.index}
+                      ref={rowVirtualizer.measureElement}
+                      className="bg-[#7588A31A] hover:bg-[#292D33]/80 border-[#1E2530] cursor-pointer h-10 group"
+                      onClick={() => {
+                        const stock = row.original as { symbol: string }
+                        navigate(`/symbols/${encodeURIComponent(stock.symbol.replace(':', '-'))}`)
+                      }}
+                    >
+                      {row.getVisibleCells().map((cell) => {
+                           const isSymbol = cell.column.id === 'symbol'
+                           const isExchange = cell.column.id === 'exchange'
+                           
+                           const stickyClass = ""
+                           
+                           let paddingClass = ''
+                           if (cell.column.id === 'current_price') {
+                             paddingClass = '!py-2 !px-0.5 sm:!px-1'
+                           } else if (cell.column.id === 'change') {
+                             paddingClass = '!py-2 !pl-0.5 !pr-2 sm:!pl-1 sm:!pr-3'
+                           } else if (cell.column.id === 'changePercent') {
+                             paddingClass = '!py-2 !px-0.5 sm:!px-1'
+                           } else if (isSymbol) {
+                             paddingClass = '!py-2 !px-1 sm:!px-2'
+                           } else if (isExchange) {
+                             paddingClass = '!py-2 !pl-2 !pr-1'
+                           }
 
-                         // Responsive width usage
-                         const widthStyle = isSymbol 
-                           ? { } 
-                           : { width: cell.column.getSize() }
-                         const widthClass = isSymbol ? "w-[120px] min-w-[120px] max-w-[120px] sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]" : ""
+                           const widthStyle = isSymbol 
+                             ? { } 
+                             : { width: cell.column.getSize() }
+                           const widthClass = isSymbol ? "w-[120px] min-w-[120px] max-w-[120px] sm:w-[240px] sm:min-w-[240px] sm:max-w-[240px]" : ""
 
-                         return (
-                          <TableCell 
-                            key={cell.id} 
-                            className={`${paddingClass} ${stickyClass} ${widthClass}`}
-                            style={widthStyle}
-                          >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                         )
-                    })}
-                  </TableRow>
-                ))
+                           return (
+                            <TableCell 
+                              key={cell.id} 
+                              className={`${paddingClass} ${stickyClass} ${widthClass}`}
+                              style={widthStyle}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                           )
+                      })}
+                    </TableRow>
+                  )
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="h-24 text-center text-[#7588A3]">
                     No results.
                   </TableCell>
                 </TableRow>
+              )}
+              {paddingBottom > 0 && (
+                <tr>
+                  <td style={{ height: `${paddingBottom}px` }} colSpan={columns.length} />
+                </tr>
               )}
             </TableBody>
             </table>
@@ -451,16 +458,8 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
       
       {/* Infinite Scroll & Loading Indicator */}
       <div className="flex flex-col items-center py-2 bg-[#0F151F]/50 min-h-[5px]">
-        {/* Loading more indicator */}
-        {loadingMore && (
-            <div className="flex items-center gap-2 text-[#7588A3] text-sm py-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Loading more stocks...
-            </div>
-        )}
-        
         {/* Invisible spacer for scroll padding */}
-        {!loadingMore && <div className="h-1 w-full" />}
+        <div className="h-1 w-full" />
       </div>
     </div>
   )

@@ -1,12 +1,12 @@
-import requests
 import json
 import pandas as pd
 import time
 import sys
 from datetime import datetime
-import schedule
 import threading
 import os
+import asyncio
+import aiohttp
 from pathlib import Path
 
 # ================================
@@ -168,9 +168,9 @@ def save_to_db_with_retry(df, market, today, retries=3, delay=2):
     return False # All retries failed
 
 # ================================
-# Fetch unlimited rows + ONLY STOCK
+# Fetch unlimited rows + ONLY STOCK (ASYNC)
 # ================================
-def fetch_market(market_name, url, batch_size=300):
+async def fetch_market(session, market_name, url, batch_size=300):
     print(f"\n>> Fetching market: {market_name}")
 
     all_rows = []
@@ -196,21 +196,28 @@ def fetch_market(market_name, url, batch_size=300):
         }
 
         try:
-            r = requests.post(url, data=json.dumps(payload), headers=headers, cookies=cookies)
-            if r.status_code != 200:
-                print(f">> Error fetching {market_name}: Status {r.status_code}")
-                break
+            async with session.post(url, json=payload, headers=headers, cookies=cookies) as r:
+                if r.status != 200:
+                    print(f">> Error fetching {market_name}: Status {r.status}")
+                    break
+                    
+                response_json = await r.json()
+                data = response_json.get("data", [])
+
+                if not data:
+                    print(f">> No more data for {market_name} (total {len(all_rows)})")
+                    break
+
+                all_rows.extend(data)
+                start += batch_size
+                await asyncio.sleep(0.1) # Yield control safely
                 
-            data = r.json().get("data", [])
-
-            if not data:
-                print(f">> No more data for {market_name} (total {len(all_rows)})")
-                break
-
-            all_rows.extend(data)
-            start += batch_size
-            time.sleep(0.2)
-            
+        except asyncio.TimeoutError:
+             print(f">> TIMEOUT: Could not reach {market_name} API within time limit.")
+             break
+        except aiohttp.ClientError as e:
+             print(f">> NETWORK ERROR: Issue connecting to {market_name} - {e}")
+             break
         except Exception as e:
             print(f">> Error in request: {e}")
             break
@@ -290,9 +297,50 @@ def fetch_market(market_name, url, batch_size=300):
     return pd.DataFrame(out)
 
 # ================================
+# Helper to run a single market workflow
+# ================================
+async def process_market(session, market, url, today, args, all_df_list):
+    try:
+        df = await fetch_market(session, market, url)
+        if df is not None:
+            # 1. BUFFER: Save JSON immediately
+            filename = DATA_DIR / f"{market}_{today}.json"
+            df.to_json(filename, orient='records', indent=2)
+            print(f">> 📦 Buffered {filename} ({len(df)} rows)")
+            
+            # 2. PUSH with RETRY
+            # database.save_daily_stocks uses standard synchronous psycopg/supabase logic inside its own module.
+            # To strictly prevent blocking the async loop, we could use run_in_executor but Python async with I/O is usually fast enough here.
+            success = save_to_db_with_retry(df, market, today)
+
+            # 3. CLEANUP or ALERT
+            if success:
+                should_clean = True
+                if args and getattr(args, 'once', False):
+                    should_clean = False
+                
+                if should_clean:
+                    if filename.exists():
+                        filename.unlink() 
+                        print(f">> 🧹 Cleaned up buffer file: {filename.name}")
+                else:
+                    print(f">> ℹ️  File kept for validation: {filename.name}")
+
+            else:
+                print(f"\n{'!'*50}")
+                print(f"❌ CRITICAL ERROR: Could not save {market} to Database after 3 attempts.")
+                print(f"📦 DATA SAVED IN: {filename.name}")
+                print(f"🛠️  TO FIX: Run 'python main.py --import-local' later.")
+                print(f"{'!'*50}\n")
+
+            all_df_list.append(df)
+    except Exception as e:
+        print(f">> Error processing {market}: {e}")
+
+# ================================
 # Main fetch function (runs daily)
 # ================================
-def fetch_all_markets(args=None):
+async def fetch_all_markets(args=None):
     print(f"\n{'='*50}")
     print(f">> Starting daily market fetch at {datetime.now()}")
     print(f"{'='*50}\n")
@@ -302,61 +350,33 @@ def fetch_all_markets(args=None):
     
     # Determine markets to run
     markets_to_run = screeners.items()
-    if args and args.market:
+    if args and getattr(args, 'market', None):
         if args.market in screeners:
             markets_to_run = [(args.market, screeners[args.market])]
         else:
             print(f"Market {args.market} not found. Available: {list(screeners.keys())}")
             return
 
-    for market, url in markets_to_run:
-        try:
-            df = fetch_market(market, url)
-            if df is not None:
-                # 1. BUFFER: Save JSON immediately
-                filename = DATA_DIR / f"{market}_{today}.json"
-                df.to_json(filename, orient='records', indent=2)
-                print(f">> 📦 Buffered {filename} ({len(df)} rows)")
-                
-                # 2. PUSH with RETRY
-                # Only save to DB if NO args or if args.once is True (Manual run)
-                # But actually we always want to save.
-                success = save_to_db_with_retry(df, market, today)
-
-                # 3. CLEANUP or ALERT
-                if success:
-                    # CLEANUP: Only if NOT in 'once' mode (GitHub Actions needs the file for validation)
-                    # Note: We need access to args here. If args is None, assume we clean?
-                    # Or safer: Check if running via scheduler (args=None)?
-                    # Logic: If args.once is TRUE, DO NOT CLEAN.
-                    should_clean = True
-                    if args and args.once:
-                        should_clean = False
-                    
-                    if should_clean:
-                        if filename.exists():
-                            filename.unlink() 
-                            print(f">> 🧹 Cleaned up buffer file: {filename.name}")
-                    else:
-                        print(f">> ℹ️  File kept for validation: {filename.name}")
-
-                else:
-                    # ❌ FAILURE after retries - KEEP FILE & ALERT USER
-                    print(f"\n{'!'*50}")
-                    print(f"❌ CRITICAL ERROR: Could not save {market} to Database after 3 attempts.")
-                    print(f"📦 DATA SAVED IN: {filename.name}")
-                    print(f"🛠️  TO FIX: Run 'python main.py --import-local' later.")
-                    print(f"{'!'*50}\n")
-
-                all_df.append(df)
-        except Exception as e:
-            print(f">> Error fetching {market}: {e}")
+    # Create a single session with a robust timeout limit (avoid hanging)
+    timeout = aiohttp.ClientTimeout(total=60, connect=10) # 60 seconds max per market fetch
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        tasks = []
+        for market, url in markets_to_run:
+            tasks.append(process_market(session, market, url, today, args, all_df))
+            
+        # Run all market fetches concurrently
+        await asyncio.gather(*tasks)
 
     if all_df:
         combined = pd.concat(all_df, ignore_index=True)
         combined_filename = DATA_DIR / f"ALL_MARKETS_{today}.json"
-        combined.to_json(combined_filename, orient='records', indent=2)
-        print(f"\n>> Saved combined file: {combined_filename}")
+        
+        # Guard against PermissionError during local writes
+        try:
+            combined.to_json(combined_filename, orient='records', indent=2)
+            print(f"\n>> Saved combined file: {combined_filename}")
+        except PermissionError:
+             print(f"\n>> Could not write combined file (Permission Denied). Skipping.")
         
         print("\n>> DONE - All Markets Fetched Successfully!")
     else:
@@ -364,32 +384,18 @@ def fetch_all_markets(args=None):
 
     print(f"\n{'='*50}")
 
+def fetch_all_markets_sync_wrapper(args=None):
+    """Wrapper to run async function inside standard scheduler"""
+    asyncio.run(fetch_all_markets(args))
 
-# ================================
-# Schedule function
-# ================================
-def run_scheduler():
-    print(">> 🕒 Scheduler Started. Waiting for 18:00 (Thailand Time)...")
-    # Thailand is UTC+7. Server might be UTC.
-    # 18:00 TH = 11:00 UTC.
-    # Safe bet: Run every hour? No, once a day.
-    # Let's set 11:00 UTC (18:00 BKK)
-    schedule.every().day.at("11:00").do(fetch_all_markets)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--once", action="store_true", help="Run once now and exit")
+    parser.add_argument("--once", action="store_true", help="Run once now and exit (Default behavior)", default=True)
     parser.add_argument("--market", type=str, help="Run specific market (e.g. TH)")
     parser.add_argument("--preopen", action="store_true", help="Fetch pre-market data (Not implemented yet)")
     args = parser.parse_args()
 
-    if args.once:
-        print(f">> Running in once mode{' for market: ' + args.market if args.market else ''}")
-        fetch_all_markets(args)
-    else:
-        run_scheduler()
+    print(f">> Running for market: {getattr(args, 'market', 'ALL') if getattr(args, 'market', None) else 'ALL'}")
+    fetch_all_markets_sync_wrapper(args)

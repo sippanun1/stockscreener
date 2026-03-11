@@ -19,8 +19,9 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Optional
 
-from fastapi import FastAPI, Query, HTTPException, Request, Depends, Security
+from fastapi import FastAPI, Query, HTTPException, Request, Depends, Security, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import APIKeyHeader
 from dotenv import load_dotenv
 
@@ -141,6 +142,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add GZip compression for large JSON payloads
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # =================================
 # Rate Limiting Middleware
 # =================================
@@ -168,6 +172,7 @@ def root():
 @app.get("/api/stocks")
 @app.get("/api/stocks")
 def get_stocks(
+    response: Response,
     market: Optional[str] = Query(None, description="Filter by market: US, TH, HK, JP"),
     date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
     search: Optional[str] = Query(None, description="Search term for symbol or name"),
@@ -243,6 +248,10 @@ def get_stocks(
         )
 
         logger.debug(f"Fetched {len(stocks)} stocks out of {total_count} total (market={market}, date={date}, technical_rating={technical_rating})")
+        
+        # Aggressive caching: data is stable for 5 minutes, stale while revalidating.
+        # This prevents 1-2s database reads for every filter toggle/scroll interaction.
+        response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=600"
         
         return {
             "data": stocks,
