@@ -71,35 +71,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # =================================
-# Rate Limiting (Simple in-memory)
+# Rate Limiting (Production Ready)
 # =================================
-from collections import defaultdict
-import time
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
-class RateLimiter:
-    def __init__(self, max_requests: int = 60, window_seconds: int = 60):
-        self.max_requests = max_requests
-        self.window_seconds = window_seconds
-        self.requests = defaultdict(list)
-    
-    def is_allowed(self, client_ip: str) -> bool:
-        now = time.time()
-        # Clean old requests
-        self.requests[client_ip] = [
-            req_time for req_time in self.requests[client_ip]
-            if now - req_time < self.window_seconds
-        ]
-        # Check limit
-        if len(self.requests[client_ip]) >= self.max_requests:
-            return False
-        # Record this request
-        self.requests[client_ip].append(now)
-        return True
-
-rate_limiter = RateLimiter(
-    max_requests=settings["rate_limit"],
-    window_seconds=60
-)
+# Initialize the limiter using the client's IP address
+limiter = Limiter(key_func=get_remote_address)
 
 # =================================
 # API Key Authentication (Optional)
@@ -130,6 +110,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Register the slowapi rate limiter Exception Handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS Configuration - Use environment variables
 allowed_origins = settings["allowed_origins"]
 logger.info(f"CORS allowed origins: {allowed_origins}")
@@ -148,30 +132,24 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # =================================
 # Rate Limiting Middleware
 # =================================
-@app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    client_ip = request.client.host if request.client else "unknown"
-    
-    if not rate_limiter.is_allowed(client_ip):
-        logger.warning(f"Rate limit exceeded for {client_ip}")
-        raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
-    
-    response = await call_next(request)
-    return response
+# Use SlowAPI's official middleware instead of the custom http wrapper
+app.add_middleware(SlowAPIMiddleware)
 
 
 # =================================
 # API Endpoints
 # =================================
 @app.get("/")
-def root():
+@limiter.limit("10/minute")
+def root(request: Request):
     """Health check endpoint."""
     return {"status": "ok", "message": "Stock Screener API is running"}
 
 
 @app.get("/api/stocks")
-@app.get("/api/stocks")
+@limiter.limit(f"{settings['rate_limit']}/minute")
 def get_stocks(
+    request: Request,
     response: Response,
     market: Optional[str] = Query(None, description="Filter by market: US, TH, HK, JP"),
     date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
