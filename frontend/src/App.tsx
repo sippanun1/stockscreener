@@ -4,7 +4,6 @@ import './App.css'
 import MenuHeader from "./components/MenuHeader";
 import StockListFilter from "./components/StockListFilter";
 import NotFound from "./components/NotFound";
-import { Skeleton } from "./components/ui/skeleton";
 import "react-day-picker/dist/style.css";
 
 // Lazy load heavy components to reduce initial bundle size
@@ -65,20 +64,7 @@ function ScreenerPage() {
 
   return (
     <div className="flex flex-col lg:h-full">
-      <Suspense fallback={
-        <div className="flex flex-col gap-4 p-4 lg:p-6 w-full">
-          {/* Summary Cards Skeleton */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 w-full" />)}
-          </div>
-          {/* Filter Bar Skeleton */}
-          <Skeleton className="h-16 w-full mb-4" />
-          {/* Table Area Skeleton */}
-          <div className="h-[60vh] lg:h-[60vh] w-full mt-2 space-y-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
-          </div>
-        </div>
-      }>
+      <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#12b327]"></div></div>}>
         <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
         <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
         {/* Mobile: Fixed height table (nested scroll). Desktop: Flex-1 filling remaining space. */}
@@ -95,15 +81,7 @@ function App() {
     <div className="App bg-[#000000] h-[100dvh] flex flex-col overflow-hidden">
       <MenuHeader />
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
-        <Suspense fallback={
-          <div className="flex flex-col pt-6 px-4 md:px-8 space-y-6 w-full max-w-7xl mx-auto h-full">
-             <Skeleton className="h-10 w-48 mb-6" /> 
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Skeleton className="h-[400px] w-full md:col-span-2" />
-                <Skeleton className="h-[400px] w-full" />
-             </div>
-          </div>
-        }>
+        <Suspense fallback={<div className="h-full w-full flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#12b327]"></div></div>}>
           <Routes>
             <Route path="/" element={<ScreenerPage />} />
             <Route path="/symbols/:symbol" element={<StockDetail />} />

@@ -12,7 +12,6 @@ import {
 } from "@tanstack/react-table"
 import { useQuery, keepPreviousData } from "@tanstack/react-query"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { Skeleton } from "@/components/ui/skeleton"
 
 import {
   TableBody,
@@ -393,7 +392,7 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
                   <TableRow key={`skeleton-${idx}`} className="bg-[#7588A31A] border-[#1E2530] h-10">
                     {columns.map((_, cIdx) => (
                       <TableCell key={cIdx} className="!py-2 !px-1 sm:!px-2">
-                        <Skeleton className="h-5 w-full bg-[#1E2530]" />
+                         <div className="h-5 w-full bg-[#18202F]/60 animate-pulse rounded-md"></div>
                       </TableCell>
                     ))}
                   </TableRow>
