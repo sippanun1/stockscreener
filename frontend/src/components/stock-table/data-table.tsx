@@ -10,7 +10,6 @@ import {
   getFilteredRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { useQuery, keepPreviousData } from "@tanstack/react-query"
 import { useVirtualizer } from "@tanstack/react-virtual"
 
 import {
@@ -25,134 +24,15 @@ import { useNavigate } from "react-router-dom"
 import type { Stock } from "@/types/stock"
 import { SortArrows } from "@/components/SortArrows"
 
-interface Filters {
-  market?: string
-  currentRating?: string
-  technicalRating?: string
-  previousRating?: string
-  search?: string
-  sortBy?: string
-  sectorsSelected?: string[]
-  favoritesOnly?: boolean
-  breakoutScores?: string[]
-}
+import { useStocksQuery } from "@/api/useStocks"
+import type { Filters } from "@/api/useStocks"
+import { useFavorites } from "@/hooks/useFavorites"
 
 interface DataTableProps {
   columns: ColumnDef<Stock, unknown>[]
   filters?: Filters
   onFilteredCountChange?: (count: number) => void
 }
-
-// API base URL from environment variable
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
-// Response type from API
-interface StockApiResponse {
-  data: any[];
-  count: number;
-  total: number;
-}
-
-// Fetch function for React Query - returns stocks and total count
-const fetchStocks = async ({ queryKey }: any): Promise<{ stocks: Stock[], total: number }> => {
-  const [_, currentFilters] = queryKey;
-  
-  const params = new URLSearchParams();
-  const limit = currentFilters?.limit || '100';
-  params.append('limit', limit); // Fetch initial batch - optimized for LATERAL join performance
-  
-  // Include market filter - always send alongside search (not mutually exclusive)
-  if (currentFilters?.market && currentFilters.market.toLowerCase() !== 'all' && currentFilters.market !== '') {
-    params.append('market', currentFilters.market);
-  }
-
-  // Include search term in API request for server-side filtering
-  if (currentFilters?.search && currentFilters.search.trim() !== '') {
-    params.append('search', currentFilters.search);
-  }
-
-  // Include rating filter (Relax logic during search handled by backend or user intent)
-  if (currentFilters?.rating) {
-    params.append('rating', currentFilters.rating);
-  }
-
-  // Include technicalRating filter for server-side filtering
-  if (currentFilters?.technicalRating) {
-    params.append('technical_rating', currentFilters.technicalRating);
-  }
-
-  // Include sector filter
-  if (currentFilters?.sectorsSelected && currentFilters.sectorsSelected.length > 0) {
-    params.append('sectors', currentFilters.sectorsSelected.join(','));
-  }
-
-  // Include previous_rating filter
-  if (currentFilters?.previousRating && currentFilters.previousRating !== '') {
-    params.append('previous_rating', currentFilters.previousRating);
-  }
-
-  // Include breakout_scores filter for server-side filtering
-  if (currentFilters?.breakoutScores && currentFilters.breakoutScores.length > 0) {
-    params.append('breakout_scores', currentFilters.breakoutScores.join(','));
-  }
-
-  // Include sort parameters for server-side sorting
-  if (currentFilters?.sortBy) {
-    params.append('sort_by', currentFilters.sortBy);
-  }
-  if (currentFilters?.sortOrder) {
-    params.append('sort_order', currentFilters.sortOrder);
-  }
-  // Pass pinned symbols so the DB returns them first (Option 1 - server-side pinning)
-  if (currentFilters?.pinnedSymbols && currentFilters.pinnedSymbols.length > 0) {
-    params.append('pinned_symbols', currentFilters.pinnedSymbols.join(','));
-  }
-  
-  const response = await fetch(`${API_URL}/api/stocks?${params.toString()}`)
-  const result: StockApiResponse = await response.json()
-  
-  const stocks = result.data.map((s: any) => {
-    const currentPrice = Number(s.current_price)
-    const previousPrice = s.previous_price ? Number(s.previous_price) : undefined
-    
-    // Use server-provided values if available, fallback to price difference calculation
-    // NOTE: s.change can be null from production DB — use != null to catch both null and undefined
-    const absoluteChange = (s.change != null) ? Number(s.change) : (previousPrice ? currentPrice - previousPrice : 0)
-    const percentChange = (s.changePercent != null) ? Number(s.changePercent) : (previousPrice && previousPrice > 0 ? ((currentPrice - previousPrice) / previousPrice * 100) : 0)
-    
-    const exchange = s.symbol?.split(":")[0] || ""
-
-    return {
-      market: s.market,
-      symbol: s.symbol,
-      name: s.name,
-      sector: s.sector,
-      industry: s.industry,
-      current_price: currentPrice,
-      previous_price: previousPrice,
-      change: absoluteChange, // Absolute price change
-      changePercent: percentChange, // Percentage change
-      exchange: exchange, // Pre-calculated exchange
-      Technical_Rating: s.Technical_Rating,
-      Previous_Rating: s.Previous_Rating,
-      previous_rating_date: s.previous_rating_date,
-      rating_change_date: s.rating_change_date,
-      fetched_date: s.fetched_date,
-      accuracy_percent: s.accuracy_percent,
-      total_signals: s.total_signals,
-      breakout_score: s.breakout_score,
-    }
-  })
-
-  return {
-    stocks: stocks,
-    // Note: total might be slightly higher than visible stocks due to client-side filtering of "Neutral"
-    // until the backend SQL migration is applied.
-    total: result.total || 0  
-  }
-}
-
-import { useFavorites } from "@/hooks/useFavorites"
 
 export function DataTable({ columns, filters, onFilteredCountChange }: DataTableProps) {
   const { favorites, isFavorite } = useFavorites();
@@ -171,29 +51,26 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   // Only technicalRating (Positive/Negative) grouping is handled client-side
   
   // Convert sorting state to API parameters
-  const sortBy = sorting.length > 0 ? sorting[0].id : 'rating_change_date'
-  const sortOrder = sorting.length > 0 ? (sorting[0].desc ? 'desc' : 'asc') : 'desc'
+  // const sortBy = sorting.length > 0 ? sorting[0].id : 'rating_change_date' // No longer needed, use filters?.sortBy
+  // const sortOrder = sorting.length > 0 ? (sorting[0].desc ? 'desc' : 'asc') : 'desc' // No longer needed, use filters?.sortBy
   
-  const { data, isLoading: loading, isFetching } = useQuery({
-    queryKey: ['stocks', { 
-      market: filters?.market, 
-      search: filters?.search, 
-      limit: fetchLimit, 
-      rating: filters?.currentRating,
-      technicalRating: filters?.technicalRating,
-      sectorsSelected: filters?.sectorsSelected,
-      previousRating: filters?.previousRating,
-      breakoutScores: filters?.breakoutScores,
-      sortBy: sortBy,
-      sortOrder: sortOrder,
-      pinnedSymbols: favorites, // favorites passed here → server returns them first
-    }],
-    queryFn: fetchStocks,
-    placeholderData: keepPreviousData,
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+  const { data, isLoading: loading, isFetching } = useStocksQuery({
+    market: filters?.market,
+    search: filters?.search,
+    currentRating: filters?.currentRating,
+    technicalRating: filters?.technicalRating,
+    previousRating: filters?.previousRating,
+    sectorsSelected: filters?.sectorsSelected,
+    breakoutScores: filters?.breakoutScores,
+    sortBy: filters?.sortBy,
+    favoritesOnly: filters?.favoritesOnly,
+    limit: fetchLimit.toString(),
+    // The following are handled internally by useStocksQuery or are not directly passed as query params
+    // placeholderData: keepPreviousData,
+    // staleTime: 30 * 60 * 1000,
+    // gcTime: 60 * 60 * 1000,
+    // refetchOnWindowFocus: false,
+    // refetchOnMount: false,
   })
 
   // Extract stocks array and total count from response
