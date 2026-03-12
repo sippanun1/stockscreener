@@ -288,13 +288,6 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
   const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start || 0 : 0;
   const paddingBottom = virtualRows.length > 0 ? totalSize - (virtualRows[virtualRows.length - 1]?.end || 0) : 0;
 
-  if (loading) {
-    return (
-      <div className="px-4 sm:px-6 lg:px-[53px] mt-4 flex items-center justify-center h-[400px]">
-        <div className="text-[#7588A3]">Loading stocks...</div>
-      </div>
-    )
-  }
 
   return (
     <div className="px-4 sm:px-6 lg:px-[53px] mt-3 sm:mt-4 h-full flex flex-col">
