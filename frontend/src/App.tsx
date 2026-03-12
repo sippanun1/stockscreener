@@ -1,14 +1,17 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, Suspense, lazy } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import './App.css'
 import MenuHeader from "./components/MenuHeader";
-import { DataTable } from "./components/stock-table/data-table";
-import { stockColumns } from "./components/stock-table/columns";
-import SummaryInfo from "./components/SummaryInfo";
 import StockListFilter from "./components/StockListFilter";
-import StockDetail from "./components/StockDetail";
 import NotFound from "./components/NotFound";
+import { Skeleton } from "./components/ui/skeleton";
 import "react-day-picker/dist/style.css";
+
+// Lazy load heavy components to reduce initial bundle size
+const DataTable = lazy(() => import("./components/stock-table/data-table").then(module => ({ default: module.DataTable })));
+const SummaryInfo = lazy(() => import("./components/SummaryInfo"));
+const StockDetail = lazy(() => import("./components/StockDetail"));
+import { stockColumns } from "./components/stock-table/columns";
 
 
 function ScreenerPage() {
@@ -62,12 +65,27 @@ function ScreenerPage() {
 
   return (
     <div className="flex flex-col lg:h-full">
-      <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
-      <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
-      {/* Mobile: Fixed height table (nested scroll). Desktop: Flex-1 filling remaining space. */}
-      <div className="h-[75vh] lg:h-auto lg:flex-1 overflow-hidden min-h-0">
-        <DataTable columns={stockColumns} filters={filters} onFilteredCountChange={handleFilteredCountChange} />
-      </div>
+      <Suspense fallback={
+        <div className="flex flex-col gap-4 p-4 lg:p-6 w-full">
+          {/* Summary Cards Skeleton */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 w-full" />)}
+          </div>
+          {/* Filter Bar Skeleton */}
+          <Skeleton className="h-16 w-full mb-4" />
+          {/* Table Area Skeleton */}
+          <div className="h-[60vh] lg:h-[60vh] w-full mt-2 space-y-2">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+          </div>
+        </div>
+      }>
+        <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
+        <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
+        {/* Mobile: Fixed height table (nested scroll). Desktop: Flex-1 filling remaining space. */}
+        <div className="h-[75vh] lg:h-auto lg:flex-1 overflow-hidden min-h-0">
+          <DataTable columns={stockColumns} filters={filters} onFilteredCountChange={handleFilteredCountChange} />
+        </div>
+      </Suspense>
     </div>
   );
 }
@@ -77,11 +95,21 @@ function App() {
     <div className="App bg-[#000000] h-[100dvh] flex flex-col overflow-hidden">
       <MenuHeader />
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
-        <Routes>
-          <Route path="/" element={<ScreenerPage />} />
-          <Route path="/symbols/:symbol" element={<StockDetail />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={
+          <div className="flex flex-col pt-6 px-4 md:px-8 space-y-6 w-full max-w-7xl mx-auto h-full">
+             <Skeleton className="h-10 w-48 mb-6" /> 
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Skeleton className="h-[400px] w-full md:col-span-2" />
+                <Skeleton className="h-[400px] w-full" />
+             </div>
+          </div>
+        }>
+          <Routes>
+            <Route path="/" element={<ScreenerPage />} />
+            <Route path="/symbols/:symbol" element={<StockDetail />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </div>
 
     </div>
