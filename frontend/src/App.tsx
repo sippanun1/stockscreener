@@ -64,7 +64,7 @@ function ScreenerPage() {
 
   return (
     <div className="flex flex-col lg:h-full">
-      <Suspense fallback={<div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#12b327]"></div></div>}>
+      <Suspense fallback={<div className="h-64"></div>}>
         <SummaryInfo stocks={[]} onFilterChange={handleSummaryFilterChange} />
         <StockListFilter onChange={handleFilterChange} filteredCount={filteredCount} currentFilters={filters} />
         {/* Mobile: Fixed height table (nested scroll). Desktop: Flex-1 filling remaining space. */}
@@ -81,7 +81,7 @@ function App() {
     <div className="App bg-[#000000] h-[100dvh] flex flex-col overflow-hidden">
       <MenuHeader />
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
-        <Suspense fallback={<div className="h-full w-full flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#12b327]"></div></div>}>
+        <Suspense fallback={<div className="h-full w-full"></div>}>
           <Routes>
             <Route path="/" element={<ScreenerPage />} />
             <Route path="/symbols/:symbol" element={<StockDetail />} />
