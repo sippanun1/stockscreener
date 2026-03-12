@@ -381,10 +381,10 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
               )}
               {loading ? (
                 // Initial Loading Skeletons
-                Array.from({ length: 15 }).map((_, idx) => (
-                  <TableRow key={`skeleton-${idx}`} className="bg-transparent border-b border-[#1E2530] h-10">
-                    <TableCell colSpan={columns.length} className="!py-2 !px-1 sm:!px-2">
-                      <div className="h-5 w-full bg-[#0F151F] border border-[#7588A3]/20 animate-pulse rounded"></div>
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <TableRow key={`skeleton-${idx}`} className="bg-transparent border-b border-[#1E2530]">
+                    <TableCell colSpan={columns.length} className="!py-3 !px-2">
+                      <div className="h-[100px] w-full bg-[#0F151F] border border-[#7588A3]/20 animate-pulse rounded-lg"></div>
                     </TableCell>
                   </TableRow>
                 ))
