@@ -9,6 +9,7 @@ export interface Filters {
   previousRating?: string;
   search?: string;
   sortBy?: string;
+  sortOrder?: string;
   sectorsSelected?: string[];
   favoritesOnly?: boolean;
   breakoutScores?: string[];
@@ -74,6 +75,13 @@ export const fetchStocks = async ({ queryKey }: QueryFunctionContext<QueryKey>):
     } else if (currentFilters.sortBy === 'top_accuracy') {
       params.append('sort_by', 'accuracy_percent');
       params.append('sort_order', 'desc');
+    } else {
+      params.append('sort_by', currentFilters.sortBy);
+      if (currentFilters.sortOrder) {
+        params.append('sort_order', currentFilters.sortOrder);
+      } else {
+        params.append('sort_order', 'desc');
+      }
     }
   }
 

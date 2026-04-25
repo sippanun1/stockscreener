@@ -62,7 +62,8 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
     previousRating: filters?.previousRating,
     sectorsSelected: filters?.sectorsSelected,
     breakoutScores: filters?.breakoutScores,
-    sortBy: filters?.sortBy,
+    sortBy: sorting.length > 0 ? sorting[0].id : filters?.sortBy,
+    sortOrder: sorting.length > 0 ? (sorting[0].desc ? 'desc' : 'asc') : undefined,
     favoritesOnly: filters?.favoritesOnly,
     limit: fetchLimit.toString(),
     // The following are handled internally by useStocksQuery or are not directly passed as query params
@@ -94,6 +95,8 @@ export function DataTable({ columns, filters, onFilteredCountChange }: DataTable
       setSorting([{ id: "changePercent", desc: true }])
     } else if (filters?.sortBy === "top_accuracy") {
       setSorting([{ id: "accuracy_percent", desc: true }])
+    } else if (filters?.sortBy === undefined) {
+      setSorting([{ id: "rating_change_date", desc: true }])
     }
   }, [filters?.sortBy])
 
